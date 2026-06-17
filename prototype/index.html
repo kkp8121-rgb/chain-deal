@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CHAIN DEAL v3 — 안테 · 보스</title>
+<style>
+  :root{ --bg:#0c1020; --panel:#161d36; --gold:#ffd15c; --rune:#9b6fd4; --line:#2a3568;
+    --cardbg:#f4f0e6; --red:#d23b3b; --black:#1c2433; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(circle at 50% 16%,#1a2348 0%,var(--bg) 70%); color:#e6ebff;
+    font-family:"Segoe UI",system-ui,sans-serif; min-height:100%; display:flex; flex-direction:column;
+    align-items:center; padding:14px; user-select:none; overflow-x:hidden;}
+  h1{font-size:21px; letter-spacing:3px; margin:0 0 2px; color:var(--gold); text-shadow:0 0 16px rgba(255,209,92,.4)}
+  .sub{font-size:12px; color:#8a93b6; margin-bottom:10px; text-align:center}
+  .wrap{width:100%; max-width:780px}
+  .hud{display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap}
+  .chip{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:5px 11px; font-size:13px}
+  .chip b{font-size:16px; color:#fff}
+  .bar{flex:1; min-width:150px; height:18px; background:#0c1230; border:1px solid var(--line); border-radius:9px; overflow:hidden; position:relative}
+  .fill{height:100%; width:0%; background:linear-gradient(90deg,#caa23c,var(--gold)); transition:width .4s cubic-bezier(.2,.8,.2,1)}
+  .barlbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff; text-shadow:0 1px 2px #000}
+  .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
+  .toggle input{width:15px;height:15px}
+
+  .antedots{display:flex; gap:4px; justify-content:center; margin-bottom:6px}
+  .adot{width:18px;height:8px;border-radius:4px;background:#2a3568;border:1px solid var(--line)}
+  .adot.done{background:var(--gold)} .adot.cur{background:var(--rune);box-shadow:0 0 6px var(--rune)}
+
+  .blindinfo{text-align:center; font-size:13px; padding:7px 10px; border-radius:8px; margin-bottom:6px; min-height:32px;
+    background:#11193c; border:1px solid var(--line)}
+  .blindinfo.boss{background:#3a1430; border-color:#c85048; color:#ffd1cc; font-weight:700; animation:bosspulse 1.4s ease-in-out infinite}
+  @keyframes bosspulse{0%,100%{box-shadow:0 0 0 0 rgba(200,80,72,.4)}50%{box-shadow:0 0 14px 2px rgba(200,80,72,.55)}}
+  .blindinfo b{color:var(--gold)}
+
+  .table{position:relative; background:#0e1530; border:1px solid var(--line); border-radius:14px;
+    padding:20px 12px; margin:8px 0; min-height:118px; box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
+  .table.shake{animation:shake .32s}
+  @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+  .row{display:flex; gap:5px; justify-content:center; flex-wrap:wrap}
+
+  .pcard{width:50px; height:72px; border-radius:7px; position:relative; background:var(--cardbg);
+    border:1px solid #b8ad93; box-shadow:0 2px 6px rgba(0,0,0,.45); overflow:hidden}
+  .pcard.empty{background:transparent; border:2px dashed #2c3766; box-shadow:none}
+  .pcard .corner{position:absolute; font-weight:800; line-height:1; font-size:13px; text-align:center}
+  .pcard .tl{top:3px; left:4px} .pcard .br{bottom:3px; right:4px; transform:rotate(180deg)}
+  .pcard .center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:26px}
+  .pcard.red{color:var(--red)} .pcard.black{color:var(--black)}
+  .pcard.sealed{filter:grayscale(.7) brightness(.7)}
+  .pcard .enh{position:absolute; top:2px; right:3px; font-size:10px}
+  .pcard.place{animation:place .28s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes place{0%{transform:translateY(-26px) scale(.6); opacity:0}100%{transform:none; opacity:1}}
+  .pcard.flash{animation:flash .5s}
+  @keyframes flash{0%{box-shadow:0 0 0 0 var(--gold)}30%{box-shadow:0 0 18px 5px var(--gold); transform:translateY(-6px) scale(1.12)}100%{box-shadow:0 2px 6px rgba(0,0,0,.45)}}
+
+  .hand{display:flex; gap:12px; justify-content:center; margin-top:8px}
+  .hcard{position:relative; cursor:pointer; transition:transform .12s; border-radius:9px}
+  .hcard .pcard{width:62px; height:88px}
+  .hcard:hover{transform:translateY(-8px)}
+  .hcard.willchain .pcard{box-shadow:0 0 16px #5ad15a, 0 2px 6px rgba(0,0,0,.45); border-color:#5ad15a}
+  .hcard .zap{position:absolute; top:-11px; right:-9px; background:#5ad15a; color:#06210a; font-size:11px; font-weight:900;
+    border-radius:10px; padding:1px 7px; box-shadow:0 0 10px #5ad15a; z-index:3}
+  .handlbl{text-align:center; font-size:12px; color:#8a93b6; margin-top:9px}
+
+  .pop{position:absolute; font-weight:900; pointer-events:none; z-index:30; transition:all .75s cubic-bezier(.2,.8,.2,1); white-space:nowrap}
+  .spark{position:absolute; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:35}
+  .charms{display:flex; gap:7px; justify-content:center; margin-top:7px; flex-wrap:wrap; min-height:24px}
+  .ctag{background:#241b40; border:1px solid var(--rune); border-radius:6px; padding:2px 9px; font-size:11px; color:#d9ccf5}
+  .banner{margin-top:9px; min-height:22px; text-align:center; font-size:15px; font-weight:700}
+  .controls{display:flex; gap:10px; justify-content:center; margin-top:8px; flex-wrap:wrap}
+  button{font-family:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line);
+    background:linear-gradient(180deg,#2a3568,#1c2547); color:#e6ebff; font-weight:600; padding:8px 14px; font-size:13px}
+  button:hover{filter:brightness(1.15)}
+  .help{font-size:12px; color:#8a93b6; line-height:1.6; margin-top:11px; text-align:center}
+  .help b{color:#cdd6f5}
+  .deckinfo{text-align:center;font-size:11px;color:#6f79a6;margin-top:4px}
+
+  .modal{position:fixed; inset:0; background:rgba(6,9,24,.82); display:none; align-items:center; justify-content:center; padding:18px; z-index:50}
+  .modal.show{display:flex}
+  .shop{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; max-width:640px; width:100%; text-align:center}
+  .shop h2{margin:.2em 0; color:var(--gold)}
+  .offer{display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; justify-content:center}
+  .ocard{flex:1; min-width:160px; background:#1a2348; border:1px solid #4a5798; border-radius:10px; padding:13px; cursor:pointer; transition:transform .1s}
+  .ocard:hover{transform:translateY(-4px); border-color:var(--gold); box-shadow:0 0 16px rgba(255,209,92,.4)}
+  .ocard .on{color:var(--gold); font-weight:800; margin-bottom:5px} .ocard .od{font-size:12px; color:#aab3d6; line-height:1.4}
+  .deckgrid{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:300px; overflow-y:auto; margin-top:12px; padding:4px}
+  .deckgrid .pcard{width:42px;height:60px;cursor:pointer}
+  .deckgrid .pcard:hover{outline:2px solid var(--gold); transform:translateY(-3px)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CHAIN DEAL <span style="font-size:13px;color:#8a93b6">v3 · 안테·보스</span></h1>
+  <div class="sub">같은 무늬·같은 숫자·연속 숫자면 체인 폭발 — <b style="color:#cdd6f5">안테 8을 정복하라</b></div>
+
+  <div class="antedots" id="antedots"></div>
+  <div class="hud">
+    <div class="chip">안테 <b id="hAnte">1</b>/8</div>
+    <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
+    <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ 체인 예고</label>
+  </div>
+  <div class="blindinfo" id="blindinfo"></div>
+
+  <div class="table" id="table"><div class="row" id="row"></div></div>
+
+  <div class="handlbl">↓ 손패에서 한 장을 골라 클릭</div>
+  <div class="hand" id="hand"></div>
+  <div class="controls" id="rerollBox" style="margin-top:6px; display:none"><button id="btnReroll" onclick="rerollHand()">🔄 손패 리롤 <span id="rrc"></span></button></div>
+  <div class="deckinfo" id="deckinfo"></div>
+
+  <div class="charms" id="charms"></div>
+  <div class="banner" id="banner"></div>
+  <div class="controls"><button onclick="newGame()">새 게임 (런 다시)</button></div>
+
+  <div class="help">
+    <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style="color:#ff9a9a">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.
+    <b style="color:#ff9a9a">보스</b>는 매번 특수 규칙으로 당신 전략을 방해합니다. <b>안테 8 보스를 잡으면 런 클리어 = 승리.</b>
+  </div>
+</div>
+
+<div class="modal" id="shop">
+  <div class="shop"><h2 id="shopTitle">통과! 강화 선택</h2><div id="shopBody"></div></div>
+</div>
+
+<script>
+"use strict";
+/* ---------- 트럼프 카드 ---------- */
+const SUITS=[{k:0,g:"♠",red:false},{k:1,g:"♥",red:true},{k:2,g:"♦",red:true},{k:3,g:"♣",red:false}];
+const RANKSTR=["","A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const rankStr=r=>RANKSTR[r], suitG=s=>SUITS[s].g, isRed=s=>SUITS[s].red;
+function mkCard(s,r){ return {suit:s, rank:r, enh:null}; }
+// 시작 덱 = A~8 (32장). 풀 52장은 3택1에 카드풀이 너무 커서 체인이 안 됨 → 압축. 높은 카드는 상점 성장.
+function fullDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push(mkCard(s,r)); return d; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const ri=n=>Math.floor(Math.random()*n);
+
+// 연결: 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드 무조건). 보스 규칙이 일부를 봉인.
+function connect(a,b){
+  if(a.enh==="wild"||b.enh==="wild") return true;
+  const boss=S&&S.boss;
+  if(boss&&boss.id==="seal_suit"){ if(a.suit===0||b.suit===0) return false; }   // ♠ 봉인
+  const suitOk=a.suit===b.suit, rankOk=a.rank===b.rank;
+  const runOk=Math.abs(a.rank-b.rank)===1 && !(boss&&boss.id==="seal_run");      // 스트레이트 봉인
+  return suitOk||rankOk||runOk;
+}
+function cardSealed(c){ return S&&S.boss&&S.boss.id==="seal_suit"&&c.suit===0; }
+
+/* ---------- 보스 블라인드 ---------- */
+// tmult = 보스마다 룰 가혹도가 달라 목표치를 보정 (점수 깎는 보스일수록 목표↓ → 균형)
+const BOSSES=[
+  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효", tmult:0.65},
+  {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0},
+  {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦", tmult:0.65},
+  {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1", tmult:0.85},
+  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6},
+];
+const pickBoss=()=>BOSSES[ri(BOSSES.length)];
+const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
+
+/* ---------- 상태 ---------- */
+const SLOTS=8, ANTES=8;
+let S=null;
+const CHARMS=[
+  {id:"greed",  name:"탐욕",   desc:"모든 카드 기본 점수 +3"},
+  {id:"pyro",   name:"발화",   desc:"빨강(♥♦) 카드로 연결 시 배율 +2"},
+  {id:"suited", name:"플러시광",desc:"같은 무늬로 연결되면 배율 +1"},
+  {id:"runner", name:"러너",   desc:"연속 숫자(±1)로 연결되면 배율 +1"},
+  {id:"jackpot",name:"잭팟",   desc:"체인 길이 4 이상이면 보너스 ×2"},
+];
+const has=id=>S.owned.includes(id);
+
+function newGame(){
+  S={ante:1, blind:0, anteBoss:pickBoss(), owned:[], over:false, busy:false, settled:false,
+     bonusHand:0, rerollMax:0,
+     showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
+  startBlind();
+}
+// 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
+function blindTarget(ante,blind){
+  const base=150*Math.pow(1.5, ante-1);   // 하향: "긴 체인=운" 의존 줄여 안정적 수읽기로 클리어 가능하게.
+  return Math.round(base * (blind===0?1 : blind===1?1.4 : 1.6));
+}
+function draw(){ if(S.deck.length===0){ S.deck=shuffle(S.discard); S.discard=[]; } return S.deck.length? S.deck.pop() : mkCard(ri(4),1+ri(13)); }
+function startBlind(){
+  S.boss = (S.blind===2) ? S.anteBoss : null;
+  const baseHand = (S.boss && S.boss.id==="stingy") ? 2 : 3;   // 기본 3택1 유지(한눈에 보임). 확장은 스킬로.
+  S.handSize = baseHand + S.bonusHand;                          // 손패 확장 스킬로 성장
+  S.row=[]; S.score=0; S.settled=false; S.busy=false; S.over=false;   // ★ S.score=0 (NaN 버그 수정)
+  S.rerolls=S.rerollMax;
+  S.target=blindTarget(S.ante,S.blind);
+  if(S.boss) S.target=Math.round(S.target*S.boss.tmult);   // 보스 룰 가혹도 보정
+  S.hand=Array.from({length:S.handSize}, draw);
+  banner(S.boss? `${S.boss.icon} 보스: ${S.boss.name} — ${S.boss.desc}` : "", S.boss?"#ff9a9a":"");
+  render();
+}
+function togglePreview(){ if(S){ S.showPreview=document.getElementById("pvToggle").checked; render(); } }
+function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획득한 횟수만큼)
+  if(!S||S.over||S.busy||S.settled||S.rerolls<=0) return;
+  S.discard.push(...S.hand);
+  S.hand=Array.from({length:S.handSize}, draw);
+  S.rerolls--; render(); beep(280,.06,"square");
+}
+
+/* ---------- 핵심 로직 ---------- */
+function placeCard(hi){
+  if(S.over||S.busy||S.settled||S.row.length>=SLOTS) return;
+  const card=S.hand[hi]; const left=S.row[S.row.length-1];
+  S.row.push(card); S.hand[hi]=draw();
+
+  let base = (S.boss&&S.boss.id==="red_curse"&&isRed(card.suit)) ? 0 : card.rank;
+  if(has("greed")) base+=3;
+  if(card.enh==="gold") base+=5;
+  let gained=base, runLen=1, bonus=0;
+
+  if(left && connect(card,left)){
+    const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
+    runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1])) runLen++; else break; }
+    let mult=runLen-1;
+    if(has("pyro") && isRed(card.suit)) mult+=2;
+    if(has("suited") && byIcon) mult+=1;
+    if(has("runner") && byRun) mult+=1;
+    for(let i=S.row.length-runLen;i<S.row.length;i++) if(S.row[i].enh==="mult") mult+=1;
+    if(S.boss&&S.boss.id==="dull") mult=Math.max(1,mult-1);
+    mult=Math.min(mult,25);
+    let sum=0; for(let i=S.row.length-runLen;i<S.row.length;i++) sum+=S.row[i].rank;
+    bonus=sum*mult;
+    if(has("jackpot") && runLen>=4) bonus*=2;
+    gained+=bonus;
+  }
+  S.score+=gained; render();
+  juicePlace(S.row.length-1, base, runLen, bonus, gained);
+  if(S.row.length>=SLOTS){ S.busy=true; setTimeout(settle,700); }
+}
+
+function settle(){
+  if(S.settled) return; S.settled=true;
+  S.discard.push(...S.row);
+  if(S.score>=S.target){
+    const wasBoss=(S.blind===2);
+    flash("#ffd15c"); boom(wasBoss?170:130);
+    banner(wasBoss? `${S.anteBoss.icon} 보스 격파!` : `✦ 통과! ${S.score} / ${S.target}`, "var(--gold)");
+    if(wasBoss && S.ante>=ANTES){ setTimeout(victory,700); }
+    else setTimeout(openShop,800);
+  } else {
+    S.over=true;
+    banner(`패배 — 안테 ${S.ante} ${BLINDNAME[S.blind]}에서 탈락 (${S.score}/${S.target}). 새 게임으로 재도전!`,"#ff7a7a");
+    boom(70); render();
+  }
+}
+function victory(){
+  S.over=true; S.score=0;
+  banner("🏆 런 클리어! 안테 8 정복! 🏆","var(--gold)");
+  flash("#ffd15c"); boom(200); setTimeout(()=>{flash("#ffffff22");boom(150);},250);
+  // 화면 가득 축포
+  for(let k=0;k<4;k++) setTimeout(()=>sparkBurst(document.getElementById("table"),34,"#ffd15c"),k*180);
+  render();
+}
+
+/* ---------- 덱빌딩 상점 (블라인드마다) ---------- */
+function shopPool(){
+  const pool=[];
+  CHARMS.filter(c=>!has(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc}));
+  pool.push({type:"thin", name:"덱 압축 ✂", desc:"덱에서 카드 1장 영구 제거 (체인 확률↑)"});
+  pool.push({type:"enh", enh:"wild", name:"와일드 부여 ★", desc:"덱 카드 1장을 '와일드'로 (무엇과도 연결)"});
+  pool.push({type:"enh", enh:"mult", name:"배율석 부여 ◆", desc:"덱 카드 1장에 '체인 배율 +1'"});
+  pool.push({type:"enh", enh:"gold", name:"황금 부여 ●", desc:"덱 카드 1장에 '기본 점수 +5'"});
+  pool.push({type:"add", name:"카드 추가 +", desc:"고른 무늬의 강한 카드(7~8) 추가"});
+  pool.push({type:"hand", name:"손패 확장 +1", desc:"매 블라인드 손패 1장 증가 (영구 성장)"});
+  pool.push({type:"reroll", name:"리롤 +1", desc:"블라인드마다 손패 리롤 횟수 +1 (영구)"});
+  return pool;
+}
+function openShop(){
+  const pool=shuffle(shopPool()); const pick=pool.slice(0,3);
+  document.getElementById("shopTitle").textContent=`안테 ${S.ante} · ${BLINDNAME[S.blind]} 통과! (덱 ${S.deck.length+S.discard.length}장)`;
+  const body=document.getElementById("shopBody"); body.innerHTML="";
+  const off=document.createElement("div"); off.className="offer";
+  pick.forEach(p=>{ const d=document.createElement("div"); d.className="ocard";
+    d.innerHTML=`<div class="on">${p.name}</div><div class="od">${p.desc}</div>`;
+    d.onclick=()=>chooseShop(p); off.appendChild(d); });
+  body.appendChild(off);
+  const skip=document.createElement("div"); skip.style.marginTop="14px";
+  skip.innerHTML=`<button onclick="advanceBlind()">선택 없이 진행 →</button>`;
+  body.appendChild(skip);
+  document.getElementById("shop").classList.add("show");
+}
+function chooseShop(p){
+  if(p.type==="charm"){ S.owned.push(p.charm.id); advanceBlind(); }
+  else if(p.type==="hand"){ S.bonusHand++; advanceBlind(); }
+  else if(p.type==="reroll"){ S.rerollMax++; advanceBlind(); }
+  else if(p.type==="add"){ pickSuitToAdd(); }
+  else pickDeckCard(p);
+}
+function pickDeckCard(p){
+  const body=document.getElementById("shopBody");
+  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${p.type==="thin"?"제거할":"효과를 줄"} 카드를 고르세요</div>`;
+  const grid=document.createElement("div"); grid.className="deckgrid";
+  const refs=[...S.deck, ...S.discard];
+  refs.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
+  refs.forEach(c=>{ const el=cardEl(c); el.onclick=()=>{ if(p.type==="thin") removeCard(c); else c.enh=p.enh; advanceBlind(); }; grid.appendChild(el); });
+  body.appendChild(grid);
+}
+function removeCard(card){ let i=S.deck.indexOf(card); if(i>=0){S.deck.splice(i,1);return;} i=S.discard.indexOf(card); if(i>=0) S.discard.splice(i,1); }
+function pickSuitToAdd(){
+  const body=document.getElementById("shopBody");
+  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">추가할 무늬 (강한 카드 7~8 랜덤)</div>`;
+  const grid=document.createElement("div"); grid.className="offer";
+  SUITS.forEach(su=>{ const d=document.createElement("div"); d.className="ocard"; d.style.minWidth="80px";
+    d.innerHTML=`<div class="on" style="font-size:28px;color:${su.red?'#ff6b6b':'#cdd6f5'}">${su.g}</div>`;
+    d.onclick=()=>{ S.deck.push(mkCard(su.k,7+ri(2))); shuffle(S.deck); advanceBlind(); }; grid.appendChild(d); });
+  body.appendChild(grid);
+}
+function advanceBlind(){
+  document.getElementById("shop").classList.remove("show");
+  if(S.blind<2){ S.blind++; }
+  else { S.ante++; S.blind=0; S.anteBoss=pickBoss(); }
+  startBlind();
+}
+
+/* ---------- 렌더 ---------- */
+function cardEl(card){
+  const el=document.createElement("div"); el.className="pcard "+(isRed(card.suit)?"red":"black")+(cardSealed(card)?" sealed":"");
+  const rs=rankStr(card.rank), g=suitG(card.suit);
+  const enh=card.enh==="wild"?"★":card.enh==="mult"?"◆":card.enh==="gold"?"●":"";
+  el.innerHTML=`<div class="corner tl">${rs}<br>${g}</div><div class="center">${g}</div><div class="corner br">${rs}<br>${g}</div>`
+    +(enh?`<div class="enh" style="color:${card.enh==='gold'?'#caa23c':card.enh==='wild'?'#5ad15a':'#9b6fd4'}">${enh}</div>`:"");
+  return el;
+}
+let cellEls=[];
+function render(){
+  if(!S) return;
+  document.getElementById("hAnte").textContent=S.ante;
+  const pct=Math.min(100,Math.round(S.score/S.target*100));
+  document.getElementById("fill").style.width=pct+"%";
+  document.getElementById("barlbl").textContent=`${S.score} / ${S.target}`;
+  document.getElementById("deckinfo").textContent=`덱 ${S.deck.length}장 · 버림 ${S.discard.length}장`;
+  // 안테 진행 점
+  const ad=document.getElementById("antedots"); ad.innerHTML="";
+  for(let a=1;a<=ANTES;a++){ const d=document.createElement("span"); d.className="adot"+(a<S.ante?" done":a===S.ante?" cur":""); ad.appendChild(d); }
+  // 블라인드 정보
+  const bi=document.getElementById("blindinfo");
+  if(S.blind===2 && S.boss){ bi.className="blindinfo boss"; bi.innerHTML=`👑 보스: <b>${S.boss.icon} ${S.boss.name}</b> — ${S.boss.desc}`; }
+  else { bi.className="blindinfo"; bi.innerHTML=`안테 ${S.ante} · ${BLINDNAME[S.blind]} &nbsp;·&nbsp; <span style="color:#8a93b6">다음 보스:</span> ${S.anteBoss.icon} ${S.anteBoss.name}`; }
+
+  const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
+  for(let i=0;i<SLOTS;i++){
+    if(i<S.row.length){ const el=cardEl(S.row[i]); row.appendChild(el); cellEls[i]=el; }
+    else { const e=document.createElement("div"); e.className="pcard empty"; row.appendChild(e); }
+  }
+  const hand=document.getElementById("hand"); hand.innerHTML="";
+  const last=S.row[S.row.length-1];
+  S.hand.forEach((c,i)=>{
+    const w=document.createElement("div"); w.className="hcard"; let zap="";
+    if(S.showPreview && last && connect(c,last)){
+      let er=1; for(let j=S.row.length-1;j>0;j--){ if(connect(S.row[j],S.row[j-1])) er++; else break; }
+      w.classList.add("willchain"); zap=`<div class="zap">⚡×${er+1}</div>`;
+    }
+    w.appendChild(cardEl(c)); w.insertAdjacentHTML("beforeend",zap);
+    w.onclick=()=>placeCard(i); hand.appendChild(w);
+  });
+  document.getElementById("charms").innerHTML=S.owned.map(id=>`<span class="ctag">${CHARMS.find(c=>c.id===id).name}</span>`).join("");
+  const rbox=document.getElementById("rerollBox");
+  if(rbox){ rbox.style.display=S.rerollMax>0?"flex":"none";
+    document.getElementById("rrc").textContent="("+S.rerolls+")";
+    document.getElementById("btnReroll").disabled=(S.rerolls<=0)||S.over||S.busy||S.settled; }
+}
+
+/* ---------- 연출 ---------- */
+function juicePlace(idx, base, runLen, bonus, gained){
+  const cell=cellEls[idx]; if(cell) cell.classList.add("place");
+  popup(cell,"+"+base,"#bcd",0); beep(330,.07);
+  if(runLen>=2){
+    for(let k=0;k<runLen;k++){ const ci=idx-k;
+      setTimeout(()=>{ const c=cellEls[ci]; if(c){ c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); } beep(420+k*90,.08); }, k*70); }
+    const big=runLen>=4||gained>=100;
+    setTimeout(()=>{
+      popup(cellEls[idx],"CHAIN ×"+runLen,"#ffd15c",-34,runLen>=5);
+      popup(cellEls[idx],"+"+bonus,"#fff",-62,big);
+      sparkBurst(cellEls[idx],Math.min(5+runLen*4,34),runLen>=4?"#ffd15c":"#9b6fd4");
+      shake(); if(big){ flash("#ffd15c22"); boom(90); } if(runLen>=5) flash("#ffffff18");
+    }, runLen*70);
+  }
+}
+function popup(anchor,text,color,dy,big){ const t=document.getElementById("table");
+  const p=document.createElement("div"); p.className="pop"; p.textContent=text; p.style.color=color;
+  p.style.fontSize=(big?38:18)+"px"; if(big)p.style.textShadow="0 0 18px "+color;
+  const tr=t.getBoundingClientRect(), ar=anchor?anchor.getBoundingClientRect():tr;
+  p.style.left=(ar.left-tr.left+(anchor?ar.width/2:tr.width/2)-10)+"px"; p.style.top=(ar.top-tr.top+(dy||0)+6)+"px"; t.appendChild(p);
+  requestAnimationFrame(()=>{ p.style.top=(parseFloat(p.style.top)-46)+"px"; p.style.opacity="0"; }); setTimeout(()=>p.remove(),760);
+}
+function sparkBurst(anchor,n,color){ if(!anchor)return; const t=document.getElementById("table");
+  const tr=t.getBoundingClientRect(), ar=anchor.getBoundingClientRect(); const cx=ar.left-tr.left+ar.width/2, cy=ar.top-tr.top+ar.height/2;
+  for(let i=0;i<n;i++){ const s=document.createElement("div"); s.className="spark"; s.style.background=color; s.style.boxShadow="0 0 8px "+color;
+    s.style.left=cx+"px"; s.style.top=cy+"px"; s.style.transition="all .6s cubic-bezier(.2,.8,.2,1)"; t.appendChild(s);
+    const a=Math.random()*6.283,dist=28+Math.random()*60,dx=Math.cos(a)*dist,dy=Math.sin(a)*dist-16;
+    requestAnimationFrame(()=>{ s.style.transform=`translate(${dx}px,${dy}px) scale(.3)`; s.style.opacity="0"; }); setTimeout(()=>s.remove(),620);} }
+function shake(){ const t=document.getElementById("table"); t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake"); }
+function flash(col){ const f=document.createElement("div"); f.style.cssText=`position:fixed;inset:0;background:${col};pointer-events:none;z-index:40;transition:opacity .4s;opacity:.7`;
+  document.body.appendChild(f); requestAnimationFrame(()=>f.style.opacity="0"); setTimeout(()=>f.remove(),420); }
+function banner(m,c){ const b=document.getElementById("banner"); b.textContent=m||""; b.style.color=c||"#e6ebff"; }
+let AC=null; function ac(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
+function beep(f,d,type){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type=type||"triangle"; o.frequency.value=f;
+  g.gain.setValueAtTime(.0001,a.currentTime); g.gain.exponentialRampToValueAtTime(.18,a.currentTime+.01); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);
+  o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+d+.02); }
+function boom(f){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type="sine";
+  o.frequency.setValueAtTime(f,a.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,a.currentTime+.3);
+  g.gain.setValueAtTime(.3,a.currentTime); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.4); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.42); }
+
+newGame();
+</script>
+</body>
+</html>

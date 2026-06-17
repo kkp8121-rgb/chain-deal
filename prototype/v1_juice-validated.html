@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CHAIN DEAL — 프로토타입</title>
+<style>
+  :root{
+    --bg:#0c1020; --panel:#161d36; --gold:#ffd15c; --rune:#9b6fd4;
+    --red:#ff5a5a; --blue:#4aa3ff; --green:#5ad15a; --yellow:#ffd15c; --line:#2a3568;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(circle at 50% 18%,#1a2348 0%,var(--bg) 70%);
+    color:#e6ebff; font-family:"Segoe UI",system-ui,sans-serif; min-height:100%;
+    display:flex; flex-direction:column; align-items:center; padding:16px; user-select:none; overflow-x:hidden;
+  }
+  h1{font-size:22px; letter-spacing:5px; margin:0 0 2px; color:var(--gold); text-shadow:0 0 16px rgba(255,209,92,.4)}
+  .sub{font-size:12px; color:#8a93b6; margin-bottom:12px}
+  .wrap{width:100%; max-width:760px}
+
+  .hud{display:flex; gap:16px; align-items:center; margin-bottom:6px; flex-wrap:wrap}
+  .chip{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px}
+  .chip b{font-size:17px; color:#fff}
+  .bar{flex:1; min-width:160px; height:18px; background:#0c1230; border:1px solid var(--line); border-radius:9px; overflow:hidden; position:relative}
+  .fill{height:100%; width:0%; background:linear-gradient(90deg,#caa23c,var(--gold)); transition:width .4s cubic-bezier(.2,.8,.2,1)}
+  .barlbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff; text-shadow:0 1px 2px #000}
+
+  .multbig{font-size:26px; font-weight:900; color:var(--gold); min-width:64px; text-align:center; text-shadow:0 0 12px var(--gold); transition:transform .12s}
+  .multbig.pop{transform:scale(1.5)}
+
+  .table{position:relative; background:#0e1530; border:1px solid var(--line);
+    border-radius:14px; padding:22px 14px; margin:8px 0; min-height:130px; box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
+  .table.shake{animation:shake .32s}
+  @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+  .row{display:flex; gap:6px; justify-content:center; flex-wrap:wrap}
+
+  .card{width:58px; height:80px; border-radius:9px; position:relative; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; background:#1a2348; border:2px solid #36406e;
+    box-shadow:0 3px 8px rgba(0,0,0,.4); transition:transform .12s}
+  .card .num{font-size:26px; font-weight:900; line-height:1}
+  .card .ico{font-size:18px; margin-top:2px}
+  .card.empty{background:transparent; border:2px dashed #2c3766; box-shadow:none}
+  .card.place{animation:place .28s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes place{0%{transform:translateY(-26px) scale(.6); opacity:0}100%{transform:none; opacity:1}}
+  .card.flash{animation:flash .5s}
+  @keyframes flash{0%{box-shadow:0 0 0 0 var(--gold)}30%{box-shadow:0 0 18px 5px var(--gold); transform:translateY(-6px) scale(1.12)}100%{box-shadow:0 3px 8px rgba(0,0,0,.4)}}
+  .card.linked::after{content:""; position:absolute; left:-7px; top:50%; width:8px; height:3px; background:var(--gold); box-shadow:0 0 7px var(--gold); transform:translateY(-50%)}
+
+  .hand{display:flex; gap:12px; justify-content:center; margin-top:8px}
+  .hcard{width:66px; height:92px; border-radius:11px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; background:#1a2348; border:2px solid #4a5798;
+    box-shadow:0 4px 12px rgba(0,0,0,.5); transition:transform .12s, box-shadow .12s; position:relative}
+  .hcard:hover{transform:translateY(-8px); box-shadow:0 10px 22px rgba(155,111,212,.5); border-color:var(--rune)}
+  .hcard.willchain{animation:cpulse 1s ease-in-out infinite}
+  @keyframes cpulse{0%,100%{box-shadow:0 0 12px #5ad15a77,0 4px 12px rgba(0,0,0,.5)}50%{box-shadow:0 0 24px #5ad15acc,0 4px 12px rgba(0,0,0,.5)}}
+  .hcard .zap{position:absolute; top:-11px; right:-9px; background:#5ad15a; color:#06210a; font-size:11px; font-weight:900;
+    border-radius:10px; padding:1px 7px; box-shadow:0 0 10px #5ad15a; z-index:2}
+  .spark{position:absolute; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:35}
+  .hcard .num{font-size:30px; font-weight:900}
+  .hcard .ico{font-size:20px}
+  .hcard .hint{position:absolute; font-size:9px; color:#8a93b6}
+  .handlbl{text-align:center; font-size:12px; color:#8a93b6; margin-top:10px}
+
+  .pop{position:absolute; font-weight:900; pointer-events:none; z-index:30; transition:all .7s cubic-bezier(.2,.8,.2,1); white-space:nowrap}
+
+  .charms{display:flex; gap:8px; justify-content:center; margin-top:6px; flex-wrap:wrap; min-height:26px}
+  .ctag{background:#241b40; border:1px solid var(--rune); border-radius:6px; padding:2px 9px; font-size:11px; color:#d9ccf5}
+
+  .banner{margin-top:10px; min-height:24px; text-align:center; font-size:15px; font-weight:700}
+  .controls{display:flex; gap:10px; justify-content:center; margin-top:8px}
+  button{font-family:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line);
+    background:linear-gradient(180deg,#2a3568,#1c2547); color:#e6ebff; font-weight:600; padding:9px 16px; font-size:13px}
+  button:hover{filter:brightness(1.15)}
+  button.gold{background:linear-gradient(180deg,#caa23c,#a07e1f); color:#1a1405; border-color:#7a5a10}
+
+  .help{font-size:12px; color:#8a93b6; line-height:1.6; margin-top:12px; text-align:center}
+  .help b{color:#cdd6f5}
+
+  .modal{position:fixed; inset:0; background:rgba(6,9,24,.82); display:none; align-items:center; justify-content:center; padding:20px; z-index:50}
+  .modal.show{display:flex}
+  .shop{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; max-width:560px; width:100%; text-align:center}
+  .shop h2{margin:.2em 0; color:var(--gold)}
+  .offer{display:flex; gap:12px; margin-top:12px; flex-wrap:wrap}
+  .ocard{flex:1; min-width:150px; background:#1a2348; border:1px solid #4a5798; border-radius:10px; padding:14px; cursor:pointer; transition:transform .1s}
+  .ocard:hover{transform:translateY(-4px); border-color:var(--gold); box-shadow:0 0 16px rgba(255,209,92,.4)}
+  .ocard .on{color:var(--gold); font-weight:800; margin-bottom:5px}
+  .ocard .od{font-size:12px; color:#aab3d6; line-height:1.4}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CHAIN DEAL</h1>
+  <div class="sub">손패 3장 중 골라 한 줄로 깔아라 — 왼쪽 카드와 <b style="color:#cdd6f5">색 또는 모양</b>이 같으면 체인이 터진다</div>
+
+  <div class="hud">
+    <div class="chip">라운드 <b id="hRound">1</b></div>
+    <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
+    <div class="multbig" id="mult">×1</div>
+  </div>
+
+  <div class="table" id="table">
+    <div class="row" id="row"></div>
+  </div>
+
+  <div class="handlbl">↓ 손패에서 한 장을 골라 클릭하세요 (고른 자리에 새 카드가 채워짐)</div>
+  <div class="hand" id="hand"></div>
+
+  <div class="charms" id="charms"></div>
+  <div class="banner" id="banner"></div>
+  <div class="controls">
+    <button onclick="newGame()">새 게임</button>
+  </div>
+
+  <div class="help">
+    <b>규칙 (한 줄)</b> — 손패 3장 중 하나를 골라 줄에 깐다. 바로 왼쪽 카드와 <b>색이 같거나 모양이 같으면</b> 연결 → 연결이 길게 이어질수록 <b>배율 ×</b> 가 커지며 점수가 폭발.<br>
+    카드 <b>숫자 = 기본 점수</b>(항상 획득). 줄을 다 채우면(8장) 정산 → <b>목표</b> 넘기면 다음 라운드 + Loom 1개 선택.
+  </div>
+</div>
+
+<div class="modal" id="shop">
+  <div class="shop">
+    <h2>라운드 통과! Loom 하나 선택</h2>
+    <div style="font-size:13px;color:#aab3d6">반응을 강화하는 부적을 고르세요 (시너지로 숫자가 더 터집니다)</div>
+    <div class="offer" id="offer"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- 데이터 ---------- */
+const COLORS=[{k:"red",c:"#ff5a5a"},{k:"blue",c:"#4aa3ff"},{k:"green",c:"#5ad15a"},{k:"yellow",c:"#ffd15c"}];
+const ICONS=["●","▲","■","◆"];
+const SLOTS=8;
+const ri=n=>Math.floor(Math.random()*n);
+const colorHex=k=>COLORS.find(c=>c.k===k).c;
+// 라운드1은 색·모양 다양성을 3종으로 줄여 체인이 자주 터지게 → 첫인상 도파민 보장(온보딩).
+// 라운드2부터 4종 전체로 난이도 상승.
+function randCard(){
+  const v = (S && S.round <= 1) ? 3 : 4;
+  return {color:COLORS[ri(v)].k, icon:ICONS[ri(v)], num:1+ri(9)};
+}
+function connect(a,b){ return a.color===b.color || a.icon===b.icon; }
+
+const ALL_LOOMS=[
+  {id:"greed",  name:"탐욕",   desc:"모든 카드 기본 점수 +3"},
+  {id:"pyro",   name:"발화",   desc:"빨강 카드로 연결 시 배율 +2"},
+  {id:"magnet", name:"자석",   desc:"같은 '모양'으로 연결되면 배율 +1"},
+  {id:"jackpot",name:"잭팟",   desc:"체인 길이 4 이상이면 보너스 ×2"},
+  {id:"ember",  name:"불씨",   desc:"숫자 7·8·9 카드 기본 점수 ×2"},
+];
+
+/* ---------- 상태 ---------- */
+let S=null;
+function newGame(){
+  S={round:1, owned:[], over:false, busy:false};
+  startRound();
+}
+// 실측 재보정: 그리디 평균 ~445라 목표50은 무조건 통과였음. 기본 점수만으론 못 넘고
+// '체인을 의도적으로 길게 잇는' 플레이를 보상하도록 상향 + 가파른 곡선(후반은 Loom 필수).
+function targetFor(r){ return Math.round(200*Math.pow(1.7, r-1)); }
+function startRound(){
+  S.target=targetFor(S.round); S.score=0; S.row=[]; S.over=false; S.busy=false;
+  S.hand=[randCard(),randCard(),randCard()];
+  banner("");
+  render();
+}
+function has(id){ return S.owned.includes(id); }
+
+/* ---------- 핵심 로직 ---------- */
+function placeCard(hi){
+  if(S.over || S.busy || S.row.length>=SLOTS) return;
+  const card=S.hand[hi];
+  const left=S.row[S.row.length-1];
+  S.row.push(card);
+  S.hand[hi]=randCard();
+
+  // 기본 점수 (항상)
+  let base=card.num;
+  if(has("greed")) base+=3;
+  if(has("ember") && card.num>=7) base*=2;
+  let gained=base, runLen=1, bonus=0, byIcon=false;
+
+  if(left && connect(card,left)){
+    byIcon = card.icon===left.icon;
+    // 연결된 연속 런 길이
+    runLen=1;
+    for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1])) runLen++; else break; }
+    let mult=runLen-1;                       // 2런=×1, 3런=×2 …
+    if(has("pyro") && card.color==="red") mult+=2;
+    if(has("magnet") && byIcon) mult+=1;
+    mult=Math.min(mult, 25);                 // 발산 방지 캡
+    let sum=0; for(let i=S.row.length-runLen;i<S.row.length;i++) sum+=S.row[i].num;
+    bonus=sum*mult;
+    if(has("jackpot") && runLen>=4) bonus*=2;
+    gained+=bonus;
+  }
+  S.score+=gained;
+  render();
+  juicePlace(S.row.length-1, base, runLen, bonus, gained);
+
+  if(S.row.length>=SLOTS){ S.busy=true; setTimeout(settle, 700); }
+}
+
+function settle(){
+  if(S.score>=S.target){
+    banner(`✦ 통과! ${S.score} / ${S.target} ✦`, "var(--gold)");
+    flash("#ffd15c"); boom(140);
+    setTimeout(openShop, 850);
+  } else {
+    S.over=true;
+    banner(`패배 — ${S.score} / ${S.target}. '새 게임'으로 재도전!`, "#ff7a7a");
+    boom(70);
+  }
+}
+
+/* ---------- 상점 ---------- */
+function openShop(){
+  const avail=ALL_LOOMS.filter(l=>!has(l.id));
+  const pool=avail.slice(), pick=[];
+  while(pool.length && pick.length<3) pick.push(pool.splice(ri(pool.length),1)[0]);
+  const box=document.getElementById("offer"); box.innerHTML="";
+  if(!pick.length){ const d=document.createElement("div"); d.style.color="#aab3d6"; d.textContent="모든 Loom 보유! 계속 진행."; box.appendChild(d);
+    setTimeout(()=>{closeShop(); S.round++; startRound();}, 900); }
+  pick.forEach(l=>{
+    const d=document.createElement("div"); d.className="ocard";
+    d.innerHTML=`<div class="on">${l.name}</div><div class="od">${l.desc}</div>`;
+    d.onclick=()=>{ S.owned.push(l.id); closeShop(); S.round++; startRound(); };
+    box.appendChild(d);
+  });
+  document.getElementById("shop").classList.add("show");
+}
+function closeShop(){ document.getElementById("shop").classList.remove("show"); }
+
+/* ---------- 렌더 ---------- */
+function cardHTML(card, cls){
+  const col=colorHex(card.color);
+  return `<div class="${cls}" style="border-color:${col};box-shadow:0 0 10px ${col}55,0 3px 8px rgba(0,0,0,.4)">
+    <div class="num" style="color:${col}">${card.num}</div>
+    <div class="ico" style="color:${col}">${card.icon}</div></div>`;
+}
+function render(){
+  if(!S) return;
+  document.getElementById("hRound").textContent=S.round;
+  const pct=Math.min(100,Math.round(S.score/S.target*100));
+  document.getElementById("fill").style.width=pct+"%";
+  document.getElementById("barlbl").textContent=`${S.score} / ${S.target}`;
+
+  const row=document.getElementById("row"); row.innerHTML="";
+  for(let i=0;i<SLOTS;i++){
+    if(i<S.row.length){
+      const linked = i>0 && connect(S.row[i],S.row[i-1]);
+      row.innerHTML += cardHTML(S.row[i], "card"+(linked?" linked":""));
+    } else {
+      row.innerHTML += `<div class="card empty"></div>`;
+    }
+  }
+  const hand=document.getElementById("hand"); hand.innerHTML="";
+  const last=S.row[S.row.length-1];
+  S.hand.forEach((c,i)=>{
+    const col=colorHex(c.color);
+    const d=document.createElement("div"); d.className="hcard";
+    // 체인 예고: 이 카드를 내면 왼쪽과 연결되는가 + 그러면 체인 길이는?
+    let zap="";
+    if(last && connect(c,last)){
+      let er=1; for(let j=S.row.length-1;j>0;j--){ if(connect(S.row[j],S.row[j-1])) er++; else break; }
+      d.classList.add("willchain");
+      zap=`<div class="zap">⚡×${er+1}</div>`;
+    }
+    d.style.borderColor=col;
+    d.innerHTML=`<div class="num" style="color:${col}">${c.num}</div><div class="ico" style="color:${col}">${c.icon}</div>`+zap;
+    d.onclick=()=>placeCard(i);
+    hand.appendChild(d);
+  });
+  document.getElementById("charms").innerHTML =
+    S.owned.map(id=>`<span class="ctag">${ALL_LOOMS.find(l=>l.id===id).name}</span>`).join("");
+  setMult(1);
+}
+
+/* ---------- 연출(juice) ---------- */
+function setMult(m){ const e=document.getElementById("mult"); e.textContent="×"+m;
+  e.classList.add("pop"); setTimeout(()=>e.classList.remove("pop"),130); }
+function cardEls(){ return document.getElementById("row").querySelectorAll(".card:not(.empty)"); }
+function juicePlace(idx, base, runLen, bonus, gained){
+  const cells=cardEls();
+  const cell=cells[idx];
+  if(cell) cell.classList.add("place");
+  popup(cell, "+"+base, "#bcd", 0);
+  beep(330, .07);
+  if(runLen>=2){
+    setMult(runLen + ( (has("pyro"))?0:0 )); // 표시 배율 = 런 길이 기반
+    // 런 카드들 좌측으로 순차 발광 + 상승음
+    const start=idx-runLen+1;
+    for(let k=0;k<runLen;k++){
+      const ci=idx-k; // 오른쪽(새 카드)부터 왼쪽으로 타고감
+      setTimeout(()=>{
+        const c=cells[ci]; if(c){ c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); }
+        beep(420 + k*90, .08);
+      }, k*70);
+    }
+    const big = runLen>=4 || gained>=80;
+    setTimeout(()=>{
+      popup(cells[idx], "CHAIN ×"+runLen, "#ffd15c", -34, runLen>=5);
+      popup(cells[idx], "+"+bonus, "#fff", -62, big);
+      sparkBurst(cells[idx], Math.min(5+runLen*4, 34), runLen>=4?"#ffd15c":"#9b6fd4");
+      shake();
+      if(big){ flash("#ffd15c22"); boom(90); }
+      if(runLen>=5) flash("#ffffff18");
+    }, runLen*70);
+  }
+}
+function popup(anchor, text, color, dy, big){
+  const t=document.getElementById("table");
+  const p=document.createElement("div"); p.className="pop"; p.textContent=text;
+  p.style.color=color; p.style.fontSize=(big?40:18)+"px";
+  if(big) p.style.textShadow="0 0 18px "+color;
+  const tr=t.getBoundingClientRect(); const ar=anchor?anchor.getBoundingClientRect():tr;
+  p.style.left=(ar.left-tr.left+ (anchor?ar.width/2:tr.width/2) -10)+"px";
+  p.style.top=(ar.top-tr.top + (dy||0) + 6)+"px";
+  t.appendChild(p);
+  requestAnimationFrame(()=>{ p.style.top=(parseFloat(p.style.top)-46)+"px"; p.style.opacity="0"; });
+  setTimeout(()=>p.remove(), 720);
+}
+function shake(big){ const t=document.getElementById("table"); t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake"); }
+function flash(col){ const f=document.createElement("div");
+  f.style.cssText=`position:fixed;inset:0;background:${col};pointer-events:none;z-index:40;transition:opacity .4s;opacity:.7`;
+  document.body.appendChild(f); requestAnimationFrame(()=>f.style.opacity="0"); setTimeout(()=>f.remove(),420); }
+function sparkBurst(anchor, n, color){
+  if(!anchor) return; const t=document.getElementById("table");
+  const tr=t.getBoundingClientRect(), ar=anchor.getBoundingClientRect();
+  const cx=ar.left-tr.left+ar.width/2, cy=ar.top-tr.top+ar.height/2;
+  for(let i=0;i<n;i++){
+    const s=document.createElement("div"); s.className="spark";
+    s.style.background=color; s.style.boxShadow="0 0 8px "+color; s.style.left=cx+"px"; s.style.top=cy+"px";
+    s.style.transition="all .6s cubic-bezier(.2,.8,.2,1)"; t.appendChild(s);
+    const ang=Math.random()*6.283, dist=28+Math.random()*64, dx=Math.cos(ang)*dist, dy=Math.sin(ang)*dist-18;
+    requestAnimationFrame(()=>{ s.style.transform=`translate(${dx}px,${dy}px) scale(.3)`; s.style.opacity="0"; });
+    setTimeout(()=>s.remove(),620);
+  }
+}
+function banner(msg,color){ const b=document.getElementById("banner"); b.textContent=msg||""; b.style.color=color||"#e6ebff"; }
+
+/* ---------- WebAudio 절차 사운드 ---------- */
+let AC=null;
+function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function beep(freq, dur, type){
+  const a=ac(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type=type||"triangle"; o.frequency.value=freq;
+  g.gain.setValueAtTime(.0001,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(.18,a.currentTime+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);
+  o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+dur+.02);
+}
+function boom(f){ const a=ac(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type="sine"; o.frequency.setValueAtTime(f,a.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,a.currentTime+.3);
+  g.gain.setValueAtTime(.3,a.currentTime); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.4);
+  o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.42);
+}
+
+newGame();
+</script>
+</body>
+</html>
