@@ -181,6 +181,12 @@ function evalHand(cards){
   if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
 }
 function handBonus(row){ return Math.round(blindTarget(S.ante,0)*(HAND_BONUS[evalHand(row)]||0)); }
+
+/* ---------- 익명 플레이로그 (Google Sheets + Apps Script) ---------- */
+// LOG_URL 을 Apps Script 웹앱 URL로 채우면 전송 시작(비우면 no-op). 익명 ID(localStorage)만 보냄 — 개인정보 X.
+const LOG_URL="";
+function pid(){ let id=localStorage.getItem("cd_pid"); if(!id){ id="p"+Math.random().toString(36).slice(2,9); localStorage.setItem("cd_pid",id); } return id; }
+function logEvent(type,data){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pid:pid(),type,...(data||{}),t:Date.now()})}); }catch(e){} }
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
 
 /* ---------- 상태 ---------- */
@@ -199,6 +205,7 @@ function newGame(){
   S={ante:1, blind:0, anteBoss:pickBoss(1), owned:[], over:false, busy:false, settled:false,
      bonusHand:0, rerollMax:0,
      showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
+  logEvent("run_start",{});
   startBlind();
 }
 // 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
@@ -265,12 +272,14 @@ function settle(){
   const decide=()=>{
     if(S.score>=S.target){
       const wasBoss=(S.blind===2);
+      logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
       flash("#ffd15c"); boom(wasBoss?170:130);
       banner(wasBoss? `${S.anteBoss.icon} 보스 격파!` : `✦ 통과! ${S.score} / ${S.target}`, "var(--gold)");
       if(wasBoss && S.ante>=ANTES){ setTimeout(victory,700); }
       else setTimeout(openShop,800);
     } else {
       S.over=true;
+      logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
       banner(`패배 — 안테 ${S.ante} ${BLINDNAME[S.blind]}에서 탈락 (${S.score}/${S.target}). 새 게임으로 재도전!`,"#ff7a7a");
       boom(70); render();
     }
@@ -283,6 +292,7 @@ function settle(){
   } else decide();
 }
 function victory(){
+  logEvent("win",{ante:S.ante,score:S.score});
   S.over=true; S.score=0;
   banner("🏆 런 클리어! 안테 8 정복! 🏆","var(--gold)");
   flash("#ffd15c"); boom(200); setTimeout(()=>{flash("#ffffff22");boom(150);},250);
@@ -442,5 +452,25 @@ function boom(f){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.c
 
 newGame();
 </script>
+
+<section id="comments" style="max-width:720px;margin:34px auto 60px;padding:0 16px;font-family:system-ui,-apple-system,sans-serif">
+  <h3 style="color:#cdd6f5;font-size:18px;margin:0 0 4px">💬 피드백 · 댓글</h3>
+  <p style="color:#8a93b6;font-size:13px;margin:0 0 14px">버그·재미·밸런스 의견 환영합니다. (GitHub 로그인 필요)</p>
+  <script src="https://giscus.app/client.js"
+    data-repo="kkp8121-rgb/chain-deal"
+    data-repo-id="R_kgDOS9K_Gw"
+    data-category="General"
+    data-category-id="DIC_kwDOS9K_G84C_Y6s"
+    data-mapping="pathname"
+    data-strict="0"
+    data-reactions-enabled="1"
+    data-emit-metadata="0"
+    data-input-position="top"
+    data-theme="dark_dimmed"
+    data-lang="ko"
+    crossorigin="anonymous"
+    async>
+  </script>
+</section>
 </body>
 </html>

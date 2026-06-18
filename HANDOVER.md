@@ -44,6 +44,10 @@
 - **빌드 상태 확인**: `gh api repos/kkp8121-rgb/chain-deal/pages/builds/latest --jq .status` (`built`=완료).
 - ⚠️ 리포가 **public**이므로 시크릿·민감정보 커밋 금지(현재 게임은 정적 HTML뿐이라 문제 없음).
 
+### 피드백 수집 (2026-06-18 추가)
+- **댓글 = Giscus**(GitHub Discussions): 게임 페이지 하단 `<section id="comments">`. repo-id `R_kgDOS9K_Gw` / category General `DIC_kwDOS9K_G84C_Y6s` 박힘. **활성 조건: giscus GitHub App 설치**(https://github.com/apps/giscus → kkp8121-rgb/chain-deal 권한). 미설치면 댓글창에 설치 안내만 표시됨.
+- **플레이로그 = Google Sheets + Apps Script**(무료): `index.html`의 `logEvent()`가 run_start/clear/death/win을 익명 ID(localStorage)와 함께 전송(개인정보 X). **활성 조건: `const LOG_URL=""` 의 ""에 Apps Script 웹앱 URL 입력**(현재 빈값=no-op, 미설정이라 안전). 셋업 코드·5분 안내 = `tools/playlog-appsscript.gs`. 시트 'logs' 탭에 행 적재 → 피벗으로 "어느 안테서 죽나" 분석.
+
 ---
 
 ## 3. 프로젝트 여정 & 핵심 설계 결정 (★ WHY — 가장 중요)
