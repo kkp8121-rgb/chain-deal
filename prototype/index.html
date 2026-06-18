@@ -158,7 +158,7 @@
 
   <div class="charms" id="charms"></div>
   <div class="banner" id="banner"></div>
-  <div class="controls"><button onclick="newGame()">새 게임</button> <button onclick="newGame(dailySeed())">🗓 데일리 챌린지</button></div>
+  <div class="controls"><button onclick="newGame()">새 게임</button> <button onclick="newGame(dailySeed())">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button></div>
 
   <div class="help">
     <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style="color:#ff9a9a">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.
@@ -272,7 +272,7 @@ function newGame(seed){
   const useSeed = daily ? seed : Math.floor(Math.random()*2147483647);
   RNG = mulberry32(useSeed);                          // ★ S 생성 전 시드 설정 (shuffle/pickBoss가 시드 사용)
   S={ante:1, blind:0, anteBoss:pickBoss(1), owned:[], over:false, busy:false, settled:false,
-     bonusHand:0, rerollMax:0, seed:useSeed, daily,
+     bonusHand:0, rerollMax:0, seed:useSeed, daily, runBest:0,
      showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
   logEvent("run_start",{seed:useSeed, daily:daily?1:0});
   startBlind();
@@ -369,11 +369,13 @@ function settle(){
   // 최고 기록 / 통계 갱신 (리텐션)
   const stx=getStats();
   stx.bestScore=Math.max(stx.bestScore||0, S.score);
+  S.runBest=Math.max(S.runBest||0, S.score);        // 이번 런 최고 라운드 점수 (리더보드용)
   let newRec=false;
   if(!pass || (wasBoss && S.ante>=ANTES)){          // 런 종료(패배 또는 최종 승리) 시 집계
     stx.plays=(stx.plays||0)+1;
     if(pass) stx.wins=(stx.wins||0)+1;
     if(S.ante>(stx.bestAnte||0)){ stx.bestAnte=S.ante; newRec=true; }
+    submitScore(S.runBest);                         // ★ 런 종료 시 리더보드 제출
   }
   saveStats(stx);
   document.getElementById("tRecord").style.display = newRec ? "block" : "none";
@@ -587,6 +589,21 @@ function deckHTML(){
 }
 function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():type==="deck"?deckHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
+
+/* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
+function nickOr(){ return localStorage.getItem("cd_nick")||"익명"; }
+function setNick(){ const cur=nickOr()==="익명"?"":nickOr(); const n=((prompt("리더보드 닉네임 (최대 12자):",cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
+function submitScore(score){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"score",nick:nickOr(),score:score||0,seed:S.seed,ante:S.ante,daily:S.daily?1:0})}); }catch(e){} }
+function jsonp(action,seed,cb){ const fn="cb_"+Math.floor(Math.random()*1e9); const s=document.createElement("script"); window[fn]=d=>{ cb(d); delete window[fn]; s.remove(); }; s.onerror=()=>{ cb(null); s.remove(); }; s.src=`${LOG_URL}?action=${action}&seed=${seed||""}&callback=${fn}`; document.body.appendChild(s); }
+function boardRows(arr){ if(!arr) return `<p class="hbdim" style="padding:6px 0">불러오기 실패 — Apps Script 재배포(doGet) 확인</p>`; if(!arr.length) return `<p class="hbdim" style="padding:6px 0">아직 기록 없음 — 첫 주자가 되세요!</p>`;
+  return arr.map((r,i)=>`<div class="hrow"><span><b style="color:${i<3?'var(--gold)':'#cdd6f5'}">${i+1}. ${r.nick}</b></span><span class="hname">${(r.score||0).toLocaleString()} <span class="hbdim">안테${r.ante||"-"}</span></span></div>`).join(""); }
+function openBoard(){
+  const sd=(S&&S.daily)?S.seed:dailySeed();
+  document.getElementById("drawerBody").innerHTML=`<h3>🏆 리더보드</h3><p class="drawerSub">닉: <b>${nickOr()}</b> <span style="color:#9b6fd4;cursor:pointer;text-decoration:underline" onclick="setNick();openBoard()">변경</span></p><div id="bdDaily"><div class="seg">🗓 오늘 데일리 (#${sd})</div><p class="hbdim">불러오는 중…</p></div><div id="bdAll" style="margin-top:14px"><div class="seg">👑 전체 최고점</div><p class="hbdim">불러오는 중…</p></div>`;
+  document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){}
+  jsonp("daily", sd, d=>{ const el=document.getElementById("bdDaily"); if(el) el.innerHTML=`<div class="seg">🗓 오늘 데일리 (#${sd})</div>${boardRows(d)}`; });
+  jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 전체 최고점</div>${boardRows(d)}`; });
+}
 
 newGame();
 </script>
