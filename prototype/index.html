@@ -47,6 +47,22 @@
   .rrow{padding:9px 0; border-bottom:1px solid #232845; font-size:13px; color:#cdd6f5}
   .rrow .rlabel{color:#8a93b6; font-size:12px; margin-bottom:5px}
   .drawer p.rtext{margin:9px 0; font-size:13px; color:#aab3d6; line-height:1.6}
+  .tallyOverlay{position:fixed; inset:0; background:rgba(8,10,20,.72); z-index:70; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s}
+  .tallyOverlay.show{opacity:1; pointer-events:auto}
+  .tallyCard{background:#161a2e; border:1px solid #2a3050; border-radius:14px; padding:20px 24px; min-width:260px; max-width:88vw; box-shadow:0 20px 60px rgba(0,0,0,.5); transform:translateY(10px) scale(.97); transition:transform .2s}
+  .tallyOverlay.show .tallyCard{transform:translateY(0) scale(1)}
+  .tallyTitle{text-align:center; color:#8a93b6; font-size:12px; letter-spacing:2px; margin-bottom:12px}
+  .tallyRow{display:flex; justify-content:space-between; align-items:center; gap:24px; padding:5px 0; color:#cdd6f5; font-size:15px}
+  .tallyRow b{font-weight:800}
+  .tallyRow.hand{color:var(--gold); font-size:14px}
+  .tallyLine{height:1px; background:#2a3050; margin:8px 0}
+  .tallyRow.final{font-size:20px}
+  .tallyRow.final b{color:#fff}
+  .tallyTarget{text-align:right; color:#8a93b6; font-size:12px; margin-top:2px}
+  .tallyResult{text-align:center; font-size:18px; font-weight:800; margin:14px 0 4px}
+  .tallyResult.pass{color:var(--gold)}
+  .tallyResult.fail{color:#ff7a7a}
+  .tallyBtn{width:100%; margin-top:10px}
   .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
   .toggle input{width:15px;height:15px}
 
@@ -292,31 +308,38 @@ function placeCard(hi){
   if(S.row.length>=SLOTS){ S.busy=true; setTimeout(settle,700); }
 }
 
+let _tallyNext=null;
+function tallyNext(){ document.getElementById("tally").classList.remove("show"); const f=_tallyNext; _tallyNext=null; if(f) f(); }
 function settle(){
   if(S.settled) return; S.settled=true;
-  const hk=evalHand(S.row), hb=handBonus(S.row);   // 족보 판정·보너스 (discard 전)
+  const chain=S.score;                               // 족보 보너스 전 = 체인 점수
+  const hk=evalHand(S.row), hb=handBonus(S.row);     // 족보 판정·보너스 (discard 전)
+  S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
-  const decide=()=>{
-    if(S.score>=S.target){
-      const wasBoss=(S.blind===2);
-      logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
-      flash("#ffd15c"); boom(wasBoss?170:130);
-      banner(wasBoss? `${S.anteBoss.icon} 보스 격파!` : `✦ 통과! ${S.score} / ${S.target}`, "var(--gold)");
-      if(wasBoss && S.ante>=ANTES){ setTimeout(victory,700); }
-      else setTimeout(openShop,800);
-    } else {
-      S.over=true;
-      logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
-      banner(`패배 — 안테 ${S.ante} ${BLINDNAME[S.blind]}에서 탈락 (${S.score}/${S.target}). 새 게임으로 재도전!`,"#ff7a7a");
-      boom(70); render();
-    }
-  };
-  if(hb>0){                                         // 족보 보너스 한 박자 연출 후 판정
-    S.score+=hb; render();
-    banner(`★ ${HAND_KO[hk]}! +${hb}`, "var(--gold)");
-    flash("#ffe79a"); beep(640,.07); setTimeout(()=>beep(860,.09),90);
-    setTimeout(decide,750);
-  } else decide();
+  const pass=S.score>=S.target, wasBoss=(S.blind===2);
+  // 정산 표 채우기
+  document.getElementById("tChain").textContent=chain.toLocaleString();
+  const hr=document.getElementById("tHandRow");
+  if(hb>0){ hr.style.display="flex"; document.getElementById("tHand").textContent=`🎴 ${HAND_KO[hk]}`; document.getElementById("tBonus").textContent=`+${hb.toLocaleString()}`; }
+  else hr.style.display="none";
+  document.getElementById("tFinal").textContent=S.score.toLocaleString();
+  document.getElementById("tTarget").textContent=`목표 ${S.target.toLocaleString()}`;
+  const res=document.getElementById("tResult"), btn=document.getElementById("tBtn");
+  if(pass){
+    res.textContent = wasBoss ? `${S.anteBoss.icon} 보스 격파!` : "✦ 통과!"; res.className="tallyResult pass";
+    flash("#ffd15c"); boom(wasBoss?170:130); if(hb>0){ beep(640,.07); setTimeout(()=>beep(860,.09),90); }
+    logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
+    if(wasBoss && S.ante>=ANTES){ btn.textContent="🏆 승리!"; _tallyNext=victory; }
+    else { btn.textContent="다음 → 상점"; _tallyNext=openShop; }
+  } else {
+    S.over=true;
+    res.textContent="💀 패배 — 목표 미달"; res.className="tallyResult fail";
+    boom(70);
+    logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
+    btn.textContent="새 게임 (런 다시)"; _tallyNext=newGame;
+  }
+  document.getElementById("tally").classList.add("show");
+  render();
 }
 function victory(){
   logEvent("win",{ante:S.ante,score:S.score});
@@ -522,6 +545,19 @@ newGame();
   <div class="drawerHandle"></div>
   <div id="drawerBody"></div>
   <button class="closeBtn" onclick="closeDrawer()">닫기</button>
+</div>
+
+<div class="tallyOverlay" id="tally">
+  <div class="tallyCard">
+    <div class="tallyTitle">— 정산 —</div>
+    <div class="tallyRow"><span>체인 점수</span><b id="tChain">0</b></div>
+    <div class="tallyRow hand" id="tHandRow"><span id="tHand">🎴</span><b id="tBonus">+0</b></div>
+    <div class="tallyLine"></div>
+    <div class="tallyRow final"><span>최종</span><b id="tFinal">0</b></div>
+    <div class="tallyTarget" id="tTarget">목표 0</div>
+    <div class="tallyResult" id="tResult"></div>
+    <button class="tallyBtn" id="tBtn" onclick="tallyNext()">다음</button>
+  </div>
 </div>
 
 <section id="comments" style="max-width:720px;margin:34px auto 60px;padding:0 16px;font-family:system-ui,-apple-system,sans-serif">
