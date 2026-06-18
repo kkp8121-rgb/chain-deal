@@ -67,22 +67,24 @@ function clearRate(boss, handN, target, N = 5000) {
 const blindBase = ante => 150 * Math.pow(1.5, ante - 1);
 const blindTarget = (ante, blind) => Math.round(blindBase(ante) * (blind === 0 ? 1 : blind === 1 ? 1.4 : 1.6));
 const BOSSES = [
-  { id: "seal_run", name: "🚫 스트레이트봉인", tmult: 0.65, hand: 3, minAnte: 1 },
+  { id: "seal_run", name: "🚫 스트레이트봉인", tmult: 0.65, hand: 3, minAnte: 2 },  // 안테2부터
   { id: "red_curse", name: "🩸 단색의저주", tmult: 1.0, hand: 3, minAnte: 1 },
-  { id: "stingy", name: "✋ 인색한손", tmult: 0.65, hand: 2, minAnte: 2 },  // 안테2부터 등장
+  { id: "stingy", name: "✋ 인색한손", tmult: 0.65, hand: 2, minAnte: 2 },  // 안테2부터
   { id: "dull", name: "🗡 무딘칼날", tmult: 0.85, hand: 3, minAnte: 1 },
-  { id: "seal_suit", name: "🔒 봉인된무늬", tmult: 0.6, hand: 3, minAnte: 1 },
+  { id: "seal_suit", name: "🔒 봉인된무늬", tmult: 0.6, hand: 3, minAnte: 2 },  // 안테2부터
 ];
 
 console.log("=== 안테 1 클리어율 (그리디, 맨 덱 기준 — 실제론 상점 거쳐 더 높음) ===");
 console.log(`  작은 블라인드 (${blindTarget(1,0)}): ${clearRate(null,3,blindTarget(1,0))}%`);
 console.log(`  큰 블라인드 (${blindTarget(1,1)}): ${clearRate(null,3,blindTarget(1,1))}%`);
-for (const b of BOSSES.filter(b => b.minAnte <= 1)) {     // 안테1 보스 풀(인색한손 제외)
+for (const b of BOSSES.filter(b => b.minAnte <= 1)) {     // 안테1 보스 풀(순한 보스만)
   const t = Math.round(blindTarget(1, 2) * b.tmult);
   console.log(`  보스 ${b.name} (${t}, 손패${b.hand}): ${clearRate(b.id, b.hand, t)}%`);
 }
-console.log("  ✋ 인색한손: 안테1 등장 차단(손패2=수읽기 삭제 → 도구 없는 초반 보호). 안테2부터 ↓");
-{ const b = BOSSES.find(b => b.id === "stingy"), t = Math.round(blindTarget(2, 2) * b.tmult);
-  console.log(`  보스 ${b.name} @안테2 (${t}, 손패${b.hand}): ${clearRate(b.id, b.hand, t)}%`); }
+console.log("  ↓ 안테1 차단 보스 (쌘 보스 후순위 — 도구 없는 초반 보호). 각자 minAnte 기준 ↓");
+for (const b of BOSSES.filter(b => b.minAnte > 1)) {
+  const t = Math.round(blindTarget(b.minAnte, 2) * b.tmult);
+  console.log(`  보스 ${b.name} @안테${b.minAnte} (${t}, 손패${b.hand}): ${clearRate(b.id, b.hand, t)}%`);
+}
 console.log("\n=== 안테별 작은블라인드 목표 (성장 곡선) ===");
 for (const a of [1, 2, 3, 4, 6, 8]) console.log(`  안테${a}: ${blindTarget(a,0)} / ${blindTarget(a,1)} / 보스기준 ${blindTarget(a,2)}`);

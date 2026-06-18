@@ -148,14 +148,15 @@ function cardSealed(c){ return S&&S.boss&&S.boss.id==="seal_suit"&&c.suit===0; }
 
 /* ---------- 보스 블라인드 ---------- */
 // tmult = 보스마다 룰 가혹도가 달라 목표치를 보정 (점수 깎는 보스일수록 목표↓ → 균형)
-// minAnte = 이 보스가 등장 가능한 최소 안테. 인색한손(손패 3→2)은 "수읽기 선택지" 자체를
-//   깎아 도구 없는 안테1에 특히 가혹 → 안테2부터 등장(플레이테스트 합의). 다른 보스는 손패 유지.
+// minAnte = 이 보스가 등장 가능한 최소 안테. 도구(상점/부적/스킬) 없는 안테1엔 가혹한 보스 차단.
+//   인색한손(손패3→2=수읽기 선택지 삭제)·봉인무늬·스트레이트봉인을 안테2부터(플레이테스트 합의).
+//   안테1 풀 = 단색의저주·무딘칼날 (둘 다 손패3 유지, 점수만 깎는 순한 보스 = 워밍업).
 const BOSSES=[
-  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효", tmult:0.65, minAnte:1},
+  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효", tmult:0.65, minAnte:2},
   {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0, minAnte:1},
   {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦", tmult:0.65, minAnte:2},
   {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1", tmult:0.85, minAnte:1},
-  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6, minAnte:1},
+  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6, minAnte:2},
 ];
 const pickBoss=(ante)=>{ const pool=BOSSES.filter(b=>b.minAnte<=ante); return pool[ri(pool.length)]; };
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
