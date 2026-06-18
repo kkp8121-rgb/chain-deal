@@ -216,8 +216,8 @@ const pickBoss=(ante)=>{ const pool=BOSSES.filter(b=>b.minAnte<=ante); return po
 // 8장 줄 전체로 '가장 높은 족보 1개' 판정 → 최종 정산에서 가산(곱 아님 = 아슬아슬 보존).
 // 계수: 흔한 족보(투페어33%·풀하우스29%·스트레이트24%)는 소액 / 희소(플러시5%·포카드2.5%·스트플0.8%)는 큰 가산.
 // 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
-const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75};
-const HAND_KO={highCard:"하이카드",pair:"페어",twoPair:"투페어",trips:"트리플",straight:"스트레이트",flush:"플러시",fullHouse:"풀하우스",fourKind:"포카드",straightFlush:"스트레이트 플러시"};
+const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75,fiveKind:.95};
+const HAND_KO={highCard:"하이카드",pair:"페어",twoPair:"투페어",trips:"트리플",straight:"스트레이트",flush:"플러시",fullHouse:"풀하우스",fourKind:"포카드",straightFlush:"스트레이트 플러시",fiveKind:"🃏 파이브 카드"};
 function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
 function evalHand(cards){
   const rc={}, bs={};
@@ -228,7 +228,7 @@ function evalHand(cards){
   const flush=mxSuit>=5, straight=hasRun5(Object.keys(rc).map(Number));
   let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
   const full=trips>=1&&(pairs>=2||trips>=2);
-  if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
+  if(mr>=5) return"fiveKind"; if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
   if(flush) return"flush"; if(straight) return"straight"; if(mr>=3) return"trips";
   if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
 }
@@ -236,7 +236,7 @@ function handBonus(row){ return Math.round(blindTarget(S.ante,0)*(HAND_BONUS[eva
 
 /* ---------- 익명 플레이로그 (Google Sheets + Apps Script) ---------- */
 // LOG_URL 을 Apps Script 웹앱 URL로 채우면 전송 시작(비우면 no-op). 익명 ID(localStorage)만 보냄 — 개인정보 X.
-const LOG_URL="https://script.google.com/macros/s/AKfycbxvrqCJNb1A4vbOIu9A9xnTPF-5HOc7Cx6d23nKcwzI5arh5_9cZUWmddW2WU-YQvjq/exec";
+const LOG_URL="https://script.google.com/macros/s/AKfycbxfieuO3Mtf6YszQrNfhb7Ss8jy9ZhqH9JfAiggFM1QsyAYSl1Zuxp3UBcxcbpc0Er-/exec";
 function pid(){ let id=localStorage.getItem("cd_pid"); if(!id){ id="p"+Math.random().toString(36).slice(2,9); localStorage.setItem("cd_pid",id); } return id; }
 function logEvent(type,data){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pid:pid(),type,...(data||{}),t:Date.now()})}); }catch(e){} }
 
@@ -397,6 +397,7 @@ function shopPool(){
   const pool=[];
   CHARMS.filter(c=>!has(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc}));
   pool.push({type:"thin", name:"덱 압축 ✂", desc:"덱에서 카드 1장 영구 제거 (체인 확률↑)"});
+  pool.push({type:"copy", name:"카드 복제 ⧉", desc:"덱 카드 1장을 복사해 추가 (같은 숫자·무늬 빌드 / 🃏파이브 카드)"});
   pool.push({type:"enh", enh:"wild", name:"와일드 부여 ★", desc:"덱 카드 1장을 '와일드'로 (무엇과도 연결)"});
   pool.push({type:"enh", enh:"mult", name:"배율석 부여 ◆", desc:"덱 카드 1장에 '체인 배율 +1'"});
   pool.push({type:"enh", enh:"gold", name:"황금 부여 ●", desc:"덱 카드 1장에 '기본 점수 +5'"});
@@ -428,11 +429,11 @@ function chooseShop(p){
 }
 function pickDeckCard(p){
   const body=document.getElementById("shopBody");
-  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${p.type==="thin"?"제거할":"효과를 줄"} 카드를 고르세요</div>`;
+  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${p.type==="thin"?"제거할":p.type==="copy"?"복제할":"효과를 줄"} 카드를 고르세요</div>`;
   const grid=document.createElement("div"); grid.className="deckgrid";
   const refs=[...S.deck, ...S.discard];
   refs.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
-  refs.forEach(c=>{ const el=cardEl(c); el.onclick=()=>{ if(p.type==="thin") removeCard(c); else c.enh=p.enh; advanceBlind(); }; grid.appendChild(el); });
+  refs.forEach(c=>{ const el=cardEl(c); el.onclick=()=>{ if(p.type==="thin") removeCard(c); else if(p.type==="copy") S.deck.push({suit:c.suit,rank:c.rank,enh:c.enh}); else c.enh=p.enh; advanceBlind(); }; grid.appendChild(el); });
   body.appendChild(grid);
 }
 function removeCard(card){ let i=S.deck.indexOf(card); if(i>=0){S.deck.splice(i,1);return;} i=S.discard.indexOf(card); if(i>=0) S.discard.splice(i,1); }
@@ -553,6 +554,7 @@ const mc=(r,s)=>`<span class="mcard${s==="♥"||s==="♦"?" red":""}">${r}${s}</
 const HANDS_HTML=`
   <h3>🎴 포커 족보 — 보너스 점수</h3>
   <p class="drawerSub">체인이 <b>메인 점수</b>! 족보는 정산 때 더해지는 <b style="color:var(--gold)">추가 보너스</b>입니다. (보너스 큰 순)</p>
+  <div class="hrow"><span><b class="hname">🃏 파이브 카드</b><br><span class="hdesc">같은 숫자 5장 — 트럼프 룰 파괴! '카드 복제'로 완성</span></span><span class="hbig">보너스 폭발</span></div>
   <div class="hrow"><span><b class="hname">스트레이트 플러시</b><br><span class="hdesc">같은 무늬 + 연속 숫자 5장</span></span><span class="hbig">보너스 최대</span></div>
   <div class="hrow"><span><b class="hname">포카드</b><br><span class="hdesc">같은 숫자 4장</span></span><span class="hbig">보너스 큼</span></div>
   <div class="hrow"><span><b class="hname">플러시</b><br><span class="hdesc">같은 무늬 5장</span></span><span class="hbig">보너스 큼</span></div>

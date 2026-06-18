@@ -2,7 +2,7 @@
 
 > **이 문서의 목적**: 이 대화/맥락을 모르는 다른 세션·다른 사람이 작업을 그대로 이어가기 위한 기록.
 > 코드만 봐서는 알 수 없는 **"왜 이렇게 결정했는가"(암묵지)**를 담는다. 작업 재개 시 **이 문서를 먼저 읽을 것.**
-> 최종 업데이트: 2026-06-18 · 현재 버전: 프로토타입 v3.12
+> 최종 업데이트: 2026-06-18 · 현재 버전: 프로토타입 v3.13
 
 ---
 
@@ -150,7 +150,8 @@ connect(a,b): wild이면 true / 보스 seal_suit면 ♠ 불가 / 그 외: 같은
 - ✅ **포커 족보 보너스** (텍사스 서열 라벨 + 빈도보정 *가산*, 정산 시 ★상승음·플래시 연출) + **인게임 미리보기**(줄 위에 현재 족보·보너스, "체인 메인 / 족보 보너스" 위계 명확)
 - ✅ **드로어 UI** (v3.6): 족보 라인 터치 → 족보표(보너스 큰 순) / 룰 문구(.sub) 터치 → 카드 예시 포함 상세 룰. 백드롭 터치=닫힘. 범용 `openDrawer(type)`/`closeDrawer()` + `HANDS_HTML`/`RULES_HTML` 상수, 미니카드 `mc()`. 족보·룰 미암기자 편의
 - ✅ **정산 표** (v3.7): 8장 완성 시 `settle()`이 **체인 점수 / 🎴족보 보너스 / 최종 / 목표**를 분리한 오버레이 표(`#tally`)로 명료하게 표시. 버튼(`tallyNext`)으로 진행(통과→상점/승리, 패배→새 게임). 기존 banner 자동진행 → 표+버튼으로 교체. `_tallyNext`에 다음 액션 저장
-- 🔶 **리더보드** (v3.12, 게임 코드 완료 — **Apps Script 재배포 시 작동**): 🏆 버튼 → 드로어로 **데일리(현재 시드)+전체** top10. 점수=런 종료 시 이번 런 최고 라운드점수(`submitScore`). 읽기=**JSONP**(`jsonp`, CORS 우회 — 시트 doGet은 CORS 막혀 JSONP 사용). 닉네임 localStorage(`nickOr`/`setNick`). Apps Script에 `doGet`(scores 탭 top10)+`doPost` score 분기 추가 = `tools/playlog-appsscript.gs`(재배포 필요, **배포 관리→편집으로 URL 유지**)
+- ✅ **발칙 족보 (②규칙 파괴, v3.13)**: **🃏 파이브 카드**(같은 숫자 5장 — 트럼프엔 없는 불법 패, `evalHand` mr>=5, 계수 .95 최강) + 상점 **카드 복제 ⧉**(`type:"copy"` → pickDeckCard에서 `S.deck.push({...c})`). 발라트로 '플러시 파이브'식 규칙 파괴. ⚠️ balance-check/run-sim의 evalHand·HAND_BONUS에 fiveKind 미동기화(밸런스 검증 시 추가). 의도적 빌드라 덱 비대화 OK(B3 원칙)
+- ✅ **리더보드** (v3.12→작동확인 v3.13): doGet/doPost 새 URL 작동 검증 완료(FORGE_T 기록·반환). 게임 LOG_URL 새 URL 교체. 🏆 버튼 → 드로어로 **데일리(현재 시드)+전체** top10. 점수=런 종료 시 이번 런 최고 라운드점수(`submitScore`). 읽기=**JSONP**(`jsonp`, CORS 우회 — 시트 doGet은 CORS 막혀 JSONP 사용). 닉네임 localStorage(`nickOr`/`setNick`). Apps Script에 `doGet`(scores 탭 top10)+`doPost` score 분기 추가 = `tools/playlog-appsscript.gs`(재배포 필요, **배포 관리→편집으로 URL 유지**)
 - ✅ **덱 뷰어** (v3.11): `deckinfo`(덱 N장) 클릭 → 드로어로 현재 덱 전체(`deck+discard+hand+row`) 무늬별 미니카드 표시 + enh(★◆●) + "같은 숫자 3장+" 알림. 빌드 확인·버그 감시(태령 요청). `deckHTML()`/`mcEnh()`
 - ✅ **데일리 시드** (v3.10): 시드 RNG `mulberry32`로 게임 결정론화(`shuffle`/`ri`→`rng()`). `newGame(seed)` — 일반=랜덤시드 / 데일리=날짜시드(`dailySeed()`=YYYYMMDD). 🗓 데일리 챌린지 버튼 → **같은 날 모두 같은 덱·보스**. 통계 줄에 시드 표시, 로그에 seed/daily 기록. ⚠️ 연출(spark)·`pid`는 `Math.random` 유지(점수 무관). RNG는 `newGame`에서 S 생성 *전* 설정해야 shuffle/pickBoss가 시드 사용
 - ✅ **리텐션: 최고 기록·통계** (v3.8): `localStorage`(`cd_stats`)에 최고 도달 안테 / 최고 점수(한 라운드) / 플레이·승리 수 기록. 상단 통계 줄(`#stats`, 클릭→상세 통계 드로어 `statsHTML()`) + 정산 표 신기록 축하(🎉, bestAnte 갱신 시). `getStats/saveStats/renderStats`. 런 종료(death/win) 시 집계
