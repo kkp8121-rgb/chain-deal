@@ -11,7 +11,7 @@
 - **CHAIN DEAL** = 트럼프 카드를 한 줄로 깔아 **이웃과 연결되면 체인이 폭발**하는 로그라이크 덱빌더. (발라트로 메타 + 오리지널 체인 코어)
 - **상태**: 코어 게임플레이 + 메타(안테/보스/덱빌딩)까지 구현된 **플레이 가능한 프로토타입**. 단일 HTML 파일, 의존성 0.
 - **검증됨**: 실제 플레이어 2명 테스트 → "손맛 충분", "룰 좋다", "수읽기 깊이 있다" 확인. 도파민·재미 문제 **해결**.
-- **실행**: `prototype/index.html` 더블클릭 (브라우저). 빌드·설치 불필요.
+- **실행**: 온라인 https://kkp8121-rgb.github.io/chain-deal/ 또는 `prototype/index.html` 더블클릭. 빌드·설치 불필요.
 - **다음 할 일**: 포커 족보 보너스 (§7 참조) → 해금/컬렉션/데일리.
 
 ---
@@ -31,9 +31,17 @@
 
 ## 2. 실행 / 테스트 방법
 
-- **플레이**: `prototype/index.html` 을 브라우저에서 연다. 끝. (vanilla JS + WebAudio, 외부 의존성 없음)
+- **플레이(온라인)**: https://kkp8121-rgb.github.io/chain-deal/ — 설치·로그인 불필요, PC·모바일.
+- **플레이(로컬)**: `prototype/index.html` 을 브라우저에서 연다. 끝. (vanilla JS + WebAudio, 외부 의존성 없음)
 - **밸런스 검증**: `node tools/balance-check.cjs` — 그리디 시뮬레이션으로 블라인드별 클리어율 측정. 수치 조정 후 항상 재실행해 검증할 것.
 - **문법 검증**: 인라인 `<script>`를 추출해 `new Function()`으로 파싱 체크 (balance-check.cjs가 함께 수행).
+
+### 배포 (GitHub Pages — 2026-06-18 설정)
+- **URL**: https://kkp8121-rgb.github.io/chain-deal/ · **리포 public** (Pages 무료 조건).
+- **구성**: Pages source = `main` 브랜치 `/`(root), build_type=legacy. 루트 `index.html`이 `prototype/index.html`로 리다이렉트(meta refresh + JS replace). 게임 코드는 `prototype/`에 그대로.
+- **재배포**: `main`에 push하면 **자동 재빌드**(1~2분 후 반영). 별도 작업 불필요.
+- **빌드 상태 확인**: `gh api repos/kkp8121-rgb/chain-deal/pages/builds/latest --jq .status` (`built`=완료).
+- ⚠️ 리포가 **public**이므로 시크릿·민감정보 커밋 금지(현재 게임은 정적 HTML뿐이라 문제 없음).
 
 ---
 
