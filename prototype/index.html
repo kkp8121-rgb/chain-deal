@@ -154,7 +154,7 @@
   <div class="handlbl">↓ 손패에서 한 장을 골라 클릭</div>
   <div class="hand" id="hand"></div>
   <div class="controls" id="rerollBox" style="margin-top:6px; display:none"><button id="btnReroll" onclick="rerollHand()">🔄 손패 리롤 <span id="rrc"></span></button></div>
-  <div class="deckinfo" id="deckinfo"></div>
+  <div class="deckinfo" id="deckinfo" onclick="openDrawer('deck')" style="cursor:pointer"></div>
 
   <div class="charms" id="charms"></div>
   <div class="banner" id="banner"></div>
@@ -466,7 +466,7 @@ function render(){
   const pct=Math.min(100,Math.round(S.score/S.target*100));
   document.getElementById("fill").style.width=pct+"%";
   document.getElementById("barlbl").textContent=`${S.score} / ${S.target}`;
-  document.getElementById("deckinfo").textContent=`덱 ${S.deck.length}장 · 버림 ${S.discard.length}장`;
+  document.getElementById("deckinfo").innerHTML=`덱 ${S.deck.length}장 · 버림 ${S.discard.length}장 <span style="color:#9b6fd4;text-decoration:underline">🃏 덱 보기</span>`;
   // 안테 진행 점
   const ad=document.getElementById("antedots"); ad.innerHTML="";
   for(let a=1;a<=ANTES;a++){ const d=document.createElement("span"); d.className="adot"+(a<S.ante?" done":a===S.ante?" cur":""); ad.appendChild(d); }
@@ -573,7 +573,19 @@ const RULES_HTML=`
   <p class="rtext">안테 1~8, 각 안테 = <b>작은 → 큰 → 보스</b> 블라인드. 보스는 특수 규칙으로 방해한다. <b>안테 8 보스 격파 = 승리!</b> 목표 미달 = 처음부터 다시.</p>
   <div class="seg">+ 족보 보너스</div>
   <p class="rtext">8장으로 포커 족보가 되면 정산 때 <b style="color:var(--gold)">추가 점수</b>. (족보 보너스 문구를 누르면 족보표가 열려요)</p>`;
-function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function mcEnh(c){ const e=c.enh==="wild"?"★":c.enh==="mult"?"◆":c.enh==="gold"?"●":""; return `<span class="mcard${isRed(c.suit)?" red":""}">${rankStr(c.rank)}${suitG(c.suit)}<span style="color:#9b6fd4;font-size:10px">${e}</span></span>`; }
+function deckHTML(){
+  const all=[...S.deck,...S.discard,...S.hand,...S.row];
+  all.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
+  let h=`<h3>🃏 현재 덱 (${all.length}장)</h3><p class="drawerSub">덱 + 버림 + 손패 + 줄 전체. 빌드 확인·이상 감시용. (★와일드 ◆배율 ●황금)</p>`;
+  for(let s=0;s<4;s++){ const cs=all.filter(c=>c.suit===s); if(!cs.length) continue;
+    h+=`<div class="seg">${suitG(s)} ${cs.length}장</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(mcEnh).join("")}</div>`; }
+  const rc={}; all.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
+  const dup=Object.entries(rc).filter(([r,n])=>n>=3).map(([r,n])=>`${rankStr(+r)}×${n}`);
+  h+= dup.length ? `<p class="drawerNote">💡 같은 숫자 3장+: ${dup.join(", ")} (포카드·풀하우스 빌드)</p>` : `<p class="drawerNote">같은 숫자 3장 이상 없음 — 정상 분포</p>`;
+  return h;
+}
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():type==="deck"?deckHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
 newGame();
