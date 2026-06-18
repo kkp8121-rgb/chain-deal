@@ -21,6 +21,11 @@
   .bar{flex:1; min-width:150px; height:18px; background:#0c1230; border:1px solid var(--line); border-radius:9px; overflow:hidden; position:relative}
   .fill{height:100%; width:0%; background:linear-gradient(90deg,#caa23c,var(--gold)); transition:width .4s cubic-bezier(.2,.8,.2,1)}
   .barlbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff; text-shadow:0 1px 2px #000}
+  .handbonus{text-align:center; font-size:12px; line-height:1.3; margin:5px 0 0; min-height:15px; color:#8a93b6}
+  .handbonus .hblbl{color:#9b6fd4; font-weight:700}
+  .handbonus .hbname{color:#cdd6f5; font-weight:700}
+  .handbonus .hbplus{color:var(--gold); font-weight:800}
+  .handbonus .hbdim{color:#6b7398; font-size:11px}
   .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
   .toggle input{width:15px;height:15px}
 
@@ -101,6 +106,7 @@
     <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ 체인 예고</label>
   </div>
   <div class="blindinfo" id="blindinfo"></div>
+  <div class="handbonus" id="handbonus"></div>
 
   <div class="table" id="table"><div class="row" id="row"></div></div>
 
@@ -385,6 +391,12 @@ function render(){
   const bi=document.getElementById("blindinfo");
   if(S.blind===2 && S.boss){ bi.className="blindinfo boss"; bi.innerHTML=`👑 보스: <b>${S.boss.icon} ${S.boss.name}</b> — ${S.boss.desc}`; }
   else { bi.className="blindinfo"; bi.innerHTML=`안테 ${S.ante} · ${BLINDNAME[S.blind]} &nbsp;·&nbsp; <span style="color:#8a93b6">다음 보스:</span> ${S.anteBoss.icon} ${S.anteBoss.name}`; }
+  // 족보 보너스 미리보기 (체인이 메인, 족보는 보조 — 작게/보너스 명시)
+  const hbEl=document.getElementById("handbonus");
+  if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 같은 무늬·숫자를 모으면 정산 때 체인 점수에 +추가</span>`; }
+  else { const hk=evalHand(S.row), hb=handBonus(S.row);
+    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">족보 보너스</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">(체인에 추가)</span>`;
+    else hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 현재 ${HAND_KO[hk]}, 보너스 없음 (플러시·포카드를 노려요)</span>`; }
 
   const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
   for(let i=0;i<SLOTS;i++){
