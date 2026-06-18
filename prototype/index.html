@@ -264,6 +264,11 @@ const CHARMS=[
   {id:"suited", name:"플러시광",desc:"같은 무늬로 연결되면 배율 +1"},
   {id:"runner", name:"러너",   desc:"연속 숫자(±1)로 연결되면 배율 +1"},
   {id:"jackpot",name:"잭팟",   desc:"체인 길이 4 이상이면 보너스 ×2"},
+  {id:"noir",     name:"흑심",   desc:"검정(♠♣) 카드로 연결 시 배율 +2 (발화의 거울 · 2색 빌드)"},
+  {id:"broker",   name:"중개상", desc:"정산 시 페어·투페어·트리플 족보 보너스 대폭 상승 (페어도 점수)"},
+  {id:"twins",    name:"쌍둥이", desc:"겹치는 숫자 그룹(2장↑)마다 정산 보너스 +3% (최대 4그룹)"},
+  {id:"compactor",name:"정련가", desc:"덱이 작을수록 모든 카드 기본 점수↑ (1장 압축당 +1, 최대 +8)"},
+  {id:"runts",    name:"잔챙이", desc:"A·2·3 저랭크 카드 기본 점수 +4"},
 ];
 const has=id=>S.owned.includes(id);
 
@@ -313,6 +318,8 @@ function placeCard(hi){
   let base = (S.boss&&S.boss.id==="red_curse"&&isRed(card.suit)) ? 0 : card.rank;
   if(has("greed")) base+=3;
   if(card.enh==="gold") base+=5;
+  if(has("compactor")) base+=Math.min(8, Math.max(0, 32-(S.deck.length+S.discard.length+S.hand.length+S.row.length)));  // 라이브 덱 크기(4더미 합), 시작 32→0
+  if(has("runts") && card.rank<=3) base+=4;   // A·2·3 한정 (8 초과 불가하게 +4로 묶음)
   let gained=base, runLen=1, bonus=0;
 
   if(left && connect(card,left)){
@@ -320,6 +327,7 @@ function placeCard(hi){
     runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1])) runLen++; else break; }
     let mult=runLen-1;
     if(has("pyro") && isRed(card.suit)) mult+=2;
+    if(has("noir") && !isRed(card.suit)) mult+=2;   // 검정(♠♣) — 발화의 거울
     if(has("suited") && byIcon) mult+=1;
     if(has("runner") && byRun) mult+=1;
     for(let i=S.row.length-runLen;i<S.row.length;i++) if(S.row[i].enh==="mult") mult+=1;
@@ -340,7 +348,9 @@ function tallyNext(){ document.getElementById("tally").classList.remove("show");
 function settle(){
   if(S.settled) return; S.settled=true;
   const chain=S.score;                               // 족보 보너스 전 = 체인 점수
-  const hk=evalHand(S.row), hb=handBonus(S.row);     // 족보 판정·보너스 (discard 전)
+  const hk=evalHand(S.row); let hb=handBonus(S.row); // 족보 판정·보너스 (discard 전)
+  if(has("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindTarget(S.ante,0)*BR[hk]); }   // 낮은 족보 3티어만 더 높은 고정 분율로 덮어씀
+  if(has("twins")){ const rc={}; for(const c of S.row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindTarget(S.ante,0)*.03*Math.min(g,4)); }   // 2장+ 그룹 개수, 최대 4그룹
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
   S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)

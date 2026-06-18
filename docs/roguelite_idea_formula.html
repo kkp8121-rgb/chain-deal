@@ -1,0 +1,205 @@
+
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; }
+.root { padding: 1rem 0 2rem; }
+.sec { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--color-text-secondary); margin: 2rem 0 0.6rem; text-transform: uppercase; }
+.formula-row { display: flex; align-items: stretch; gap: 0; margin-bottom: 1.5rem; }
+.f-box { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 0; padding: 1rem 1.25rem; flex: 1; }
+.f-box:first-child { border-radius: 12px 0 0 12px; }
+.f-box:last-child { border-radius: 0 12px 12px 0; }
+.f-op { display: flex; align-items: center; justify-content: center; padding: 0 0.5rem; font-size: 20px; color: var(--color-text-secondary); flex-shrink: 0; }
+.f-tag { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+.f-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px; }
+.f-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin: 0; }
+.c-purple { background: #EEEDFE; }
+.c-teal { background: #E1F5EE; }
+.c-amber { background: #FAEEDA; }
+.c-coral { background: #FAECE7; }
+.t-purple { color: #3C3489; }
+.t-teal { color: #085041; }
+.t-amber { color: #633806; }
+.t-coral { color: #712B13; }
+
+.layer-wrap { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+.layer { display: flex; align-items: flex-start; gap: 12px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; padding: 0.9rem 1.1rem; }
+.layer-num { font-size: 22px; font-weight: 500; min-width: 28px; line-height: 1; }
+.layer-body { flex: 1; }
+.layer-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 3px; }
+.layer-sub { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin: 0; }
+.arrow-down { text-align: center; color: var(--color-text-secondary); font-size: 18px; margin: 2px 0; }
+
+.ex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+.ex-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1rem 1.1rem; }
+.ex-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ex-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 6px; }
+.ex-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.ex-row { display: flex; gap: 6px; margin: 4px 0; align-items: flex-start; }
+.ex-label { font-size: 11px; color: var(--color-text-secondary); min-width: 14px; }
+.ex-val { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+.ex-spark { font-size: 12px; color: var(--color-text-primary); font-weight: 500; margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--color-border-tertiary); }
+
+.insight-box { background: var(--color-background-secondary); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+.insight-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 8px; }
+.insight-body { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; margin: 0; }
+
+.pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.75rem; }
+.pill { font-size: 11px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-secondary); border-radius: 20px; padding: 3px 10px; color: var(--color-text-secondary); }
+
+.big-num { font-size: 28px; font-weight: 500; line-height: 1; }
+.meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+.meta-card { background: var(--color-background-secondary); border-radius: 10px; padding: 0.8rem 1rem; text-align: center; }
+.meta-val { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.meta-lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+</style>
+
+<div class="root">
+<h2 class="sr-only">미니게임 + 로그라이트 성공 공식 심화 분석</h2>
+
+<p class="sec">공식의 구조 — 4요소 조립 순서</p>
+
+<div class="layer-wrap">
+  <div class="layer">
+    <span class="layer-num t-purple">①</span>
+    <div class="layer-body">
+      <p class="layer-title">베이스 게임 — 메타 지식 접근성</p>
+      <p class="layer-sub">플레이어가 <b>첫 화면에서 이미 아는 규칙</b>을 골라라. 포커, 당구, 체스, 슬롯, 테트리스, 볼링, 다트... "이게 뭐지?"가 아니라 "이거 나 알아!"가 나와야 한다. 학습 비용 = 0. 이게 바로 진입장벽이 낮은 이유.</p>
+    </div>
+  </div>
+  <div class="arrow-down">↓</div>
+  <div class="layer">
+    <span class="layer-num t-teal">③</span>
+    <div class="layer-body">
+      <p class="layer-title">런 구조 — 20~30분 명확한 끝</p>
+      <p class="layer-sub">베이스 게임 위에 <b>"안테/블라인드/층" 같은 스테이지 구조</b>를 씌워라. 런 중간에 선택지를 줘서 플레이어가 능동적으로 빌드를 구성한다는 느낌을 준다. 진 것도 진 이유가 명확해야 "다음엔 다르게 할 수 있다"는 루프가 돈다.</p>
+    </div>
+  </div>
+  <div class="arrow-down">↓</div>
+  <div class="layer">
+    <span class="layer-num t-amber">④</span>
+    <div class="layer-body">
+      <p class="layer-title">수치 인플레이션 — 숫자가 미쳐 돌아가는 순간</p>
+      <p class="layer-sub">초반엔 칩 100점, 후반엔 조커 하나로 1억점. <b>지수적 성장</b>이 핵심. 수치가 화면에 크게 뜨고, 연쇄 효과가 이어지는 <b>시각적 연출</b>이 도파민을 유발한다. "내가 이 빌드를 완성했다"는 순간의 쾌감.</p>
+    </div>
+  </div>
+  <div class="arrow-down">↓</div>
+  <div class="layer" style="border-color: var(--color-border-secondary); border-width: 1.5px;">
+    <span class="layer-num t-coral">②</span>
+    <div class="layer-body">
+      <p class="layer-title">규칙 파괴 쾌감 — "발칙한 아이디어"가 여기서 나온다</p>
+      <p class="layer-sub">베이스 게임의 규칙을 <b>아이템·시너지로 역전·무효화·과장</b>시키는 순간이 핵심 재미. 포커에서 "이 패는 무조건 지는 패"를 최강 패로 만드는 조커, 체스에서 룰 밖의 이동을 허용하는 갬빗. 이게 바로 발칙함의 정체 — <b>기존 규칙을 "안다"는 전제 하에 그걸 깨는 것.</b></p>
+    </div>
+  </div>
+</div>
+
+<p class="sec">왜 ②가 마지막인가 — 역설적 설계 원리</p>
+
+<div class="insight-box">
+  <p class="insight-title">규칙 파괴는 "규칙을 먼저 가르쳐야" 성립한다</p>
+  <p class="insight-body">
+    Balatro에서 "플러시 파이브"(같은 숫자 5장)가 불법 패인 이유는 플레이어가 포커 규칙을 알기 때문에 그 파괴가 짜릿하다. 모르는 규칙을 깨봤자 아무 감동이 없다.<br><br>
+    즉, ①에서 메타 지식을 심어두고 → ③④로 런 구조와 인플레이션에 익숙해지게 하고 → 그 다음에야 ②의 규칙 파괴가 "이게 돼?!" 하는 충격으로 작동한다.<br><br>
+    <b>아이디어 발굴 공식:</b> "이 베이스 게임에서 절대 안 된다고 여겨지는 것"을 찾아라. 그게 가장 발칙한 아이템이 된다.
+  </p>
+</div>
+
+<p class="sec">실제 케이스 분석 — 공식 역공학</p>
+
+<div class="ex-grid">
+  <div class="ex-card">
+    <div class="ex-header">
+      <span class="ex-badge c-purple t-purple">포커</span>
+      <span class="ex-title">Balatro</span>
+    </div>
+    <div class="ex-row"><span class="ex-label">①</span><span class="ex-val">포커 패 — 전 세계 누구나 아는 족보</span></div>
+    <div class="ex-row"><span class="ex-label">③</span><span class="ex-val">8개 안테 × 3 블라인드, 20~30분 런</span></div>
+    <div class="ex-row"><span class="ex-label">④</span><span class="ex-val">칩×배율 곱셈 → 후반 1억점 폭발</span></div>
+    <div class="ex-row"><span class="ex-label">②</span><span class="ex-val">"이 패는 약하다"는 상식을 뒤집는 조커</span></div>
+    <p class="ex-spark">발칙함: 스트레이트 플러시보다 쓸모없는 한 쌍을 억점짜리로 만드는 조커</p>
+  </div>
+
+  <div class="ex-card">
+    <div class="ex-header">
+      <span class="ex-badge c-teal t-teal">패치볼</span>
+      <span class="ex-title">Peglin</span>
+    </div>
+    <div class="ex-row"><span class="ex-label">①</span><span class="ex-val">Peggle 물리 — 공 쏘면 페그 맞는다</span></div>
+    <div class="ex-row"><span class="ex-label">③</span><span class="ex-val">맵 → 전투 → 보상 선택, 3보스 구조</span></div>
+    <div class="ex-row"><span class="ex-label">④</span><span class="ex-val">크리티컬 + 멀티볼 → 연쇄 데미지 폭발</span></div>
+    <div class="ex-row"><span class="ex-label">②</span><span class="ex-val">공이 폭탄이 되거나 드릴이 되거나 분열</span></div>
+    <p class="ex-spark">발칙함: "공은 둥글다"는 물리 상식을 깨는 오브 능력들</p>
+  </div>
+
+  <div class="ex-card">
+    <div class="ex-header">
+      <span class="ex-badge c-amber t-amber">슬롯</span>
+      <span class="ex-title">Luck Be a Landlord</span>
+    </div>
+    <div class="ex-row"><span class="ex-label">①</span><span class="ex-val">슬롯머신 — 돌리면 그림 나온다</span></div>
+    <div class="ex-row"><span class="ex-label">③</span><span class="ex-val">12라운드 월세, 각 라운드 스핀 제한</span></div>
+    <div class="ex-row"><span class="ex-label">④</span><span class="ex-val">심볼 간 곱셈 상호작용 → 수천 코인</span></div>
+    <div class="ex-row"><span class="ex-label">②</span><span class="ex-val">심볼이 다른 심볼을 먹거나 파괴</span></div>
+    <p class="ex-spark">발칙함: 슬롯인데 "전략"이 존재한다는 것 자체</p>
+  </div>
+
+  <div class="ex-card">
+    <div class="ex-header">
+      <span class="ex-badge c-coral t-coral">체스</span>
+      <span class="ex-title">Gambonanza</span>
+    </div>
+    <div class="ex-row"><span class="ex-label">①</span><span class="ex-val">체스 기물 이동 — 나이트는 L자로</span></div>
+    <div class="ex-row"><span class="ex-label">③</span><span class="ex-val">5스테이지 × 5레벨, 미니판</span></div>
+    <div class="ex-row"><span class="ex-label">④</span><span class="ex-val">갬빗 스택 → 기물이 기하급수 강화</span></div>
+    <div class="ex-row"><span class="ex-label">②</span><span class="ex-val">이동 규칙 자체를 바꾸는 갬빗</span></div>
+    <p class="ex-spark">발칙함: 룩이 대각선으로 움직일 수 있다면?</p>
+  </div>
+</div>
+
+<p class="sec">아이디어 추출 템플릿 — "발칙함"을 찾는 질문들</p>
+
+<div class="layer-wrap">
+  <div class="layer">
+    <span class="layer-num" style="color: var(--color-text-secondary); font-size: 16px;">Q1</span>
+    <div class="layer-body">
+      <p class="layer-title">이 베이스 게임에서 "절대 안 된다"고 여겨지는 것은?</p>
+      <p class="layer-sub">포커: 같은 숫자 5장 → Balatro가 이걸 최강 패로. 당구: 공이 사라지면 안 됨 → 사라지는 공 특성. 테트리스: 쌓이면 안 됨 → 쌓임 자체가 버프.</p>
+    </div>
+  </div>
+  <div class="layer">
+    <span class="layer-num" style="color: var(--color-text-secondary); font-size: 16px;">Q2</span>
+    <div class="layer-body">
+      <p class="layer-title">이 게임의 "지는 상황"을 역전하는 아이템은?</p>
+      <p class="layer-sub">불리한 상황을 오히려 강점으로 바꾸는 아이템. Balatro의 "데빌 조커"는 스페이드가 많을수록 강해짐 — 약한 패를 일부러 유지하게 만드는 역발상.</p>
+    </div>
+  </div>
+  <div class="layer">
+    <span class="layer-num" style="color: var(--color-text-secondary); font-size: 16px;">Q3</span>
+    <div class="layer-body">
+      <p class="layer-title">이 게임의 물리/규칙 법칙을 "단 하나만" 바꾸면?</p>
+      <p class="layer-sub">Peglin: 공이 무한히 튄다면? → 무한 바운스 오브. 당구: 중력이 반대라면? 볼링: 핀이 움직인다면? 다트: 벽이 반사판이라면? 이 단 하나의 변형이 핵심 빌드를 만든다.</p>
+    </div>
+  </div>
+  <div class="layer">
+    <span class="layer-num" style="color: var(--color-text-secondary); font-size: 16px;">Q4</span>
+    <div class="layer-body">
+      <p class="layer-title">"이 게임은 1인용이 불가능하다"는 편견을 깨려면?</p>
+      <p class="layer-sub">Balatro: 포커는 멀티플레이어 → 1인 솔리테어. 마작: 4인 필수 → 혼자 패 최적화? 보드게임: 상대가 있어야 → 절차적 "AI 상대" 생성. 관중이 있어야 의미있는 게임 → 관중 반응이 버프.</p>
+    </div>
+  </div>
+</div>
+
+<div class="insight-box" style="margin-top: 1rem;">
+  <p class="insight-title">핵심 인사이트 — 왜 이 공식이 인디에게 유리한가</p>
+  <p class="insight-body">
+    베이스 게임 ①이 잘 알려질수록 마케팅 비용이 줄어든다. "포커 로그라이트"는 포커를 아는 모든 사람에게 자기 설명이 된다. 인디 스튜디오가 AAA와 경쟁할 때 가장 강력한 무기는 <b>기존 문화적 자산을 레버리지</b>하는 것. 베이스 게임 선택 자체가 마케팅 전략이다.
+  </p>
+  <div class="pill-row">
+    <span class="pill">포커 → 전세계 3.1억 플레이어</span>
+    <span class="pill">당구 → 직관적 물리</span>
+    <span class="pill">체스 → 전략 게이머 타겟</span>
+    <span class="pill">테트리스 → 범용 접근성</span>
+    <span class="pill">마작 → 아시아 시장</span>
+  </div>
+</div>
+
+</div>

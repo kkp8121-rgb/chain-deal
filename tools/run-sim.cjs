@@ -14,11 +14,13 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]
 function connect(a,b,boss){ if(a.enh==="wild"||b.enh==="wild") return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; const run=Math.abs(a.rank-b.rank)===1&&boss!=="seal_run"; return a.suit===b.suit||a.rank===b.rank||run; }
 
 // index.html placeCard 점수 규칙 (부적 owned 반영)
-function gain(row, card, boss, owned){
+function gain(row, card, boss, owned, deckSize){
   row.push(card);
   let base=(boss==="red_curse"&&isRed(card.suit))?0:card.rank;
   if(owned.includes("greed")) base+=3;
   if(card.enh==="gold") base+=5;
+  if(owned.includes("compactor")) base+=Math.min(8, Math.max(0, 32-(deckSize||32)));
+  if(owned.includes("runts")&&card.rank<=3) base+=4;
   let g=base, rl=1;
   const left=row[row.length-2];
   if(left&&connect(card,left,boss)){
@@ -26,6 +28,7 @@ function gain(row, card, boss, owned){
     for(let i=row.length-1;i>0;i--){ if(connect(row[i],row[i-1],boss)) rl++; else break; }
     let mult=rl-1;
     if(owned.includes("pyro")&&isRed(card.suit)) mult+=2;
+    if(owned.includes("noir")&&!isRed(card.suit)) mult+=2;
     if(owned.includes("suited")&&byIcon) mult+=1;
     if(owned.includes("runner")&&byRun) mult+=1;
     for(let i=row.length-rl;i<row.length;i++) if(row[i].enh==="mult") mult+=1;
@@ -40,7 +43,7 @@ function gain(row, card, boss, owned){
 }
 
 // 족보 (index.html 동일)
-const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75};
+const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75,fiveKind:.95};
 function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ok=0;break;} if(ok) return true; } return false; }
 function evalHand(cards){
   const rc={},bs={}; for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
@@ -50,47 +53,56 @@ function evalHand(cards){
   const fl=mx>=5, st=hasRun5(Object.keys(rc).map(Number));
   let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
   const full=trips>=1&&(pairs>=2||trips>=2);
-  if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
+  if(mr>=5) return"fiveKind"; if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
   if(fl) return"flush"; if(st) return"straight"; if(mr>=3) return"trips";
   if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
 }
 const blindBase=a=>150*Math.pow(1.5,a-1);
 const blindTarget=(a,b)=>Math.round(blindBase(a)*(b===0?1:b===1?1.4:1.6));
-const handBonus=(row,ante)=>Math.round(blindBase(ante)*(HAND_BONUS[evalHand(row)]||0));
+function handBonus(row, ante, owned){
+  const hk=evalHand(row); let hb=Math.round(blindBase(ante)*(HAND_BONUS[hk]||0));
+  if(owned&&owned.includes("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindBase(ante)*BR[hk]); }
+  if(owned&&owned.includes("twins")){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindBase(ante)*.03*Math.min(g,4)); }
+  return hb;
+}
 const BOSSES=[{id:"seal_run",tmult:.65,minAnte:2},{id:"red_curse",tmult:1,minAnte:1},{id:"stingy",tmult:.65,minAnte:2},{id:"dull",tmult:.85,minAnte:1},{id:"seal_suit",tmult:.6,minAnte:2}];
 const pickBoss=ante=>{ const p=BOSSES.filter(b=>b.minAnte<=ante); return p[ri(p.length)]; };
 
 // 한 라운드 그리디 (영구덱 근사: 전체 셔플) → 체인점수 + 족보보너스
 function playRound(deck, owned, boss, handN, ante){
-  const dk=shuffle(deck.slice()); let di=0;
+  const dk=shuffle(deck.slice()); let di=0; const ds=deck.length;
   const draw=()=> di<dk.length ? dk[di++] : dk[ri(dk.length)];
   let hand=[]; for(let i=0;i<handN;i++) hand.push(draw());
   let row=[], sc=0;
   for(let p=0;p<8;p++){
     let bi=0,best=-1;
-    for(let h=0;h<handN;h++){ const t=row.slice(); const v=gain(t,hand[h],boss,owned); if(v>best){ best=v; bi=h; } }
-    sc+=gain(row,hand[bi],boss,owned); hand[bi]=draw();
+    for(let h=0;h<handN;h++){ const t=row.slice(); const v=gain(t,hand[h],boss,owned,ds); if(v>best){ best=v; bi=h; } }
+    sc+=gain(row,hand[bi],boss,owned,ds); hand[bi]=draw();
   }
-  return sc + handBonus(row,ante);
+  return sc + handBonus(row,ante,owned);
 }
 
 // 상점: 3택1 (전략 우선순위로 선택)
-const CHARMS=["greed","pyro","suited","runner","jackpot"];
+const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts"];
 function shopPool(state){
   const pool=[];
   CHARMS.filter(c=>!state.owned.includes(c)).forEach(c=>pool.push({type:"charm",id:c}));
-  pool.push({type:"thin"},{type:"enh",enh:"wild"},{type:"enh",enh:"mult"},{type:"enh",enh:"gold"},{type:"add"},{type:"hand"},{type:"reroll"});
+  pool.push({type:"thin"},{type:"copy"},{type:"enh",enh:"wild"},{type:"enh",enh:"mult"},{type:"enh",enh:"gold"},{type:"add"},{type:"hand"},{type:"reroll"});
   return pool;
 }
+// 전략별 픽 우선순위 (charm / enh / item). 없으면 기본값.
+const STRATS={
+  balance:{ charm:{greed:10,suited:7,runner:6,pyro:6,jackpot:5,noir:5,broker:4,compactor:4,twins:3,runts:3}, enh:{mult:5,wild:4,gold:3}, item:{hand:8,thin:6,add:4,copy:3,reroll:2} },
+  flush:  { charm:{suited:10,greed:6,runner:4,pyro:4,jackpot:3,noir:2}, enh:{wild:8,mult:5,gold:3}, item:{add:7,hand:6,thin:5,copy:2,reroll:1} },
+  black:  { charm:{noir:10,greed:6,suited:6,jackpot:4,runner:3}, enh:{mult:5,wild:4,gold:3}, item:{hand:7,add:6,thin:5,copy:2,reroll:1} },
+  jokbo:  { charm:{broker:10,twins:9,greed:4,jackpot:3,suited:3}, enh:{mult:3,gold:3,wild:2}, item:{thin:8,copy:7,hand:6,add:2,reroll:1} },
+  compact:{ charm:{compactor:10,runts:9,greed:5,suited:4,runner:4}, enh:{gold:4,mult:4,wild:2}, item:{thin:9,hand:5,add:1,copy:1,reroll:1} },
+};
 function priority(o, strat){
-  if(strat==="flush"){
-    if(o.type==="charm") return {suited:10,greed:6,runner:4,pyro:4,jackpot:3}[o.id]||2;
-    if(o.type==="enh") return {wild:8,mult:5,gold:3}[o.enh]||2;
-    return {add:7,hand:6,thin:5,reroll:1}[o.type]||1;
-  }
-  if(o.type==="charm") return {greed:10,suited:7,runner:6,pyro:6,jackpot:5}[o.id]||3;
-  if(o.type==="enh") return {mult:5,wild:4,gold:3}[o.enh]||3;
-  return {hand:8,thin:6,add:4,reroll:2}[o.type]||2;
+  const S=STRATS[strat]||STRATS.balance;
+  if(o.type==="charm") return S.charm[o.id]||2;
+  if(o.type==="enh") return S.enh[o.enh]||2;
+  return S.item[o.type]||1;
 }
 function applyShop(state, strat){
   const pick=shuffle(shopPool(state)).slice(0,3);
@@ -101,7 +113,8 @@ function applyShop(state, strat){
   else if(o.type==="hand") state.bonusHand++;
   else if(o.type==="reroll") {}
   else if(o.type==="thin") { if(d.length>20) d.splice(ri(d.length),1); }
-  else if(o.type==="add") { const suit=strat==="flush"?1:ri(4); d.push({suit,rank:7+ri(2),enh:null}); }
+  else if(o.type==="copy") { if(d.length<60){ const c=d[ri(d.length)]; d.push({suit:c.suit,rank:c.rank,enh:c.enh}); } }
+  else if(o.type==="add") { const suit=strat==="flush"?1:strat==="black"?(ri(2)?0:3):ri(4); d.push({suit,rank:7+ri(2),enh:null}); }
   else if(o.type==="enh") { let idx=ri(d.length); if(strat==="flush"){ const c=d.findIndex(x=>x.suit===1&&!x.enh); if(c>=0) idx=c; } d[idx]={...d[idx],enh:o.enh}; }
 }
 
@@ -123,10 +136,11 @@ function runFull(strat){
 
 const N=20000;
 const BL=["작은","큰","보스"];
-for(const strat of ["balance","flush"]){
+const STRAT_KO={balance:"밸런스 빌드",flush:"플러시 빌드",black:"흑심(검정/2색) 빌드",jokbo:"족보(중개상+쌍둥이) 빌드",compact:"압축(정련가+잔챙이) 빌드"};
+for(const strat of ["balance","flush","black","jokbo","compact"]){
   let win=0; const death={};
   for(let i=0;i<N;i++){ const r=runFull(strat); if(r.result==="win") win++; else { const k=`안테${r.ante} ${BL[r.blind]}`; death[k]=(death[k]||0)+1; } }
-  console.log(`\n=== 전략: ${strat==="balance"?"밸런스 빌드":"플러시 빌드"} (${N} 런) ===`);
+  console.log(`\n=== 전략: ${STRAT_KO[strat]} (${N} 런) ===`);
   console.log(`  🏆 클리어(안테8 보스 격파): ${(win/N*100).toFixed(1)}%`);
   console.log(`  💀 사망 지점 분포(상위):`);
   Object.entries(death).sort((a,b)=>b[1]-a[1]).slice(0,8).forEach(([k,v])=>console.log(`    ${k}: ${(v/N*100).toFixed(1)}%`));
