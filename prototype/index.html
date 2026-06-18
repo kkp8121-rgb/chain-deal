@@ -159,6 +159,28 @@ const BOSSES=[
   {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6, minAnte:2},
 ];
 const pickBoss=(ante)=>{ const pool=BOSSES.filter(b=>b.minAnte<=ante); return pool[ri(pool.length)]; };
+
+/* ---------- 포커 족보 보너스 (텍사스 서열 라벨 + 빈도보정 가산) ---------- */
+// 8장 줄 전체로 '가장 높은 족보 1개' 판정 → 최종 정산에서 가산(곱 아님 = 아슬아슬 보존).
+// 계수: 흔한 족보(투페어33%·풀하우스29%·스트레이트24%)는 소액 / 희소(플러시5%·포카드2.5%·스트플0.8%)는 큰 가산.
+// 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
+const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.04,straight:.03,flush:.16,fullHouse:.06,fourKind:.28,straightFlush:.45};
+const HAND_KO={highCard:"하이카드",pair:"페어",twoPair:"투페어",trips:"트리플",straight:"스트레이트",flush:"플러시",fullHouse:"풀하우스",fourKind:"포카드",straightFlush:"스트레이트 플러시"};
+function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
+function evalHand(cards){
+  const rc={}, bs={};
+  for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
+  const cnt=Object.values(rc).sort((a,b)=>b-a), mr=cnt[0]||0;
+  const pairs=cnt.filter(x=>x>=2).length, trips=cnt.filter(x=>x>=3).length;
+  const mxSuit=Math.max(...Object.values(bs).map(a=>a.length));
+  const flush=mxSuit>=5, straight=hasRun5(Object.keys(rc).map(Number));
+  let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
+  const full=trips>=1&&(pairs>=2||trips>=2);
+  if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
+  if(flush) return"flush"; if(straight) return"straight"; if(mr>=3) return"trips";
+  if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
+}
+function handBonus(row){ return Math.round(blindTarget(S.ante,0)*(HAND_BONUS[evalHand(row)]||0)); }
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
 
 /* ---------- 상태 ---------- */
@@ -238,18 +260,27 @@ function placeCard(hi){
 
 function settle(){
   if(S.settled) return; S.settled=true;
+  const hk=evalHand(S.row), hb=handBonus(S.row);   // 족보 판정·보너스 (discard 전)
   S.discard.push(...S.row);
-  if(S.score>=S.target){
-    const wasBoss=(S.blind===2);
-    flash("#ffd15c"); boom(wasBoss?170:130);
-    banner(wasBoss? `${S.anteBoss.icon} 보스 격파!` : `✦ 통과! ${S.score} / ${S.target}`, "var(--gold)");
-    if(wasBoss && S.ante>=ANTES){ setTimeout(victory,700); }
-    else setTimeout(openShop,800);
-  } else {
-    S.over=true;
-    banner(`패배 — 안테 ${S.ante} ${BLINDNAME[S.blind]}에서 탈락 (${S.score}/${S.target}). 새 게임으로 재도전!`,"#ff7a7a");
-    boom(70); render();
-  }
+  const decide=()=>{
+    if(S.score>=S.target){
+      const wasBoss=(S.blind===2);
+      flash("#ffd15c"); boom(wasBoss?170:130);
+      banner(wasBoss? `${S.anteBoss.icon} 보스 격파!` : `✦ 통과! ${S.score} / ${S.target}`, "var(--gold)");
+      if(wasBoss && S.ante>=ANTES){ setTimeout(victory,700); }
+      else setTimeout(openShop,800);
+    } else {
+      S.over=true;
+      banner(`패배 — 안테 ${S.ante} ${BLINDNAME[S.blind]}에서 탈락 (${S.score}/${S.target}). 새 게임으로 재도전!`,"#ff7a7a");
+      boom(70); render();
+    }
+  };
+  if(hb>0){                                         // 족보 보너스 한 박자 연출 후 판정
+    S.score+=hb; render();
+    banner(`★ ${HAND_KO[hk]}! +${hb}`, "var(--gold)");
+    flash("#ffe79a"); beep(640,.07); setTimeout(()=>beep(860,.09),90);
+    setTimeout(decide,750);
+  } else decide();
 }
 function victory(){
   S.over=true; S.score=0;
