@@ -274,7 +274,7 @@ function blindTarget(ante,blind){
   const base=150*Math.pow(1.5, ante-1);   // 하향: "긴 체인=운" 의존 줄여 안정적 수읽기로 클리어 가능하게.
   return Math.round(base * (blind===0?1 : blind===1?1.4 : 1.6));
 }
-function draw(){ if(S.deck.length===0){ S.deck=shuffle(S.discard); S.discard=[]; } return S.deck.length? S.deck.pop() : mkCard(ri(4),1+ri(13)); }
+function draw(){ if(S.deck.length===0){ S.deck=shuffle(S.discard); S.discard=[]; } return S.deck.length? S.deck.pop() : mkCard(ri(4),1+ri(8)); }  // fallback도 게임 범위(A~8). 손패 회수 수정 후엔 거의 호출 안 됨
 function startBlind(){
   S.boss = (S.blind===2) ? S.anteBoss : null;
   const baseHand = (S.boss && S.boss.id==="stingy") ? 2 : 3;   // 기본 3택1 유지(한눈에 보임). 확장은 스킬로.
@@ -334,6 +334,7 @@ function settle(){
   const hk=evalHand(S.row), hb=handBonus(S.row);     // 족보 판정·보너스 (discard 전)
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
+  S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)
   const pass=S.score>=S.target, wasBoss=(S.blind===2);
   // 정산 표 채우기
   document.getElementById("tChain").textContent=chain.toLocaleString();
