@@ -40,6 +40,7 @@
 - **URL**: https://kkp8121-rgb.github.io/chain-deal/ · **리포 public** (Pages 무료 조건).
 - **구성**: Pages source = `main` 브랜치 `/`(root), build_type=legacy. 루트 `index.html`이 `prototype/index.html`로 리다이렉트(meta refresh + JS replace). 게임 코드는 `prototype/`에 그대로.
 - **재배포**: `main`에 push하면 **자동 재빌드**(1~2분 후 반영). 별도 작업 불필요.
+- ⚠️ **push가 멈추면(hang)**: 이 환경에서 `git push`가 credential helper 대화형 프롬프트 대기로 hang하는 경우가 있음(`ls-remote`는 되는데 push만 멈춤). 우회 = `gh` 토큰을 인라인 helper로 주입: `git -c credential.helper= -c credential.helper='!f(){ echo username=x-access-token; echo "password=$(gh auth token)"; }; f' push origin main` (토큰은 출력에 노출 안 됨). 빌드 확인 = `gh api repos/kkp8121-rgb/chain-deal/pages/builds/latest --jq .status` + `.commit`이 방금 sha인지.
 - **빌드 상태 확인**: `gh api repos/kkp8121-rgb/chain-deal/pages/builds/latest --jq .status` (`built`=완료).
 - ⚠️ 리포가 **public**이므로 시크릿·민감정보 커밋 금지(현재 게임은 정적 HTML뿐이라 문제 없음).
 
@@ -113,7 +114,7 @@ connect(a,b): wild이면 true / 보스 seal_suit면 ♠ 불가 / 그 외: 같은
 - 목표: `blindTarget(ante,blind) = round(150 * 1.5^(ante-1) * [작은1 / 큰1.4 / 보스1.6])` × 보스 `tmult`
 - 보스 tmult: seal_run 0.65 / red_curse 1.0 / stingy 0.65 / dull 0.85 / seal_suit 0.6
 - 보스 minAnte(등장 가능 최소 안테): **stingy·seal_run·seal_suit = 2**(안테1 차단) / red_curse·dull = 1. `pickBoss(ante)`가 `minAnte<=ante` 풀 필터. **안테1 보스 풀 = 단색저주·무딘칼날(순한 2종)만.** ← 튜닝 지점: 숫자 하나로 게이팅 조절.
-- 족보 보너스 계수 `HAND_BONUS`: 페어0 / 투페어.02 / 트리플.04 / 스트레이트.03 / 풀하우스.06 / 플러시.16 / 포카드.28 / 스트플.45. **빈도보정 초안** — 밸런싱(노리는봇)으로 정밀화 예정. 빈도 측정 도구 = `node tools/hand-frequency.cjs`.
+- 족보 보너스 계수 `HAND_BONUS`: 페어0 / 투페어.02 / 트리플.05 / 스트레이트.03 / 풀하우스.08 / **플러시.30 / 포카드.50 / 스트플.75**. **1차 밸런싱 완료**(전략 시뮬). 흔한 족보=소액(아슬아슬 보존) / 희소 족보=큰 가산(빌드 보상). 도구: `node tools/hand-frequency.cjs`(빈도) · `node tools/strategy-sim.cjs`(전략 비교).
 
 ---
 
@@ -151,7 +152,8 @@ connect(a,b): wild이면 true / 보스 seal_suit면 ♠ 불가 / 그 외: 같은
 ### 🥇 포커 족보 보너스 — ✅ 구현됨(v3.4), 밸런싱 진행 중
 > "체인을 길게" vs "플러시/포카드를 세팅"의 **두 전략축**. 발라트로식이되 우리 구조(8장 강제)에 맞춰 **텍사스 서열 라벨 + 빈도보정 가산**으로 구현(설계 WHY는 §3.2).
 - ✅ `evalHand()` 8장 최고 족보 판정 + `settle()` 가산 + ★상승음/플래시 연출.
-- **남은 일 (밸런싱)**: 그리디 시뮬은 족보를 안 노려서 변별력이 안 보임 → **"노리는 봇"(한 무늬 올인=플러시봇 / 한 숫자 집중=포카드봇)** 을 만들어 *그리디 대비 클리어율*을 비교, 계수를 "노릴 가치는 있되 아슬아슬 유지"로 정밀화.
+- ✅ **밸런싱 1차 완료** (`tools/strategy-sim.cjs`): ★핵심 발견 — **전략축은 "플레이 중 매 수 선택"이 아니라 "빌드 방향"**. 플러시 덱을 빌드해두면 그리디(점수최대)로 쳐도 플러시 38% 자연 달성 + 보너스(빌드덱 그리디 클리어 81→91%). "강제로 노리는" 플러시봇은 빌드해도 그리디보다 낮음(♥ 강제 = 체인 손해) → **빌드해두고 그리디로 치는 게 최적**(발라트로식, 매 수 부담 적음). 계수 .30/.50/.75로 상향 = 빌드 보상 확실 + 맨덱 강제는 손해 = 밸런스 안전.
+- **남은 일 (밸런싱 2차)**: 덱빌딩 시뮬은 추정 모델(♥편중 압축). 실플레이로 "플러시 빌드 동선"이 상점에서 실제로 가능/매력적인지 확인 필요. 보스(봉인무늬=♠봉인 등)와 플러시 빌드의 상호작용도.
 - **남은 일 (UX)**: 줄 깔 때 *현재 족보 미리보기*(체인 ⚡예고처럼) — 노리려면 진행 중 족보가 보여야 함. 정산 표도 더 명료하게(플레이어: "간단하게").
 
 ### 🥈 보상/리텐션 메타 ("다시 하는 이유")

@@ -51,7 +51,7 @@ function gain(row, card, boss) {
 /* ---------- 포커 족보 (텍사스 서열 라벨 + 빈도보정 가산) ---------- */
 // 빈도(그리디 8장): 투페어33%·풀하우스29%·스트레이트24%(흔함) / 플러시5%·포카드2.5%·스트플0.8%(희소)
 // 계수: 흔한 족보=소액(아슬아슬 보존), 희소 족보=큰 가산(노리는 보람). 보너스 = round(blindBase(ante) * 계수)
-const HAND_BONUS = { highCard:0, pair:0, twoPair:0.02, trips:0.04, straight:0.03, flush:0.16, fullHouse:0.06, fourKind:0.28, straightFlush:0.45 };
+const HAND_BONUS = { highCard:0, pair:0, twoPair:0.02, trips:0.05, straight:0.03, flush:0.30, fullHouse:0.08, fourKind:0.50, straightFlush:0.75 };
 const HAND_KO = { highCard:"하이카드", pair:"페어", twoPair:"투페어", trips:"트리플", straight:"스트레이트", flush:"플러시", fullHouse:"풀하우스", fourKind:"포카드", straightFlush:"스트레이트플러시" };
 function hasRun5(ranks){ const s=new Set(ranks); for(let lo=1;lo<=4;lo++){ let ok=true; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=false; break; } if(ok) return true; } return false; }
 function evalHand(cards){

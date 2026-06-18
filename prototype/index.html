@@ -164,7 +164,7 @@ const pickBoss=(ante)=>{ const pool=BOSSES.filter(b=>b.minAnte<=ante); return po
 // 8장 줄 전체로 '가장 높은 족보 1개' 판정 → 최종 정산에서 가산(곱 아님 = 아슬아슬 보존).
 // 계수: 흔한 족보(투페어33%·풀하우스29%·스트레이트24%)는 소액 / 희소(플러시5%·포카드2.5%·스트플0.8%)는 큰 가산.
 // 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
-const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.04,straight:.03,flush:.16,fullHouse:.06,fourKind:.28,straightFlush:.45};
+const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75};
 const HAND_KO={highCard:"하이카드",pair:"페어",twoPair:"투페어",trips:"트리플",straight:"스트레이트",flush:"플러시",fullHouse:"풀하우스",fourKind:"포카드",straightFlush:"스트레이트 플러시"};
 function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
 function evalHand(cards){
