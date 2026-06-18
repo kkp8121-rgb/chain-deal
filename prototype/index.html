@@ -148,14 +148,16 @@ function cardSealed(c){ return S&&S.boss&&S.boss.id==="seal_suit"&&c.suit===0; }
 
 /* ---------- 보스 블라인드 ---------- */
 // tmult = 보스마다 룰 가혹도가 달라 목표치를 보정 (점수 깎는 보스일수록 목표↓ → 균형)
+// minAnte = 이 보스가 등장 가능한 최소 안테. 인색한손(손패 3→2)은 "수읽기 선택지" 자체를
+//   깎아 도구 없는 안테1에 특히 가혹 → 안테2부터 등장(플레이테스트 합의). 다른 보스는 손패 유지.
 const BOSSES=[
-  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효", tmult:0.65},
-  {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0},
-  {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦", tmult:0.65},
-  {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1", tmult:0.85},
-  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6},
+  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효", tmult:0.65, minAnte:1},
+  {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0, minAnte:1},
+  {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦", tmult:0.65, minAnte:2},
+  {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1", tmult:0.85, minAnte:1},
+  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6, minAnte:1},
 ];
-const pickBoss=()=>BOSSES[ri(BOSSES.length)];
+const pickBoss=(ante)=>{ const pool=BOSSES.filter(b=>b.minAnte<=ante); return pool[ri(pool.length)]; };
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
 
 /* ---------- 상태 ---------- */
@@ -171,7 +173,7 @@ const CHARMS=[
 const has=id=>S.owned.includes(id);
 
 function newGame(){
-  S={ante:1, blind:0, anteBoss:pickBoss(), owned:[], over:false, busy:false, settled:false,
+  S={ante:1, blind:0, anteBoss:pickBoss(1), owned:[], over:false, busy:false, settled:false,
      bonusHand:0, rerollMax:0,
      showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
   startBlind();
@@ -313,7 +315,7 @@ function pickSuitToAdd(){
 function advanceBlind(){
   document.getElementById("shop").classList.remove("show");
   if(S.blind<2){ S.blind++; }
-  else { S.ante++; S.blind=0; S.anteBoss=pickBoss(); }
+  else { S.ante++; S.blind=0; S.anteBoss=pickBoss(S.ante); }
   startBlind();
 }
 
