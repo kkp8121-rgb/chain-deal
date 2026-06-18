@@ -190,7 +190,7 @@ function handBonus(row){ return Math.round(blindTarget(S.ante,0)*(HAND_BONUS[eva
 
 /* ---------- 익명 플레이로그 (Google Sheets + Apps Script) ---------- */
 // LOG_URL 을 Apps Script 웹앱 URL로 채우면 전송 시작(비우면 no-op). 익명 ID(localStorage)만 보냄 — 개인정보 X.
-const LOG_URL="";
+const LOG_URL="https://script.google.com/macros/s/AKfycbxvrqCJNb1A4vbOIu9A9xnTPF-5HOc7Cx6d23nKcwzI5arh5_9cZUWmddW2WU-YQvjq/exec";
 function pid(){ let id=localStorage.getItem("cd_pid"); if(!id){ id="p"+Math.random().toString(36).slice(2,9); localStorage.setItem("cd_pid",id); } return id; }
 function logEvent(type,data){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pid:pid(),type,...(data||{}),t:Date.now()})}); }catch(e){} }
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
