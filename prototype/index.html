@@ -63,6 +63,9 @@
   .tallyResult.pass{color:var(--gold)}
   .tallyResult.fail{color:#ff7a7a}
   .tallyBtn{width:100%; margin-top:10px}
+  .tallyRecord{text-align:center; color:var(--gold); font-weight:800; font-size:14px; margin-top:8px}
+  .stats{text-align:center; font-size:12px; color:#8a93b6; margin:6px 0 2px; cursor:pointer}
+  .stats b{color:#cdd6f5}
   .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
   .toggle input{width:15px;height:15px}
 
@@ -136,6 +139,7 @@
   <h1>CHAIN DEAL <span style="font-size:13px;color:#8a93b6">v3 · 안테·보스</span></h1>
   <div class="sub" onclick="openDrawer('rules')" style="cursor:pointer">같은 무늬·같은 숫자·연속 숫자면 체인 폭발 — <b style="color:#cdd6f5">안테 8을 정복하라</b> <span style="color:#9b6fd4;font-size:11px;text-decoration:underline;white-space:nowrap">👆 상세 룰</span></div>
 
+  <div class="stats" id="stats" onclick="openDrawer('stats')"></div>
   <div class="antedots" id="antedots"></div>
   <div class="hud">
     <div class="chip">안테 <b id="hAnte">1</b>/8</div>
@@ -230,6 +234,19 @@ function handBonus(row){ return Math.round(blindTarget(S.ante,0)*(HAND_BONUS[eva
 const LOG_URL="https://script.google.com/macros/s/AKfycbxvrqCJNb1A4vbOIu9A9xnTPF-5HOc7Cx6d23nKcwzI5arh5_9cZUWmddW2WU-YQvjq/exec";
 function pid(){ let id=localStorage.getItem("cd_pid"); if(!id){ id="p"+Math.random().toString(36).slice(2,9); localStorage.setItem("cd_pid",id); } return id; }
 function logEvent(type,data){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pid:pid(),type,...(data||{}),t:Date.now()})}); }catch(e){} }
+
+/* ---------- 최고 기록 / 통계 (localStorage, 리텐션) ---------- */
+function getStats(){ try{ return JSON.parse(localStorage.getItem("cd_stats"))||{}; }catch(e){ return {}; } }
+function saveStats(s){ try{ localStorage.setItem("cd_stats",JSON.stringify(s)); }catch(e){} }
+function renderStats(){ const s=getStats(), el=document.getElementById("stats"); if(!el) return;
+  el.innerHTML=`🏆 최고 <b>${s.bestAnte?`안테 ${s.bestAnte}`:"—"}</b> · ${s.plays||0}판 <b>${s.wins||0}승</b> · 최고점 <b>${(s.bestScore||0).toLocaleString()}</b> <span style="color:#9b6fd4">›</span>`; }
+function statsHTML(){ const s=getStats(), wr=s.plays?Math.round((s.wins||0)/s.plays*100):0;
+  return `<h3>🏆 내 기록</h3>
+  <div class="hrow"><span>최고 도달</span><b class="hname">${s.bestAnte?`안테 ${s.bestAnte}`:"—"}</b></div>
+  <div class="hrow"><span>최고 점수 (한 라운드)</span><b class="hname">${(s.bestScore||0).toLocaleString()}</b></div>
+  <div class="hrow"><span>플레이 / 승리</span><b class="hname">${s.plays||0}판 / ${s.wins||0}승</b></div>
+  <div class="hrow"><span>승률</span><b class="hname">${wr}%</b></div>
+  <p class="drawerNote">💡 안테 8 보스를 격파하면 <b style="color:var(--gold)">승리</b>! 기록을 갱신해보세요.</p>`; }
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
 
 /* ---------- 상태 ---------- */
@@ -250,6 +267,7 @@ function newGame(){
      showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
   logEvent("run_start",{});
   startBlind();
+  renderStats();
 }
 // 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
 function blindTarget(ante,blind){
@@ -338,8 +356,19 @@ function settle(){
     logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
     btn.textContent="새 게임 (런 다시)"; _tallyNext=newGame;
   }
+  // 최고 기록 / 통계 갱신 (리텐션)
+  const stx=getStats();
+  stx.bestScore=Math.max(stx.bestScore||0, S.score);
+  let newRec=false;
+  if(!pass || (wasBoss && S.ante>=ANTES)){          // 런 종료(패배 또는 최종 승리) 시 집계
+    stx.plays=(stx.plays||0)+1;
+    if(pass) stx.wins=(stx.wins||0)+1;
+    if(S.ante>(stx.bestAnte||0)){ stx.bestAnte=S.ante; newRec=true; }
+  }
+  saveStats(stx);
+  document.getElementById("tRecord").style.display = newRec ? "block" : "none";
   document.getElementById("tally").classList.add("show");
-  render();
+  render(); renderStats();
 }
 function victory(){
   logEvent("win",{ante:S.ante,score:S.score});
@@ -534,7 +563,7 @@ const RULES_HTML=`
   <p class="rtext">안테 1~8, 각 안테 = <b>작은 → 큰 → 보스</b> 블라인드. 보스는 특수 규칙으로 방해한다. <b>안테 8 보스 격파 = 승리!</b> 목표 미달 = 처음부터 다시.</p>
   <div class="seg">+ 족보 보너스</div>
   <p class="rtext">8장으로 포커 족보가 되면 정산 때 <b style="color:var(--gold)">추가 점수</b>. (족보 보너스 문구를 누르면 족보표가 열려요)</p>`;
-function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
 newGame();
@@ -556,6 +585,7 @@ newGame();
     <div class="tallyRow final"><span>최종</span><b id="tFinal">0</b></div>
     <div class="tallyTarget" id="tTarget">목표 0</div>
     <div class="tallyResult" id="tResult"></div>
+    <div class="tallyRecord" id="tRecord" style="display:none">🎉 신기록!</div>
     <button class="tallyBtn" id="tBtn" onclick="tallyNext()">다음</button>
   </div>
 </div>
