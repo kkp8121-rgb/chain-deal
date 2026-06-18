@@ -26,6 +26,27 @@
   .handbonus .hbname{color:#cdd6f5; font-weight:700}
   .handbonus .hbplus{color:var(--gold); font-weight:800}
   .handbonus .hbdim{color:#6b7398; font-size:11px}
+  .handbonus .hbhint{color:#9b6fd4; font-size:11px; text-decoration:underline; white-space:nowrap}
+  .drawerBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; opacity:0; pointer-events:none; transition:opacity .25s}
+  .drawerBackdrop.show{opacity:1; pointer-events:auto}
+  .drawer{position:fixed; left:0; right:0; bottom:0; z-index:61; max-width:560px; margin:0 auto; background:#161a2e; border:1px solid #2a3050; border-bottom:none; border-radius:16px 16px 0 0; padding:14px 18px 26px; transform:translateY(110%); transition:transform .28s cubic-bezier(.2,.8,.2,1); max-height:82vh; overflow-y:auto}
+  .drawer.show{transform:translateY(0)}
+  .drawerHandle{width:40px; height:4px; background:#3a4060; border-radius:2px; margin:2px auto 12px}
+  .drawer h3{margin:0 0 4px; font-size:16px; color:#e6ebff}
+  .drawerSub{margin:0 0 12px; font-size:12px; color:#8a93b6}
+  .hrow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #232845}
+  .hrow .hname{color:#cdd6f5; font-size:14px}
+  .hrow .hdesc{color:#8a93b6; font-size:11px}
+  .hrow .hbig{color:var(--gold); font-weight:800; font-size:12px; white-space:nowrap}
+  .hrow .hsmall{color:#6b7398; font-size:11px; white-space:nowrap}
+  .drawerNote{margin:12px 0 0; font-size:12px; color:#aab3d6; line-height:1.5}
+  .drawer .closeBtn{margin-top:14px; width:100%}
+  .mcard{display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:34px; padding:0 4px; border-radius:5px; background:#f4f4f8; color:#222; font-weight:800; font-size:14px; margin:0 1px; border:1px solid #c8c8d0; vertical-align:middle}
+  .mcard.red{color:#d83a3a}
+  .seg{margin-top:14px; margin-bottom:2px; color:#9b6fd4; font-weight:700; font-size:13px}
+  .rrow{padding:9px 0; border-bottom:1px solid #232845; font-size:13px; color:#cdd6f5}
+  .rrow .rlabel{color:#8a93b6; font-size:12px; margin-bottom:5px}
+  .drawer p.rtext{margin:9px 0; font-size:13px; color:#aab3d6; line-height:1.6}
   .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
   .toggle input{width:15px;height:15px}
 
@@ -97,7 +118,7 @@
 <body>
 <div class="wrap">
   <h1>CHAIN DEAL <span style="font-size:13px;color:#8a93b6">v3 · 안테·보스</span></h1>
-  <div class="sub">같은 무늬·같은 숫자·연속 숫자면 체인 폭발 — <b style="color:#cdd6f5">안테 8을 정복하라</b></div>
+  <div class="sub" onclick="openDrawer('rules')" style="cursor:pointer">같은 무늬·같은 숫자·연속 숫자면 체인 폭발 — <b style="color:#cdd6f5">안테 8을 정복하라</b> <span style="color:#9b6fd4;font-size:11px;text-decoration:underline;white-space:nowrap">👆 상세 룰</span></div>
 
   <div class="antedots" id="antedots"></div>
   <div class="hud">
@@ -106,7 +127,7 @@
     <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ 체인 예고</label>
   </div>
   <div class="blindinfo" id="blindinfo"></div>
-  <div class="handbonus" id="handbonus"></div>
+  <div class="handbonus" id="handbonus" onclick="openDrawer('hands')" style="cursor:pointer"></div>
 
   <div class="table" id="table"><div class="row" id="row"></div></div>
 
@@ -391,12 +412,13 @@ function render(){
   const bi=document.getElementById("blindinfo");
   if(S.blind===2 && S.boss){ bi.className="blindinfo boss"; bi.innerHTML=`👑 보스: <b>${S.boss.icon} ${S.boss.name}</b> — ${S.boss.desc}`; }
   else { bi.className="blindinfo"; bi.innerHTML=`안테 ${S.ante} · ${BLINDNAME[S.blind]} &nbsp;·&nbsp; <span style="color:#8a93b6">다음 보스:</span> ${S.anteBoss.icon} ${S.anteBoss.name}`; }
-  // 족보 보너스 미리보기 (체인이 메인, 족보는 보조 — 작게/보너스 명시)
+  // 족보 보너스 미리보기 (체인이 메인, 족보는 보조) + 터치=족보표 안내
   const hbEl=document.getElementById("handbonus");
-  if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 같은 무늬·숫자를 모으면 정산 때 체인 점수에 +추가</span>`; }
+  const hint=` <span class="hbhint">👆 족보표</span>`;
+  if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 같은 무늬·숫자를 모으면 정산 때 +추가</span>`+hint; }
   else { const hk=evalHand(S.row), hb=handBonus(S.row);
-    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">족보 보너스</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">(체인에 추가)</span>`;
-    else hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 현재 ${HAND_KO[hk]}, 보너스 없음 (플러시·포카드를 노려요)</span>`; }
+    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">족보 보너스</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">(체인에 추가)</span>`+hint;
+    else hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 현재 ${HAND_KO[hk]}, 보너스 없음</span>`+hint; }
 
   const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
   for(let i=0;i<SLOTS;i++){
@@ -462,8 +484,45 @@ function boom(f){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.c
   o.frequency.setValueAtTime(f,a.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,a.currentTime+.3);
   g.gain.setValueAtTime(.3,a.currentTime); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.4); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.42); }
 
+/* ---------- 룰 / 족보 드로어 (터치 → 펼침, 백드롭 터치 → 닫힘) ---------- */
+const mc=(r,s)=>`<span class="mcard${s==="♥"||s==="♦"?" red":""}">${r}${s}</span>`;
+const HANDS_HTML=`
+  <h3>🎴 포커 족보 — 보너스 점수</h3>
+  <p class="drawerSub">체인이 <b>메인 점수</b>! 족보는 정산 때 더해지는 <b style="color:var(--gold)">추가 보너스</b>입니다. (보너스 큰 순)</p>
+  <div class="hrow"><span><b class="hname">스트레이트 플러시</b><br><span class="hdesc">같은 무늬 + 연속 숫자 5장</span></span><span class="hbig">보너스 최대</span></div>
+  <div class="hrow"><span><b class="hname">포카드</b><br><span class="hdesc">같은 숫자 4장</span></span><span class="hbig">보너스 큼</span></div>
+  <div class="hrow"><span><b class="hname">플러시</b><br><span class="hdesc">같은 무늬 5장</span></span><span class="hbig">보너스 큼</span></div>
+  <div class="hrow"><span><b class="hname">풀하우스</b><br><span class="hdesc">같은 숫자 3장 + 2장</span></span><span class="hsmall">보너스 작음</span></div>
+  <div class="hrow"><span><b class="hname">트리플</b><br><span class="hdesc">같은 숫자 3장</span></span><span class="hsmall">보너스 작음</span></div>
+  <div class="hrow"><span><b class="hname">스트레이트</b><br><span class="hdesc">연속 숫자 5장 (예: 4·5·6·7·8)</span></span><span class="hsmall">보너스 작음</span></div>
+  <div class="hrow"><span><b class="hname">투페어</b><br><span class="hdesc">같은 숫자 2장 × 2</span></span><span class="hsmall">보너스 작음</span></div>
+  <div class="hrow"><span><b class="hname">페어</b><br><span class="hdesc">같은 숫자 2장</span></span><span class="hsmall">보너스 없음</span></div>
+  <p class="drawerNote">💡 흔한 족보(투페어·풀하우스 등)는 8장이라 자주 떠서 보너스가 작아요. <b style="color:var(--gold)">플러시·포카드</b>를 노리면 큰 보너스!</p>`;
+const RULES_HTML=`
+  <h3>🃏 CHAIN DEAL — 룰</h3>
+  <p class="rtext">손패 <b>3장 중 하나</b>를 골라 줄에 깐다. 바로 <b>왼쪽 카드와 '통하면' 체인</b>이 터진다!</p>
+  <div class="seg">연결되는 3가지</div>
+  <div class="rrow"><div class="rlabel">① 같은 무늬</div>${mc("5","♠")}${mc("8","♠")} → 둘 다 ♠ (무늬 일치)</div>
+  <div class="rrow"><div class="rlabel">② 같은 숫자</div>${mc("7","♥")}${mc("7","♦")} → 둘 다 7 (숫자 일치)</div>
+  <div class="rrow"><div class="rlabel">③ 연속 숫자 (±1)</div>${mc("4","♣")}${mc("5","♠")} → 4 다음 5 (연속)</div>
+  <p class="rtext">체인이 <b>길게 이어질수록 배율이 폭발</b> → 점수 ↑. 예: ${mc("3","♠")}${mc("4","♠")}${mc("5","♠")}${mc("6","♠")} 처럼 길게!</p>
+  <p class="rtext">8장을 다 깔아 <b>목표 점수</b>를 넘기면 통과.</p>
+  <div class="seg">진행 / 승리</div>
+  <p class="rtext">안테 1~8, 각 안테 = <b>작은 → 큰 → 보스</b> 블라인드. 보스는 특수 규칙으로 방해한다. <b>안테 8 보스 격파 = 승리!</b> 목표 미달 = 처음부터 다시.</p>
+  <div class="seg">+ 족보 보너스</div>
+  <p class="rtext">8장으로 포커 족보가 되면 정산 때 <b style="color:var(--gold)">추가 점수</b>. (족보 보너스 문구를 누르면 족보표가 열려요)</p>`;
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
+
 newGame();
 </script>
+
+<div class="drawerBackdrop" id="drawerBd" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawerHandle"></div>
+  <div id="drawerBody"></div>
+  <button class="closeBtn" onclick="closeDrawer()">닫기</button>
+</div>
 
 <section id="comments" style="max-width:720px;margin:34px auto 60px;padding:0 16px;font-family:system-ui,-apple-system,sans-serif">
   <h3 style="color:#cdd6f5;font-size:18px;margin:0 0 4px">💬 피드백 · 댓글</h3>
