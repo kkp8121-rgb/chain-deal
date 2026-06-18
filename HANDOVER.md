@@ -46,7 +46,10 @@
 
 ### 피드백 수집 (2026-06-18 추가)
 - **댓글 = Giscus**(GitHub Discussions): 게임 페이지 하단 `<section id="comments">`. repo-id `R_kgDOS9K_Gw` / category General `DIC_kwDOS9K_G84C_Y6s` 박힘. **활성 조건: giscus GitHub App 설치**(https://github.com/apps/giscus → kkp8121-rgb/chain-deal 권한). 미설치면 댓글창에 설치 안내만 표시됨.
-- **플레이로그 = Google Sheets + Apps Script**(무료): `index.html`의 `logEvent()`가 run_start/clear/death/win을 익명 ID(localStorage)와 함께 전송(개인정보 X). **활성 조건: `const LOG_URL=""` 의 ""에 Apps Script 웹앱 URL 입력**(현재 빈값=no-op, 미설정이라 안전). 셋업 코드·5분 안내 = `tools/playlog-appsscript.gs`. 시트 'logs' 탭에 행 적재 → 피벗으로 "어느 안테서 죽나" 분석.
+- **플레이로그 = 게임 → Cloudflare Worker(Origin 검증) → Apps Script → 구글 시트**(전부 무료). `index.html`의 `logEvent()`가 run_start/clear/death/win을 익명 ID(localStorage)와 함께 전송(개인정보 X).
+  - **왜 Worker를 끼나(보안)**: 리포 public이라 게임에 박히는 URL은 노출됨. 그래서 *진짜 쓰기 권한*인 Apps Script URL은 **Worker 환경변수 `SHEET_URL`(secret)에 숨기고**, 게임엔 **Worker URL**만 박음. Worker가 `Origin`을 검사(브라우저는 Origin 위조 불가) → 우리 사이트 외 쓰기 차단. GitHub Secrets는 빌드 없는 정적 Pages라 불가하고, 클라이언트엔 비밀을 못 숨기므로 이 프록시 구조가 정답.
+  - **활성 조건**: ① Apps Script 배포(`tools/playlog-appsscript.gs`) → URL ② Cloudflare Worker 배포(`tools/cloudflare-worker.js`) + `SHEET_URL`=Apps Script URL → Worker URL ③ 게임 `const LOG_URL=""`에 Worker URL 입력·재배포. (현재 빈값=no-op, 안전)
+  - 시트: https://docs.google.com/spreadsheets/d/1lXvD_lzZ5aMHvH2xtIs0OaKcFp17vxEhxHdJf8j_17E/ · 'logs' 탭에 행 적재 → 피벗으로 "어느 안테서 죽나" 분석.
 
 ---
 
