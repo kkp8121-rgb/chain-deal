@@ -158,7 +158,7 @@
 
   <div class="charms" id="charms"></div>
   <div class="banner" id="banner"></div>
-  <div class="controls"><button onclick="newGame()">새 게임</button> <button onclick="newGame(dailySeed())">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button></div>
+  <div class="controls"><button onclick="newGame()">새 게임</button> <button onclick="newGame(dailySeed())">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button> <button onclick="openDrawer('charms')">🧿 부적</button></div>
 
   <div class="help">
     <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style="color:#ff9a9a">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.
@@ -271,6 +271,35 @@ const CHARMS=[
   {id:"runts",    name:"잔챙이", desc:"A·2·3 저랭크 카드 기본 점수 +4"},
 ];
 const has=id=>S.owned.includes(id);
+
+/* ---------- 부적 해금 (메타: localStorage cd_unlocked) ---------- */
+// 시작 5종(코어)은 항상 해금. B1 신규 5종은 업적/도전과제로 해금. 라운드 점수 규칙엔 영향 0(메타층).
+const STARTER_CHARMS=["greed","pyro","suited","runner","jackpot"];
+function maxRankCount(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let m=0; for(const k in rc) if(rc[k]>m) m=rc[k]; return m; }
+function pairGroups(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return g; }
+// 각 잠금 부적의 해금 조건 cond(stats,row)→bool + 컬렉션 힌트. 전부 settle 시점 판정(런중 추적 0).
+const UNLOCKS={
+  noir:     {cond:(st,row)=> (st.bestAnte||0)>=4,                hint:"안테 4 도달"},
+  compactor:{cond:(st,row)=> (st.wins||0)>=1,                    hint:"런 1회 클리어"},
+  broker:   {cond:(st,row)=> maxRankCount(row)>=3,               hint:"한 줄에 같은 숫자 3장"},
+  twins:    {cond:(st,row)=> pairGroups(row)>=2,                 hint:"한 줄에 같은 숫자 2장 그룹 2개"},
+  runts:    {cond:(st,row)=> row.filter(c=>c.rank<=3).length>=4, hint:"한 줄에 A·2·3 저랭크 4장"},
+};
+function getUnlocked(){ try{ const a=JSON.parse(localStorage.getItem("cd_unlocked")); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
+function saveUnlocked(a){ try{ localStorage.setItem("cd_unlocked",JSON.stringify(a)); }catch(e){} }
+function isUnlocked(id){ return STARTER_CHARMS.includes(id) || getUnlocked().includes(id); }
+// settle 직후 호출: stats/row로 새로 충족된 잠금 부적을 cd_unlocked에 추가, 새로 해금된 id 배열 반환
+function checkUnlocks(st,row){ const cur=getUnlocked(), fresh=[]; for(const id in UNLOCKS){ if(!cur.includes(id) && UNLOCKS[id].cond(st,row||[])){ cur.push(id); fresh.push(id); } } if(fresh.length) saveUnlocked(cur); return fresh; }
+function charmsHTML(){
+  let h=`<h3>🧿 부적 컬렉션</h3><p class="drawerSub">플레이로 해금되는 부적 — 잠긴 건 조건을 채우면 열립니다.</p>`;
+  for(const c of CHARMS){
+    if(isUnlocked(c.id)) h+=`<div class="hrow"><span><b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ 해금</span></div>`;
+    else h+=`<div class="hrow" style="opacity:.55"><span><b class="hname">🔒 ？？？</b><br><span class="hdesc">해금 조건: ${(UNLOCKS[c.id]||{}).hint||"비공개"}</span></span><span class="hsmall">잠김</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
+  }
+  const n=CHARMS.filter(c=>isUnlocked(c.id)).length;
+  h+=`<p class="drawerNote">🧿 해금 ${n} / ${CHARMS.length}</p>`;
+  return h;
+}
 
 function newGame(seed){
   const daily = seed!=null;
@@ -388,6 +417,13 @@ function settle(){
     submitScore(S.runBest);                         // ★ 런 종료 시 리더보드 제출
   }
   saveStats(stx);
+  // stx.bestAnte는 런 종료시에만 갱신되므로, '현재 도달 안테'를 즉시 반영해 noir 해금 지연 방지(저장 stats·newRec엔 영향 X)
+  const freshUnlocks=checkUnlocks({...stx, bestAnte:Math.max(stx.bestAnte||0, S.ante)}, S.row);   // + 이번 줄(S.row 8장)로 도전과제 판정
+  const ur=document.getElementById("tUnlockRow");
+  if(freshUnlocks.length){ ur.style.display="flex";
+    document.getElementById("tUnlock").innerHTML=`🔓 새 부적 해금: <b>${freshUnlocks.map(id=>CHARMS.find(c=>c.id===id).name).join(", ")}</b>`;
+    setTimeout(()=>{ beep(720,.07); setTimeout(()=>beep(960,.09),90); },220);
+  } else ur.style.display="none";
   document.getElementById("tRecord").style.display = newRec ? "block" : "none";
   document.getElementById("tally").classList.add("show");
   render(); renderStats();
@@ -405,7 +441,7 @@ function victory(){
 /* ---------- 덱빌딩 상점 (블라인드마다) ---------- */
 function shopPool(){
   const pool=[];
-  CHARMS.filter(c=>!has(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc}));
+  CHARMS.filter(c=>!has(c.id) && isUnlocked(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc}));
   pool.push({type:"thin", name:"덱 압축 ✂", desc:"덱에서 카드 1장 영구 제거 (체인 확률↑)"});
   pool.push({type:"copy", name:"카드 복제 ⧉", desc:"덱 카드 1장을 복사해 추가 (같은 숫자·무늬 빌드 / 🃏파이브 카드)"});
   pool.push({type:"enh", enh:"wild", name:"와일드 부여 ★", desc:"덱 카드 1장을 '와일드'로 (무엇과도 연결)"});
@@ -599,7 +635,7 @@ function deckHTML(){
   h+= dup.length ? `<p class="drawerNote">💡 같은 숫자 3장+: ${dup.join(", ")} (포카드·풀하우스 빌드)</p>` : `<p class="drawerNote">같은 숫자 3장 이상 없음 — 정상 분포</p>`;
   return h;
 }
-function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():type==="deck"?deckHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
 /* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
@@ -617,6 +653,7 @@ function openBoard(){
   jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 전체 최고점</div>${boardRows(d)}`; });
 }
 
+checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
 newGame();
 </script>
 
@@ -632,6 +669,7 @@ newGame();
     <div class="tallyTitle">— 정산 —</div>
     <div class="tallyRow"><span>체인 점수</span><b id="tChain">0</b></div>
     <div class="tallyRow hand" id="tHandRow"><span id="tHand">🎴</span><b id="tBonus">+0</b></div>
+    <div class="tallyRow hand" id="tUnlockRow" style="display:none"><span id="tUnlock"></span></div>
     <div class="tallyLine"></div>
     <div class="tallyRow final"><span>최종</span><b id="tFinal">0</b></div>
     <div class="tallyTarget" id="tTarget">목표 0</div>
