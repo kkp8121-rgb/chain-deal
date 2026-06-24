@@ -37,11 +37,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `settle()` — 정산: 체인 점수 + 족보 보너스(가산) → 목표 비교 → 통과(`openShop`)/패배(`newGame`)/승리(`victory`). 카드 회수도 여기서.
 - `connect(a,b)` — 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드는 무조건). 보스 규칙(`seal_suit`/`seal_run`)이 일부 봉인.
 - `evalHand(8장)` / `handBonus()` — 텍사스 서열 최고 족보 1개 판정 → `HAND_BONUS` 계수 × 안테 기본 목표 = **가산** 보너스.
-- `startBlind()`/`advanceBlind()`/`openShop()` — 안테/블라인드/상점 진행. `pickBoss(ante)` — `minAnte` 필터로 보스 풀 선택.
+- `startBlind()`/`advanceBlind()`/`openShop()` — 안테/블라인드/상점 진행. `pickBoss(ante)` — `actOf(ante)` 액트 풀(A1=1-3/A2=4-6/A3=7-8)에서 선택, 액트-final 안테(3·6·8)는 `actBoss` 서브셋.
 
 ### 점수 공식 / 파라미터 (정확한 정의는 HANDOVER §4)
 
-카드 = `{suit:0~3(♠♥♦♣), rank:1~8, enh:null|'wild'|'gold'|'mult'}`. 체인 = `런의 rank 합 × mult`, `mult = runLen-1 + 부적 보정`, **mult는 25 캡** (발산 방지). 정산 시 족보 보너스를 **가산**. 주요 밸런스 조정 지점: `fullDeck()`(시작 덱 A~8 32장), `blindTarget()`, `BOSSES`(`tmult`/`minAnte`), `HAND_BONUS`, `CHARMS`(부적 10종).
+카드 = `{suit:0~3(♠♥♦♣), rank:1~8, enh:null|'wild'|'gold'|'mult'}`. 체인 = `런의 rank 합 × mult`, `mult = runLen-1 + 부적 보정`, **mult는 25 캡** (발산 방지). 정산 시 족보 보너스를 **가산**. 주요 밸런스 조정 지점: `fullDeck()`(시작 덱 A~8 32장), `blindTarget()`, `BOSSES`(12종, `act`/`actBoss`/`tmult` — 룰은 `connect()`/`placeCard`에 배선), `HAND_BONUS`, `CHARMS`(부적 10종).
 
 **골드 경제 (v3.16, 메타층)**: 상점은 **유료**(`shopPool` 각 품목 `cost`, 티어 8/5/3). 블라인드 통과 시 `S.gold += goldEarned()` = `floor(GOLD_BASE + (점수/목표−1)*GOLD_K)` (확정 `GOLD_BASE=1, GOLD_K=4` — run-sim 캘리브로 balance 8.8%≈무료 기준선 8.6%). 런 종료 `cashOut()`이 `spillover()`=`floor(남은골드*0.1)`을 `cd_meta.coins`로 반출. `cd_meta = {coins,retry,goldLv,rerollLv}` → `newGame`서 시작 골드(`goldLv*3`)·리롤(`rerollLv`)·재도전권(`retry`) 로드. 메타 상점 = `metaHTML`/`buyMeta`(`META_PRICE`). 재도전권 `useRetry`는 패배 시 덱 전량 회수 후 `startBlind()` 재시작 — ★카드 불변식 사수. 골드 파라미터 변경 시 `index.html`·`run-sim.cjs`·`economy-check.cjs` 3곳 동기화.
 
@@ -50,13 +50,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `tools/*.cjs` 의 시뮬은 `index.html` 의 `connect()` / `placeCard`(시뮬에선 `gain()`) / `evalHand()` / `HAND_BONUS` / `BOSSES` / `blindTarget()` 로직을 **수동 복제** 한 것이다. **index.html의 점수·연결·족보·부적 규칙을 바꾸면 해당 `.cjs` 도 같이 맞춰야** 시뮬 결과가 유효하다.
 
 - **현재 드리프트 상태**: `run-sim.cjs` 만 부적 10종 + `fiveKind` 족보 + **골드 경제**까지 동기화됨. **`balance-check.cjs` · `strategy-sim.cjs` · `hand-frequency.cjs` 는 구 5부적 기준이고 `fiveKind` 미반영** — 이들로 신규 부적/족보를 검증하려면 먼저 동기화할 것.
+- **보스 12종/액트 동기화 지점**: `BOSSES`(act/actBoss/tmult) + 신규 7룰(`connect`/`gain`)은 `index.html` ↔ `run-sim.cjs` ↔ `balance-check.cjs` **3곳**에 복제. tmult 변경 시 3곳 동시 수정(드리프트 가드: 3파일 tmult 일치 확인). 단 `balance-check`는 맨덱 단일라운드라 **부식(rust, enh 의존)·스케일 민감 보스(anchor)는 과대평가** → 실제 풀런 밸런스는 `run-sim.cjs`.
 - **골드 경제 동기화 지점**: `goldEarned`/가격은 `index.html` ↔ `run-sim.cjs` ↔ `economy-check.cjs` 3곳에 중복. 단 `balance-check.cjs`는 **단일 라운드(맨 덱)** 만 보므로 라운드-사이 경제인 골드와 **무관** — 골드 모델 이식 불필요(문법 체크 + 단일라운드 기준선 가드 역할만).
 
 ## 밸런스 설계 원칙 (변경 시 지켜야 함)
 
 - **가산 > 곱셈**: 족보·부적 보너스는 곱이 아니라 **가산**. 체인이 이미 ×배수 엔진이라 또 곱하면 분산이 폭발해 "아슬아슬(빠듯한 마진)" 재미가 파괴된다 (HANDOVER §3.2). 신규 부적도 전부 가산·바운드로.
 - **빈도보정 족보**: 8장 강제 구조라 포커 빈도가 역전된다(풀하우스 > 플러시). 라벨은 텍사스 서열(익숙) / 값은 빈도 — 흔한 족보=소액, 희소 족보=큰 가산.
-- **보스 = 숫자 벽이 아니라 *규칙* 으로** 어렵게 → 플레이어가 덱을 조정(적응)하게. 도구 없는 안테1엔 순한 보스만 등장(`minAnte`).
+- **보스 = 숫자 벽이 아니라 *규칙* 으로** 어렵게 → 플레이어가 덱을 조정(적응)하게. **액트 티어 풀**로 등장(A1 순함 → A3 가혹), 액트-final 안테(3·6·8)는 고정 **액트 보스**(climax). 액트 보스가 고정이라 "운 좋은 순한 최종보스" 변수가 없어 후반이 일관되게 빡빡 — tmult로 보정.
 - **목표 클리어율**(그리디 시뮬 기준): 작은 ~90% / 큰 ~80% / 보스 55~72%. 잘하면 깨고 운으로 가끔 억까당하는 발라트로 감각.
 - **단순성·압축 유지**: 시작 덱 A~8(32장) 압축 구조 유지. 무작정 카드 추가는 덱 비대화로 연결률을 떨어뜨린다 — 추가는 *의도적 빌드* 일 때만.
 
