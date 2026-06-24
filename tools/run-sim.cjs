@@ -90,6 +90,11 @@ function shopPool(state){
   pool.push({type:"thin"},{type:"copy"},{type:"enh",enh:"wild"},{type:"enh",enh:"mult"},{type:"enh",enh:"gold"},{type:"add"},{type:"hand"},{type:"reroll"});
   return pool;
 }
+// ---------- 골드 경제 (index.html과 동기화 필수) ----------
+const GOLD_BASE=1, GOLD_K=4;
+const goldEarned=(s,t)=>Math.floor(GOLD_BASE + Math.max(0, s/t - 1)*GOLD_K);
+function costOf(o){ if(o.type==="charm") return 8; if(o.type==="enh") return o.enh==="wild"?8:5; if(o.type==="hand") return 8; if(o.type==="thin"||o.type==="add") return 3; return 5; } // copy/mult/gold/reroll=5
+
 // 전략별 픽 우선순위 (charm / enh / item). 없으면 기본값.
 const STRATS={
   balance:{ charm:{greed:10,suited:7,runner:6,pyro:6,jackpot:5,noir:5,broker:4,compactor:4,twins:3,runts:3}, enh:{mult:5,wild:4,gold:3}, item:{hand:8,thin:6,add:4,copy:3,reroll:2} },
@@ -104,11 +109,8 @@ function priority(o, strat){
   if(o.type==="enh") return S.enh[o.enh]||2;
   return S.item[o.type]||1;
 }
-function applyShop(state, strat){
-  const pick=shuffle(shopPool(state)).slice(0,3);
-  let best=pick[0], bp=-1;
-  for(const o of pick){ const pr=priority(o,strat); if(pr>bp){ bp=pr; best=o; } }
-  const o=best, d=state.deck;
+function applyOne(state, o, strat){
+  const d=state.deck;
   if(o.type==="charm") state.owned.push(o.id);
   else if(o.type==="hand") state.bonusHand++;
   else if(o.type==="reroll") {}
@@ -117,9 +119,15 @@ function applyShop(state, strat){
   else if(o.type==="add") { const suit=strat==="flush"?1:strat==="black"?(ri(2)?0:3):ri(4); d.push({suit,rank:7+ri(2),enh:null}); }
   else if(o.type==="enh") { let idx=ri(d.length); if(strat==="flush"){ const c=d.findIndex(x=>x.suit===1&&!x.enh); if(c>=0) idx=c; } d[idx]={...d[idx],enh:o.enh}; }
 }
+// 유료 상점: 3장 제시 → 우선순위 높은 것부터 살 수 있는 만큼 구매(골드 차감)
+function applyShop(state, strat){
+  const offers=shuffle(shopPool(state)).slice(0,3).map(o=>({o,pr:priority(o,strat),cost:costOf(o)}));
+  offers.sort((a,b)=>b.pr-a.pr);
+  for(const it of offers){ if(state.gold>=it.cost){ state.gold-=it.cost; applyOne(state,it.o,strat); } }
+}
 
 function runFull(strat){
-  const state={deck:starterDeck(), owned:[], bonusHand:0};
+  const state={deck:starterDeck(), owned:[], bonusHand:0, gold:0};
   for(let ante=1;ante<=8;ante++){
     for(let blind=0;blind<=2;blind++){
       const boss=blind===2?pickBoss(ante):null;
@@ -127,6 +135,7 @@ function runFull(strat){
       const handN=(boss&&boss.id==="stingy"?2:3)+state.bonusHand;
       const sc=playRound(state.deck, state.owned, boss?boss.id:null, handN, ante);
       if(sc<target) return {result:"death", ante, blind};
+      state.gold += goldEarned(sc, target);          // 통과 환전 (초과율 기반)
       if(ante===8&&blind===2) return {result:"win"};
       applyShop(state, strat);
     }
