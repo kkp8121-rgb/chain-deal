@@ -11,19 +11,21 @@ const ri = n => Math.floor(Math.random() * n);
 const isRed = s => s === 1 || s === 2;
 function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); return d; }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function connect(a,b,boss){ if(a.enh==="wild"||b.enh==="wild") return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; const run=Math.abs(a.rank-b.rank)===1&&boss!=="seal_run"; return a.suit===b.suit||a.rank===b.rank||run; }
+function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1&&boss!=="seal_run"; return a.suit===b.suit||a.rank===b.rank||run; }
 
 // index.html placeCard 점수 규칙 (부적 owned 반영)
 function gain(row, card, boss, owned, deckSize){
   row.push(card);
+  const rust=boss==="rust";
   let base=(boss==="red_curse"&&isRed(card.suit))?0:card.rank;
+  if(boss==="tax"&&card.rank>=7) base=0; else if(boss==="peasant"&&card.rank<=3) base=0;   // 사치세/보릿고개
   if(owned.includes("greed")) base+=3;
-  if(card.enh==="gold") base+=5;
+  if(card.enh==="gold" && !rust) base+=5;
   if(owned.includes("compactor")) base+=Math.min(8, Math.max(0, 32-(deckSize||32)));
   if(owned.includes("runts")&&card.rank<=3) base+=4;
   let g=base, rl=1;
   const left=row[row.length-2];
-  if(left&&connect(card,left,boss)){
+  if(left&&connect(card,left,boss) && !(boss==="frost"&&row.length<=2)){   // 냉각: 줄 첫 2장 무연결
     const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
     for(let i=row.length-1;i>0;i--){ if(connect(row[i],row[i-1],boss)) rl++; else break; }
     let mult=rl-1;
@@ -31,12 +33,13 @@ function gain(row, card, boss, owned, deckSize){
     if(owned.includes("noir")&&!isRed(card.suit)) mult+=2;
     if(owned.includes("suited")&&byIcon) mult+=1;
     if(owned.includes("runner")&&byRun) mult+=1;
-    for(let i=row.length-rl;i<row.length;i++) if(row[i].enh==="mult") mult+=1;
+    for(let i=row.length-rl;i<row.length;i++) if(row[i].enh==="mult" && !rust) mult+=1;
     if(boss==="dull") mult=Math.max(1,mult-1);
-    mult=Math.min(mult,25);
+    mult=Math.min(mult, boss==="anchor"?3:25);   // 닻: 배율 3 캡
     let sum=0; for(let i=row.length-rl;i<row.length;i++) sum+=row[i].rank;
     let bonus=sum*mult;
     if(owned.includes("jackpot")&&rl>=4) bonus*=2;
+    if(boss==="toll") bonus=Math.round(bonus*0.5);   // 연결세: 보너스 반감
     g+=bonus;
   }
   return g;
@@ -65,8 +68,13 @@ function handBonus(row, ante, owned){
   if(owned&&owned.includes("twins")){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindBase(ante)*.03*Math.min(g,4)); }
   return hb;
 }
-const BOSSES=[{id:"seal_run",tmult:.65,minAnte:2},{id:"red_curse",tmult:1,minAnte:1},{id:"stingy",tmult:.65,minAnte:2},{id:"dull",tmult:.85,minAnte:1},{id:"seal_suit",tmult:.6,minAnte:2}];
-const pickBoss=ante=>{ const p=BOSSES.filter(b=>b.minAnte<=ante); return p[ri(p.length)]; };
+const BOSSES=[
+  {id:"red_curse",tmult:1.0,act:1,actBoss:false},{id:"dull",tmult:.85,act:1,actBoss:false},{id:"peasant",tmult:.82,act:1,actBoss:false},{id:"tax",tmult:.8,act:1,actBoss:true},
+  {id:"seal_run",tmult:.58,act:2,actBoss:false},{id:"stingy",tmult:.58,act:2,actBoss:false},{id:"toll",tmult:.54,act:2,actBoss:false},{id:"rust",tmult:.6,act:2,actBoss:true},
+  {id:"seal_suit",tmult:.47,act:3,actBoss:false},{id:"frost",tmult:.48,act:3,actBoss:false},{id:"mono",tmult:.4,act:3,actBoss:false},{id:"anchor",tmult:.44,act:3,actBoss:true},
+];
+const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
+function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8); let pool=BOSSES.filter(b=>b.act===a&&b.actBoss===fin); if(!pool.length) pool=BOSSES.filter(b=>b.act===a); return pool[ri(pool.length)]; }
 
 // 한 라운드 그리디 (영구덱 근사: 전체 셔플) → 체인점수 + 족보보너스
 function playRound(deck, owned, boss, handN, ante){

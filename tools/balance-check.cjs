@@ -27,23 +27,27 @@ function starterDeck() { const d = []; for (let s = 0; s < 4; s++) for (let r = 
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = ri(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function connect(a, b, boss) {
-  if (a.enh === "wild" || b.enh === "wild") return true;
+  if (boss !== "rust" && (a.enh === "wild" || b.enh === "wild")) return true;   // 부식: 와일드 무력화
   if (boss === "seal_suit" && (a.suit === 0 || b.suit === 0)) return false;
+  if (boss === "mono") return a.suit === b.suit;                                // 단일강요: 같은 무늬만
   const run = Math.abs(a.rank - b.rank) === 1 && boss !== "seal_run";
   return a.suit === b.suit || a.rank === b.rank || run;
 }
-function gain(row, card, boss) {
+function gain(row, card, boss) {   // 맨 덱(enh 없음) 단일라운드 → rust는 여기선 무효(enh 의존, run-sim에서 검증)
   row.push(card);
   let base = (boss === "red_curse" && isRed(card.suit)) ? 0 : card.rank;
+  if (boss === "tax" && card.rank >= 7) base = 0; else if (boss === "peasant" && card.rank <= 3) base = 0;   // 사치세/보릿고개
   let g = base, rl = 1;
   const left = row[row.length - 2];
-  if (left && connect(card, left, boss)) {
+  if (left && connect(card, left, boss) && !(boss === "frost" && row.length <= 2)) {   // 냉각: 첫 2장 무연결
     for (let i = row.length - 1; i > 0; i--) { if (connect(row[i], row[i - 1], boss)) rl++; else break; }
     let mult = rl - 1;
     if (boss === "dull") mult = Math.max(1, mult - 1);
-    mult = Math.min(mult, 25);
+    mult = Math.min(mult, boss === "anchor" ? 3 : 25);   // 닻: 배율 3 캡
     let sum = 0; for (let i = row.length - rl; i < row.length; i++) sum += row[i].rank;
-    g += sum * mult;
+    let bonus = sum * mult;
+    if (boss === "toll") bonus = Math.round(bonus * 0.5);   // 연결세: 보너스 반감
+    g += bonus;
   }
   return g;
 }
@@ -95,20 +99,29 @@ function clearRate(boss, handN, target, ante, useBonus, N = 5000) {
 }
 
 const blindTarget = (ante, blind) => Math.round(blindBase(ante) * (blind === 0 ? 1 : blind === 1 ? 1.4 : 1.6));
-const BOSSES = [
-  { id: "seal_run", name: "🚫 스트레이트봉인", tmult: 0.65, hand: 3, minAnte: 2 },
-  { id: "red_curse", name: "🩸 단색의저주", tmult: 1.0, hand: 3, minAnte: 1 },
-  { id: "stingy", name: "✋ 인색한손", tmult: 0.65, hand: 2, minAnte: 2 },
-  { id: "dull", name: "🗡 무딘칼날", tmult: 0.85, hand: 3, minAnte: 1 },
-  { id: "seal_suit", name: "🔒 봉인된무늬", tmult: 0.6, hand: 3, minAnte: 2 },
+const BOSSES = [   // index.html과 동기화 (act/actBoss/tmult). hand=stingy만 2.
+  { id: "red_curse", name: "🩸 단색의저주", tmult: 1.0, hand: 3, act: 1, actBoss: false },
+  { id: "dull", name: "🗡 무딘칼날", tmult: 0.85, hand: 3, act: 1, actBoss: false },
+  { id: "peasant", name: "🥖 보릿고개", tmult: 0.82, hand: 3, act: 1, actBoss: false },
+  { id: "tax", name: "👑 사치세", tmult: 0.8, hand: 3, act: 1, actBoss: true },
+  { id: "seal_run", name: "🚫 스트레이트봉인", tmult: 0.58, hand: 3, act: 2, actBoss: false },
+  { id: "stingy", name: "✋ 인색한손", tmult: 0.58, hand: 2, act: 2, actBoss: false },
+  { id: "toll", name: "💸 연결세", tmult: 0.54, hand: 3, act: 2, actBoss: false },
+  { id: "rust", name: "🦠 부식", tmult: 0.6, hand: 3, act: 2, actBoss: true },
+  { id: "seal_suit", name: "🔒 봉인된무늬", tmult: 0.47, hand: 3, act: 3, actBoss: false },
+  { id: "frost", name: "❄ 냉각", tmult: 0.48, hand: 3, act: 3, actBoss: false },
+  { id: "mono", name: "🎭 단일강요", tmult: 0.4, hand: 3, act: 3, actBoss: false },
+  { id: "anchor", name: "⚓ 닻", tmult: 0.44, hand: 3, act: 3, actBoss: true },
 ];
 
 console.log("=== 안테 1 클리어율 (그리디, 맨 덱 / 족보보너스 없음 → 있음) ===");
 console.log(`  작은 블라인드 (${blindTarget(1,0)}): ${clearRate(null,3,blindTarget(1,0),1,false)}% → ${clearRate(null,3,blindTarget(1,0),1,true)}%`);
 console.log(`  큰 블라인드 (${blindTarget(1,1)}): ${clearRate(null,3,blindTarget(1,1),1,false)}% → ${clearRate(null,3,blindTarget(1,1),1,true)}%`);
-for (const b of BOSSES.filter(b => b.minAnte <= 1)) {
+console.log("\n=== 보스 12종 상대 난이도 (안테1 맨덱 + tmult, 족보보너스 포함) — 같은 덱·안테 고정 비교 게이지 ===");
+console.log("  ⚠️ 실제 등장 안테가 아니라 상대 비교용. 실제 풀런 밸런스는 run-sim.cjs. 부식(rust)은 맨덱에 enh 없어 무효→과대평가.");
+for (const b of BOSSES) {
   const t = Math.round(blindTarget(1, 2) * b.tmult);
-  console.log(`  보스 ${b.name} (${t}, 손패${b.hand}): ${clearRate(b.id,b.hand,t,1,false)}% → ${clearRate(b.id,b.hand,t,1,true)}%`);
+  console.log(`  ${b.actBoss ? "👑" : "  "} ${b.name} (A${b.act}, t=${t}, 손패${b.hand}): ${clearRate(b.id, b.hand, t, 1, true)}%`);
 }
 
 console.log("\n=== 족보 보너스 변별력 (안테4 큰블라인드 기준, 보너스 없음 → 있음) ===");

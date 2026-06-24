@@ -193,10 +193,11 @@ const ri=n=>Math.floor(rng()*n);
 
 // 연결: 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드 무조건). 보스 규칙이 일부를 봉인.
 function connect(a,b){
-  if(a.enh==="wild"||b.enh==="wild") return true;
   const boss=S&&S.boss;
+  if(!(boss&&boss.id==="rust") && (a.enh==="wild"||b.enh==="wild")) return true;  // 부식: 와일드 무력화
   if(boss&&boss.id==="seal_suit"){ if(a.suit===0||b.suit===0) return false; }   // ♠ 봉인
   const suitOk=a.suit===b.suit, rankOk=a.rank===b.rank;
+  if(boss&&boss.id==="mono") return suitOk;                                      // 단일강요: 같은 무늬만
   const runOk=Math.abs(a.rank-b.rank)===1 && !(boss&&boss.id==="seal_run");      // 스트레이트 봉인
   return suitOk||rankOk||runOk;
 }
@@ -207,14 +208,26 @@ function cardSealed(c){ return S&&S.boss&&S.boss.id==="seal_suit"&&c.suit===0; }
 // minAnte = 이 보스가 등장 가능한 최소 안테. 도구(상점/부적/스킬) 없는 안테1엔 가혹한 보스 차단.
 //   인색한손(손패3→2=수읽기 선택지 삭제)·봉인무늬·스트레이트봉인을 안테2부터(플레이테스트 합의).
 //   안테1 풀 = 단색의저주·무딘칼날 (둘 다 손패3 유지, 점수만 깎는 순한 보스 = 워밍업).
+// 액트 티어 풀: A1(순함) < A2(중간) < A3(가혹). 각 액트 = 일반 3 + 액트보스 1(actBoss). 액트-final 안테(3·6·8)에 액트보스.
 const BOSSES=[
-  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효", tmult:0.65, minAnte:2},
-  {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0, minAnte:1},
-  {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦", tmult:0.65, minAnte:2},
-  {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1", tmult:0.85, minAnte:1},
-  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가", tmult:0.6, minAnte:2},
+  {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0,  act:1, actBoss:false},
+  {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1",              tmult:0.85, act:1, actBoss:false},
+  {id:"peasant",  icon:"🥖", name:"보릿고개",        desc:"A·2·3 카드 기본 점수 0",    tmult:0.82, act:1, actBoss:false},
+  {id:"tax",      icon:"👑", name:"사치세",          desc:"7·8 카드 기본 점수 0",      tmult:0.8,  act:1, actBoss:true},
+  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효",   tmult:0.58, act:2, actBoss:false},
+  {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦",         tmult:0.58, act:2, actBoss:false},
+  {id:"toll",     icon:"💸", name:"연결세",          desc:"체인 보너스 절반",          tmult:0.54, act:2, actBoss:false},
+  {id:"rust",     icon:"🦠", name:"부식",            desc:"enh(★◆●) 효과 전부 무효",   tmult:0.6,  act:2, actBoss:true},
+  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가",        tmult:0.47, act:3, actBoss:false},
+  {id:"frost",    icon:"❄",  name:"냉각",            desc:"줄 첫 2장 연결 무효",       tmult:0.48, act:3, actBoss:false},
+  {id:"mono",     icon:"🎭", name:"단일강요",        desc:"같은 숫자·연속 무효(같은 무늬만)", tmult:0.4,  act:3, actBoss:false},
+  {id:"anchor",   icon:"⚓", name:"닻",              desc:"체인 배율 최대 3",          tmult:0.44, act:3, actBoss:true},
 ];
-const pickBoss=(ante)=>{ const pool=BOSSES.filter(b=>b.minAnte<=ante); return pool[ri(pool.length)]; };
+const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
+function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8);
+  let pool=BOSSES.filter(b=>b.act===a && b.actBoss===fin);
+  if(!pool.length) pool=BOSSES.filter(b=>b.act===a);
+  return pool[ri(pool.length)]; }
 
 /* ---------- 포커 족보 보너스 (텍사스 서열 라벨 + 빈도보정 가산) ---------- */
 // 8장 줄 전체로 '가장 높은 족보 1개' 판정 → 최종 정산에서 가산(곱 아님 = 아슬아슬 보존).
@@ -362,7 +375,8 @@ function startBlind(){
   S.target=blindTarget(S.ante,S.blind);
   if(S.boss) S.target=Math.round(S.target*S.boss.tmult);   // 보스 룰 가혹도 보정
   S.hand=Array.from({length:S.handSize}, draw);
-  banner(S.boss? `${S.boss.icon} 보스: ${S.boss.name} — ${S.boss.desc}` : "", S.boss?"#ff9a9a":"");
+  if(S.blind===0 && (S.ante===4||S.ante===7)){ banner(`⚔ ACT ${actOf(S.ante)} 진입`, "var(--gold)"); try{boom(150);}catch(e){} }
+  else banner(S.boss? `${S.boss.actBoss?"👑 액트 보스":S.boss.icon+" 보스"}: ${S.boss.name} — ${S.boss.desc}` : "", S.boss?"#ff9a9a":"");
   render();
 }
 function togglePreview(){ if(S){ S.showPreview=document.getElementById("pvToggle").checked; render(); } }
@@ -379,14 +393,16 @@ function placeCard(hi){
   const card=S.hand[hi]; const left=S.row[S.row.length-1];
   S.row.push(card); S.hand[hi]=draw();
 
+  const rust=S.boss&&S.boss.id==="rust";
   let base = (S.boss&&S.boss.id==="red_curse"&&isRed(card.suit)) ? 0 : card.rank;
+  if(S.boss){ if(S.boss.id==="tax"&&card.rank>=7) base=0; else if(S.boss.id==="peasant"&&card.rank<=3) base=0; }   // 사치세/보릿고개
   if(has("greed")) base+=3;
-  if(card.enh==="gold") base+=5;
+  if(card.enh==="gold" && !rust) base+=5;
   if(has("compactor")) base+=Math.min(8, Math.max(0, 32-(S.deck.length+S.discard.length+S.hand.length+S.row.length)));  // 라이브 덱 크기(4더미 합), 시작 32→0
   if(has("runts") && card.rank<=3) base+=4;   // A·2·3 한정 (8 초과 불가하게 +4로 묶음)
   let gained=base, runLen=1, bonus=0;
 
-  if(left && connect(card,left)){
+  if(left && connect(card,left) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효
     const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
     runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1])) runLen++; else break; }
     let mult=runLen-1;
@@ -394,12 +410,13 @@ function placeCard(hi){
     if(has("noir") && !isRed(card.suit)) mult+=2;   // 검정(♠♣) — 발화의 거울
     if(has("suited") && byIcon) mult+=1;
     if(has("runner") && byRun) mult+=1;
-    for(let i=S.row.length-runLen;i<S.row.length;i++) if(S.row[i].enh==="mult") mult+=1;
+    for(let i=S.row.length-runLen;i<S.row.length;i++) if(S.row[i].enh==="mult" && !rust) mult+=1;
     if(S.boss&&S.boss.id==="dull") mult=Math.max(1,mult-1);
-    mult=Math.min(mult,25);
+    mult=Math.min(mult, (S.boss&&S.boss.id==="anchor")?3:25);   // 닻: 배율 3 캡
     let sum=0; for(let i=S.row.length-runLen;i<S.row.length;i++) sum+=S.row[i].rank;
     bonus=sum*mult;
     if(has("jackpot") && runLen>=4) bonus*=2;
+    if(S.boss&&S.boss.id==="toll") bonus=Math.round(bonus*0.5);   // 연결세: 보너스 반감
     gained+=bonus;
   }
   S.score+=gained; render();
