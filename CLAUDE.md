@@ -17,7 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **플레이/테스트**: `prototype/index.html` 을 브라우저에서 연다 (설치·빌드 불필요).
 - **밸런스 + 문법 검증**: `node tools/balance-check.cjs` — (1) 인라인 `<script>` 를 `new Function()` 으로 파싱해 **문법 체크** + (2) 그리디(잘하는 플레이) 시뮬로 블라인드별 클리어율 측정. **점수/연결/족보 규칙을 바꾸면 항상 재실행.**
-- **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교): `node tools/run-sim.cjs`
+- **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교, **골드 경제 포함**): `node tools/run-sim.cjs`
+- **골드 경제 단위 검증** (환전 공식·스필오버·재도전 카드 불변식): `node tools/economy-check.cjs`
 - **족보 밸런싱** (노리는 봇 vs 그리디 클리어율 비교): `node tools/strategy-sim.cjs`
 - **8장 줄 족보 빈도 측정**: `node tools/hand-frequency.cjs`
 
@@ -42,11 +43,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 카드 = `{suit:0~3(♠♥♦♣), rank:1~8, enh:null|'wild'|'gold'|'mult'}`. 체인 = `런의 rank 합 × mult`, `mult = runLen-1 + 부적 보정`, **mult는 25 캡** (발산 방지). 정산 시 족보 보너스를 **가산**. 주요 밸런스 조정 지점: `fullDeck()`(시작 덱 A~8 32장), `blindTarget()`, `BOSSES`(`tmult`/`minAnte`), `HAND_BONUS`, `CHARMS`(부적 10종).
 
+**골드 경제 (v3.16, 메타층)**: 상점은 **유료**(`shopPool` 각 품목 `cost`, 티어 8/5/3). 블라인드 통과 시 `S.gold += goldEarned()` = `floor(GOLD_BASE + (점수/목표−1)*GOLD_K)` (확정 `GOLD_BASE=1, GOLD_K=4` — run-sim 캘리브로 balance 8.8%≈무료 기준선 8.6%). 런 종료 `cashOut()`이 `spillover()`=`floor(남은골드*0.1)`을 `cd_meta.coins`로 반출. `cd_meta = {coins,retry,goldLv,rerollLv}` → `newGame`서 시작 골드(`goldLv*3`)·리롤(`rerollLv`)·재도전권(`retry`) 로드. 메타 상점 = `metaHTML`/`buyMeta`(`META_PRICE`). 재도전권 `useRetry`는 패배 시 덱 전량 회수 후 `startBlind()` 재시작 — ★카드 불변식 사수. 골드 파라미터 변경 시 `index.html`·`run-sim.cjs`·`economy-check.cjs` 3곳 동기화.
+
 ### ⚠️ 규칙 중복 — sim 도구 ↔ index.html 드리프트 주의
 
 `tools/*.cjs` 의 시뮬은 `index.html` 의 `connect()` / `placeCard`(시뮬에선 `gain()`) / `evalHand()` / `HAND_BONUS` / `BOSSES` / `blindTarget()` 로직을 **수동 복제** 한 것이다. **index.html의 점수·연결·족보·부적 규칙을 바꾸면 해당 `.cjs` 도 같이 맞춰야** 시뮬 결과가 유효하다.
 
-- **현재 드리프트 상태**: `run-sim.cjs` 만 부적 10종 + `fiveKind` 족보까지 동기화됨. **`balance-check.cjs` · `strategy-sim.cjs` · `hand-frequency.cjs` 는 구 5부적 기준이고 `fiveKind` 미반영** — 이들로 신규 부적/족보를 검증하려면 먼저 동기화할 것.
+- **현재 드리프트 상태**: `run-sim.cjs` 만 부적 10종 + `fiveKind` 족보 + **골드 경제**까지 동기화됨. **`balance-check.cjs` · `strategy-sim.cjs` · `hand-frequency.cjs` 는 구 5부적 기준이고 `fiveKind` 미반영** — 이들로 신규 부적/족보를 검증하려면 먼저 동기화할 것.
+- **골드 경제 동기화 지점**: `goldEarned`/가격은 `index.html` ↔ `run-sim.cjs` ↔ `economy-check.cjs` 3곳에 중복. 단 `balance-check.cjs`는 **단일 라운드(맨 덱)** 만 보므로 라운드-사이 경제인 골드와 **무관** — 골드 모델 이식 불필요(문법 체크 + 단일라운드 기준선 가드 역할만).
 
 ## 밸런스 설계 원칙 (변경 시 지켜야 함)
 
