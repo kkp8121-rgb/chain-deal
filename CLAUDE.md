@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **플레이/테스트**: `prototype/index.html` 을 브라우저에서 연다 (설치·빌드 불필요).
 - **밸런스 + 문법 검증**: `node tools/balance-check.cjs` — (1) 인라인 `<script>` 를 `new Function()` 으로 파싱해 **문법 체크** + (2) 그리디(잘하는 플레이) 시뮬로 블라인드별 클리어율 측정. **점수/연결/족보 규칙을 바꾸면 항상 재실행.**
-- **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교, **골드 경제 포함**): `node tools/run-sim.cjs` — 끝에 **조건부 클리어율**(도달자 중 통과%, per 블라인드·per 보스)도 출력. ★사망'비중'은 생존자 편향(모두 안테1 지남)이라 초반에 쏠려 *오도* → 진짜 난이도 곡선·보스 벽은 **조건부 통과율**로 본다(평탄 85~97%=건강, 유일 벽=안테8 닻 ~69%).
+- **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교, **골드 경제 포함**): `node tools/run-sim.cjs` — 끝에 **조건부 클리어율**(도달자 중 통과%, per 블라인드·per 보스) + **난이도 사다리 스테이크별 클리어율 스윕**(St0~5, `runFull(strat,acc,stake)`)도 출력. ★사망'비중'은 생존자 편향(모두 안테1 지남)이라 초반에 쏠려 *오도* → 진짜 난이도 곡선·보스 벽은 **조건부 통과율**로 본다(평탄 85~97%=건강, 유일 벽=안테8 닻 ~69%). 스테이크 캘리브는 스윕으로(St0=기준선 8.9~9.3 불변 가드 → St5 ~0.6 단조).
 - **골드 경제 단위 검증** (환전 공식·스필오버·재도전 카드 불변식): `node tools/economy-check.cjs`
 - **족보 밸런싱** (노리는 봇 vs 그리디 클리어율 비교): `node tools/strategy-sim.cjs`
 - **8장 줄 족보 빈도 측정**: `node tools/hand-frequency.cjs`
@@ -52,6 +52,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **현재 드리프트 상태**: `run-sim.cjs` 만 부적 10종 + `fiveKind` 족보 + **골드 경제**까지 동기화됨. **`balance-check.cjs` · `strategy-sim.cjs` · `hand-frequency.cjs` 는 구 5부적 기준이고 `fiveKind` 미반영** — 이들로 신규 부적/족보를 검증하려면 먼저 동기화할 것.
 - **보스 12종/액트 동기화 지점**: `BOSSES`(act/actBoss/tmult) + 신규 7룰(`connect`/`gain`)은 `index.html` ↔ `run-sim.cjs` ↔ `balance-check.cjs` **3곳**에 복제. tmult 변경 시 3곳 동시 수정(드리프트 가드: 3파일 tmult 일치 확인). 단 `balance-check`는 맨덱 단일라운드라 **부식(rust, enh 의존)·스케일 민감 보스(anchor)는 과대평가** → 실제 풀런 밸런스는 `run-sim.cjs`.
 - **골드 경제 동기화 지점**: `goldEarned`/가격은 `index.html` ↔ `run-sim.cjs` ↔ `economy-check.cjs` 3곳에 중복. 단 `balance-check.cjs`는 **단일 라운드(맨 덱)** 만 보므로 라운드-사이 경제인 골드와 **무관** — 골드 모델 이식 불필요(문법 체크 + 단일라운드 기준선 가드 역할만).
+- **난이도 사다리(Stakes, v3.22) 동기화 지점**: `S.stake`(0~`MAX_STAKE`=5)를 읽는 티어 델타 = `stakeMult`(`STAKE_T`/`STAKE_AC` 배열)·`goldEarned`(바닥)·`startBlind`(boss/baseHand)·tmult 가드. **`index.html` ↔ `run-sim.cjs`(STK) 미러**(STAKE_T===STK_T 등 값 일치 — 드리프트 가드). `balance-check.cjs`는 stake0만 보므로 **미러 불필요**(stake0=no-op 기준선 가드). ★`handBonus`/broker/twins는 `blindBase(ante)`(스테이크 무관) 사용 — 목표만 사다리로 오르고 족보 보너스는 불변(상쇄 버그 차단). 캘리브는 run-sim 스윕(8.9→0.6 단조, 최상위 >0). 캡·보스룰-큰블라인드 레버는 제외/보류(코드 `STK>=6`는 비활성). 설계 `docs/superpowers/specs/2026-06-25-difficulty-ladder-design.md`.
 
 ## 밸런스 설계 원칙 (변경 시 지켜야 함)
 
