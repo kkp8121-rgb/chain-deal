@@ -316,6 +316,9 @@ const CHARMS=[
   {id:"twins",    name:"쌍둥이", desc:"겹치는 숫자 그룹(2장↑)마다 정산 보너스 +3% (최대 4그룹)"},
   {id:"compactor",name:"정련가", desc:"덱이 작을수록 모든 카드 기본 점수↑ (1장 압축당 +1, 최대 +8)"},
   {id:"runts",    name:"잔챙이", desc:"A·2·3 저랭크 카드 기본 점수 +4"},
+  {id:"bridge",   name:"다리",   desc:"양옆 모두와 연결되는 카드(징검다리)마다 정산 보너스 +5% (최대 4장)"},
+  {id:"stair",    name:"오름계단",desc:"줄이 왼→오 오름차순인 구간이 길수록 정산 보너스 (3칸+부터)"},
+  {id:"keystone", name:"주춧돌", desc:"양 끝(맨 왼·맨 오)과 한가운데 칸 카드의 숫자가 클수록 정산 보너스 (자리값)"},
 ];
 const has=id=>S.owned.includes(id);
 
@@ -324,6 +327,10 @@ const has=id=>S.owned.includes(id);
 const STARTER_CHARMS=["greed","pyro","suited","runner","jackpot"];
 function maxRankCount(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let m=0; for(const k in rc) if(rc[k]>m) m=rc[k]; return m; }
 function pairGroups(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return g; }
+// 위치-맥락 부적 메트릭 (정산·해금 공용, ★run-sim handBonus 미러 — 드리프트 주의)
+function bridgeCount(row){ let n=0; for(let i=1;i<=6 && i+1<row.length;i++){ if(connect(row[i],row[i-1]) && connect(row[i],row[i+1])) n++; } return n; }   // 양옆 모두 연결되는 내부 카드(다리). connect가 S.boss 읽어 보스 봉인에 적응
+function maxAscLen(row){ let mx=1,cur=1; for(let i=1;i<row.length;i++){ if(row[i].enh!=="wild"&&row[i-1].enh!=="wild"&&row[i].rank>row[i-1].rank){ cur++; if(cur>mx)mx=cur; } else cur=1; } return mx; }   // 최장 오름차순 연속(엄격>, 와일드서 끊김)
+function edgeVal(row){ const r=c=>c&&c.enh!=="wild"?c.rank:0; return r(row[0])+r(row[3])+r(row[7]); }   // 0·3·7 칸 숫자 합(와일드=0)
 // 각 잠금 부적의 해금 조건 cond(stats,row)→bool + 컬렉션 힌트. 전부 settle 시점 판정(런중 추적 0).
 const UNLOCKS={
   noir:     {cond:(st,row)=> (st.bestAnte||0)>=4,                hint:"안테 4 도달"},
@@ -331,6 +338,9 @@ const UNLOCKS={
   broker:   {cond:(st,row)=> maxRankCount(row)>=3,               hint:"한 줄에 같은 숫자 3장"},
   twins:    {cond:(st,row)=> pairGroups(row)>=2,                 hint:"한 줄에 같은 숫자 2장 그룹 2개"},
   runts:    {cond:(st,row)=> row.filter(c=>c.rank<=3).length>=4, hint:"한 줄에 A·2·3 저랭크 4장"},
+  bridge:   {cond:(st,row)=> bridgeCount(row)>=3,                hint:"한 줄에 양옆 연결 카드 3장"},
+  stair:    {cond:(st,row)=> maxAscLen(row)>=5,                  hint:"한 줄에 5칸 연속 오름차순"},
+  keystone: {cond:(st,row)=> row.length>=8 && row[0].rank>=7 && row[3].rank>=7 && row[7].rank>=7, hint:"0·3·7번 칸에 7+ 배치"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(localStorage.getItem("cd_unlocked")); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ try{ localStorage.setItem("cd_unlocked",JSON.stringify(a)); }catch(e){} }
@@ -467,6 +477,9 @@ function settle(){
   const hk=evalHand(S.row); let hb=handBonus(S.row); // 족보 판정·보너스 (discard 전)
   if(has("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindBase(S.ante)*BR[hk]); }   // 낮은 족보 3티어만 더 높은 고정 분율로 덮어씀 (blindBase=스테이크 무관)
   if(has("twins")){ const rc={}; for(const c of S.row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindBase(S.ante)*.03*Math.min(g,4)); }   // 2장+ 그룹 개수, 최대 4그룹
+  if(has("bridge"))   hb+=Math.round(blindBase(S.ante)*.03*Math.min(bridgeCount(S.row),3));                     // 다리: 양옆연결 카드 최대3
+  if(has("stair"))    hb+=Math.round(blindBase(S.ante)*.04*Math.max(0,Math.min(maxAscLen(S.row),6)-2));         // 오름계단: 3칸+부터, 최대6
+  if(has("keystone")) hb+=Math.round(blindBase(S.ante)*.18*Math.max(0,(edgeVal(S.row)-12)/12));                 // 주춧돌: 0·3·7칸, 평균(12) 초과분만 보상(고카드 배치)
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
   S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)
