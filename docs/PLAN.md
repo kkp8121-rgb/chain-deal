@@ -1,7 +1,7 @@
 # CHAIN DEAL — 개발 플랜 (체크리스트)
 
 > 진행하며 `[ ]` → `[x]`로 체크. 상세 인수인계는 `../HANDOVER.md`, 디자인 근거는 `roguelite_idea_formula.html`.
-> 최종 업데이트: 2026-06-25 (v3.18 기준)
+> 최종 업데이트: 2026-06-25 (v3.19 기준)
 
 ---
 
@@ -58,7 +58,9 @@
 - [~] **C3. 해금/컬렉션** — 플레이로 새 부적·보스 해금
   - [x] **C3-부적** ✅ (v3.15) — B1 신규 5종 업적 해금(등급+도전과제) + 🧿 컬렉션 드로어 + 정산 알림 + cd_stats 소급. 검증 `node tools/unlock-check.cjs`
   - [ ] **C3-보스/카드효과/시작덱** — 차기 (이번엔 부적만)
-- [ ] **C4. 모바일 반응형** — 현재 데스크탑 클릭 기준 레이아웃
+- [~] **C4. 모바일 반응형**
+  - [x] **C4-베이스라인** ✅ (v3.19) — 제로뎁: viewport-fit=cover + 전역 touch-action:manipulation(300ms 탭딜레이 제거) + safe-area(body+고정 오버레이) + overscroll-behavior:contain + 82dvh + :active 피드백. 게임로직 0 변경. 적대적 리뷰(2렌즈)가 헤드리스 못 잡는 오버레이 safe-area 갭 발견. 검증 Playwright 4뷰포트. 상세 HANDOVER §6
+  - [ ] **C4-세로(portrait) 레이아웃** — ▶다음. 8칸 줄 wrap 해결(보드 scale-to-fit으로 '한 줄' 유지) + 하단 엄지존. M
 
 ---
 

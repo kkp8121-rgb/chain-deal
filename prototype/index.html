@@ -2,16 +2,20 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>CHAIN DEAL v3 — 안테 · 보스</title>
 <style>
   :root{ --bg:#0c1020; --panel:#161d36; --gold:#ffd15c; --rune:#9b6fd4; --line:#2a3568;
     --cardbg:#f4f0e6; --red:#d23b3b; --black:#1c2433; }
-  *{box-sizing:border-box}
+  *{box-sizing:border-box; touch-action:manipulation}   /* 모바일: 모든 탭의 300ms 딜레이·더블탭 줌 제거(스크롤/핀치줌은 유지) — onclick 그대로 즉시 반응 */
+  html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; -webkit-tap-highlight-color:transparent }   /* iOS 회전 시 글자 확대 방지 + 탭 회색 플래시 제거 */
   html,body{margin:0;height:100%}
   body{background:radial-gradient(circle at 50% 16%,#1a2348 0%,var(--bg) 70%); color:#e6ebff;
     font-family:"Segoe UI",system-ui,sans-serif; min-height:100%; display:flex; flex-direction:column;
-    align-items:center; padding:14px; user-select:none; overflow-x:hidden;}
+    align-items:center; padding:14px; user-select:none; overflow-x:hidden;
+    /* 노치·홈인디케이터 safe-area: 기본 14px 유지하되 인셋이 더 크면 그만큼 확장 */
+    padding-top:max(14px,env(safe-area-inset-top)); padding-bottom:max(14px,env(safe-area-inset-bottom));
+    padding-left:max(14px,env(safe-area-inset-left)); padding-right:max(14px,env(safe-area-inset-right));}
   h1{font-size:21px; letter-spacing:3px; margin:0 0 2px; color:var(--gold); text-shadow:0 0 16px rgba(255,209,92,.4)}
   .sub{font-size:12px; color:#8a93b6; margin-bottom:10px; text-align:center}
   .wrap{width:100%; max-width:780px}
@@ -29,7 +33,7 @@
   .handbonus .hbhint{color:#9b6fd4; font-size:11px; text-decoration:underline; white-space:nowrap}
   .drawerBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; opacity:0; pointer-events:none; transition:opacity .25s}
   .drawerBackdrop.show{opacity:1; pointer-events:auto}
-  .drawer{position:fixed; left:0; right:0; bottom:0; z-index:61; max-width:560px; margin:0 auto; background:#161a2e; border:1px solid #2a3050; border-bottom:none; border-radius:16px 16px 0 0; padding:14px 18px 26px; transform:translateY(110%); transition:transform .28s cubic-bezier(.2,.8,.2,1); max-height:82vh; overflow-y:auto}
+  .drawer{position:fixed; left:0; right:0; bottom:0; z-index:61; max-width:560px; margin:0 auto; background:#161a2e; border:1px solid #2a3050; border-bottom:none; border-radius:16px 16px 0 0; padding:14px max(18px,env(safe-area-inset-right)) max(26px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); transform:translateY(110%); transition:transform .28s cubic-bezier(.2,.8,.2,1); max-height:82vh; max-height:82dvh; overflow-y:auto; overscroll-behavior:contain}
   .drawer.show{transform:translateY(0)}
   .drawerHandle{width:40px; height:4px; background:#3a4060; border-radius:2px; margin:2px auto 12px}
   .drawer h3{margin:0 0 4px; font-size:16px; color:#e6ebff}
@@ -47,7 +51,7 @@
   .rrow{padding:9px 0; border-bottom:1px solid #232845; font-size:13px; color:#cdd6f5}
   .rrow .rlabel{color:#8a93b6; font-size:12px; margin-bottom:5px}
   .drawer p.rtext{margin:9px 0; font-size:13px; color:#aab3d6; line-height:1.6}
-  .tallyOverlay{position:fixed; inset:0; background:rgba(8,10,20,.72); z-index:70; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s}
+  .tallyOverlay{position:fixed; inset:0; background:rgba(8,10,20,.72); z-index:70; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
   .tallyOverlay.show{opacity:1; pointer-events:auto}
   .tallyCard{background:#161a2e; border:1px solid #2a3050; border-radius:14px; padding:20px 24px; min-width:260px; max-width:88vw; box-shadow:0 20px 60px rgba(0,0,0,.5); transform:translateY(10px) scale(.97); transition:transform .2s}
   .tallyOverlay.show .tallyCard{transform:translateY(0) scale(1)}
@@ -107,6 +111,11 @@
   .hcard{position:relative; cursor:pointer; transition:transform .12s; border-radius:9px}
   .hcard .pcard{width:62px; height:88px}
   .hcard:hover{transform:translateY(-8px)}
+  /* 모바일 탭 피드백 — :hover는 터치서 안 떠서, tap-highlight 제거분을 :active로 보완(순수 CSS) */
+  .hcard:active{transform:translateY(-8px)}
+  .ocard:active{transform:translateY(-3px); border-color:var(--gold)}
+  button:active{filter:brightness(1.15)}
+  .sub:active,.stats:active,.deckinfo:active,.handbonus:active,.ctag:active{opacity:.6}
   .hcard.willchain .pcard{box-shadow:0 0 16px #5ad15a, 0 2px 6px rgba(0,0,0,.45); border-color:#5ad15a}
   .hcard .zap{position:absolute; top:-11px; right:-9px; background:#5ad15a; color:#06210a; font-size:11px; font-weight:900;
     border-radius:10px; padding:1px 7px; box-shadow:0 0 10px #5ad15a; z-index:3}
@@ -125,7 +134,7 @@
   .help b{color:#cdd6f5}
   .deckinfo{text-align:center;font-size:11px;color:#6f79a6;margin-top:4px}
 
-  .modal{position:fixed; inset:0; background:rgba(6,9,24,.82); display:none; align-items:center; justify-content:center; padding:18px; z-index:50}
+  .modal{position:fixed; inset:0; background:rgba(6,9,24,.82); display:none; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); z-index:50}
   .modal.show{display:flex}
   .shop{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; max-width:640px; width:100%; text-align:center}
   .shop h2{margin:.2em 0; color:var(--gold)}
@@ -136,7 +145,7 @@
   .ocard .ocost{margin-top:7px; color:var(--gold); font-weight:700; font-size:13px}
   .ocard.sold{opacity:.38; pointer-events:none; border-style:dashed} .ocard.cantafford{opacity:.5; cursor:not-allowed}
   .shopGold{text-align:center; color:var(--gold); font-size:15px; margin-bottom:10px}
-  .deckgrid{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:300px; overflow-y:auto; margin-top:12px; padding:4px}
+  .deckgrid{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:300px; overflow-y:auto; overscroll-behavior:contain; margin-top:12px; padding:4px}
   .deckgrid .pcard{width:42px;height:60px;cursor:pointer}
   .deckgrid .pcard:hover{outline:2px solid var(--gold); transform:translateY(-3px)}
 </style>
