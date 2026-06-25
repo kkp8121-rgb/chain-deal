@@ -265,7 +265,7 @@ function evalHand(cards){
   if(flush) return"flush"; if(straight) return"straight"; if(mr>=3) return"trips";
   if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
 }
-function handBonus(row){ return Math.round(blindTarget(S.ante,0)*(HAND_BONUS[evalHand(row)]||0)); }
+function handBonus(row){ return Math.round(blindBase(S.ante)*(HAND_BONUS[evalHand(row)]||0)); }   // ★blindBase(스테이크 무관) — 사다리서 목표만 오르고 족보 보너스 쿠션은 안 오르게
 
 /* ---------- 익명 플레이로그 (Google Sheets + Apps Script) ---------- */
 // LOG_URL 을 Apps Script 웹앱 URL로 채우면 전송 시작(비우면 no-op). 익명 ID(localStorage)만 보냄 — 개인정보 X.
@@ -293,12 +293,12 @@ function statsHTML(){ const s=getStats(), wr=s.plays?Math.round((s.wins||0)/s.pl
 const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
 
 /* ---------- 상태 ---------- */
-const SLOTS=8, ANTES=8;
+const SLOTS=8, ANTES=8, MAX_STAKE=5;   // 난이도 사다리: 0(평지)~5. run-sim STK_T/STK_AC와 길이 일치
 /* ---------- 골드 경제 파라미터 (캘리브 대상 · run-sim.cjs와 동기화 필수) ---------- */
 const GOLD_BASE=1, GOLD_K=4;           // 통과 환전: floor(BASE + 초과율*K) · run-sim 캘리브(balance 8.9%≈기준선 8.6%)
 const START_GOLD_PER_LV=3;             // 시작 골드 = goldLv * 3
 const META_PRICE={ retry:3, gold:[5,8,12], reroll:[6,10] };
-function goldEarned(score,target){ return Math.floor(GOLD_BASE + Math.max(0, score/target - 1)*GOLD_K); }
+function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
 function spillover(gold){ return Math.floor(gold*0.1); }
 let S=null;
 const CHARMS=[
@@ -371,26 +371,28 @@ function newGame(seed, stake){
   const meta=getMeta();
   S={ante:1, blind:0, anteBoss:pickBoss(1), owned:[], over:false, busy:false, settled:false,
      bonusHand:0, rerollMax:meta.rerollLv, gold:meta.goldLv*START_GOLD_PER_LV, retry:meta.retry, seed:useSeed, daily, runBest:0,
-     stake:Math.max(0,Math.min(7, stake|0)),         // 난이도 사다리(0~7). 모든 티어 델타가 이 전역을 읽음(stake 0=no-op)
+     stake:Math.max(0,Math.min(MAX_STAKE, stake|0)),   // 난이도 사다리(0~5). 모든 티어 델타가 이 전역을 읽음(stake 0=no-op)
      showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
   logEvent("run_start",{seed:useSeed, daily:daily?1:0, stake:S.stake});
   startBlind();
   renderStats();
 }
 // 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
+function blindBase(ante){ return 150*Math.pow(1.5, ante-1); }   // 스테이크 무관 기준값(족보 보너스 기준 — 목표만 사다리로 오르고 보너스는 안 오르게)
+const STAKE_T=[0,.03,.03,.04,.04,.06], STAKE_AC=[0,0,0,.008,.008,.014];   // 난이도 사다리 목표 가산(평면/안테비례) — ★run-sim STK_T/STK_AC 미러(드리프트 동기화)
+function stakeMult(ante){ const st=S?S.stake:0; return 1+STAKE_T[st]+STAKE_AC[st]*(ante-1); }   // st0→1(no-op)
 function blindTarget(ante,blind){
-  const base=150*Math.pow(1.5, ante-1);   // 하향: "긴 체인=운" 의존 줄여 안정적 수읽기로 클리어 가능하게.
-  return Math.round(base * (blind===0?1 : blind===1?1.4 : 1.6));
+  return Math.round(blindBase(ante)*stakeMult(ante) * (blind===0?1 : blind===1?1.4 : 1.6));   // 하향: "긴 체인=운" 의존 줄여 안정적 수읽기로 클리어 가능하게.
 }
 function draw(){ if(S.deck.length===0){ S.deck=shuffle(S.discard); S.discard=[]; } return S.deck.length? S.deck.pop() : mkCard(ri(4),1+ri(8)); }  // fallback도 게임 범위(A~8). 손패 회수 수정 후엔 거의 호출 안 됨
 function startBlind(){
-  S.boss = (S.blind===2) ? S.anteBoss : null;
-  const baseHand = (S.boss && S.boss.id==="stingy") ? 2 : 3;   // 기본 3택1 유지(한눈에 보임). 확장은 스킬로.
+  S.boss = (S.blind===2 || (S.stake>=6 && S.blind===1 && S.ante>=2)) ? S.anteBoss : null;   // St6: 보스 룰이 큰 블라인드에도(안테1 면제·tmult 제외)
+  const baseHand = (S.boss && (S.boss.id==="stingy" || (S.stake>=4 && S.blind===2))) ? 2 : 3;   // St4: 보스전 손패 3→2. 기본 3택1.
   S.handSize = baseHand + S.bonusHand;                          // 손패 확장 스킬로 성장
   S.row=[]; S.score=0; S.settled=false; S.busy=false; S.over=false;   // ★ S.score=0 (NaN 버그 수정)
   S.rerolls=S.rerollMax;
   S.target=blindTarget(S.ante,S.blind);
-  if(S.boss) S.target=Math.round(S.target*S.boss.tmult);   // 보스 룰 가혹도 보정
+  if(S.boss && S.blind===2) S.target=Math.round(S.target*S.boss.tmult);   // tmult는 진짜 보스 블라인드만(St6 큰블라인드는 룰만, 목표 경감 없음)
   S.hand=Array.from({length:S.handSize}, draw);
   if(S.blind===0 && (S.ante===4||S.ante===7)){ banner(`⚔ ACT ${actOf(S.ante)} 진입`, "var(--gold)"); try{boom(150);}catch(e){} }
   else banner(S.boss? `${S.boss.actBoss?"👑 액트 보스":S.boss.icon+" 보스"}: ${S.boss.name} — ${S.boss.desc}` : "", S.boss?"#ff9a9a":"");
@@ -459,8 +461,8 @@ function settle(){
   if(S.settled) return; S.settled=true;
   const chain=S.score;                               // 족보 보너스 전 = 체인 점수
   const hk=evalHand(S.row); let hb=handBonus(S.row); // 족보 판정·보너스 (discard 전)
-  if(has("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindTarget(S.ante,0)*BR[hk]); }   // 낮은 족보 3티어만 더 높은 고정 분율로 덮어씀
-  if(has("twins")){ const rc={}; for(const c of S.row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindTarget(S.ante,0)*.03*Math.min(g,4)); }   // 2장+ 그룹 개수, 최대 4그룹
+  if(has("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindBase(S.ante)*BR[hk]); }   // 낮은 족보 3티어만 더 높은 고정 분율로 덮어씀 (blindBase=스테이크 무관)
+  if(has("twins")){ const rc={}; for(const c of S.row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindBase(S.ante)*.03*Math.min(g,4)); }   // 2장+ 그룹 개수, 최대 4그룹
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
   S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)
@@ -516,7 +518,7 @@ function settle(){
 }
 function victory(){
   cashOut();
-  { const m=getMeta(); const nx=Math.min(7,(S.stake||0)+1); if(nx>m.maxStake){ m.maxStake=nx; saveMeta(m); } }   // 스테이크 N 클리어 → N+1 해금
+  { const m=getMeta(); const nx=Math.min(MAX_STAKE,(S.stake||0)+1); if(nx>m.maxStake){ m.maxStake=nx; saveMeta(m); } }   // 스테이크 N 클리어 → N+1 해금
   logEvent("win",{ante:S.ante,score:S.score,stake:S.stake});
   S.over=true; S.score=0;
   banner("🏆 런 클리어! 안테 8 정복! 🏆","var(--gold)");
