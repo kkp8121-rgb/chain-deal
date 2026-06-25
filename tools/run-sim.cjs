@@ -134,15 +134,17 @@ function applyShop(state, strat){
   for(const it of offers){ if(state.gold>=it.cost){ state.gold-=it.cost; applyOne(state,it.o,strat); } }
 }
 
-function runFull(strat){
+function runFull(strat, acc){   // acc(선택): 조건부 클리어율 계측용 reach/pass 누산기
   const state={deck:starterDeck(), owned:[], bonusHand:0, gold:0};
   for(let ante=1;ante<=8;ante++){
     for(let blind=0;blind<=2;blind++){
       const boss=blind===2?pickBoss(ante):null;
       let target=blindTarget(ante,blind); if(boss) target=Math.round(target*boss.tmult);
       const handN=(boss&&boss.id==="stingy"?2:3)+state.bonusHand;
+      if(acc){ const k=`${ante}-${blind}`; acc.reach[k]=(acc.reach[k]||0)+1; if(boss) acc.bReach[boss.id]=(acc.bReach[boss.id]||0)+1; }
       const sc=playRound(state.deck, state.owned, boss?boss.id:null, handN, ante);
       if(sc<target) return {result:"death", ante, blind};
+      if(acc){ const k=`${ante}-${blind}`; acc.pass[k]=(acc.pass[k]||0)+1; if(boss) acc.bPass[boss.id]=(acc.bPass[boss.id]||0)+1; }
       state.gold += goldEarned(sc, target);          // 통과 환전 (초과율 기반)
       if(ante===8&&blind===2) return {result:"win"};
       applyShop(state, strat);
@@ -161,4 +163,22 @@ for(const strat of ["balance","flush","black","jokbo","compact"]){
   console.log(`  🏆 클리어(안테8 보스 격파): ${(win/N*100).toFixed(1)}%`);
   console.log(`  💀 사망 지점 분포(상위):`);
   Object.entries(death).sort((a,b)=>b[1]-a[1]).slice(0,8).forEach(([k,v])=>console.log(`    ${k}: ${(v/N*100).toFixed(1)}%`));
+}
+
+// ★ 조건부 클리어율 (도달자 중 통과%) — 위 '사망 지점 분포'는 사망'비중'이라 생존자 편향에 오염
+//   (모두 안테1을 지나므로 사망비중이 초반에 쏠림 = 초반이 어려워서가 아님). 진짜 난이도 곡선·
+//   보스 벽은 '도달자 중 통과율'로 봐야 한다(밸런싱 권위 지표). 대표=밸런스 빌드.
+{
+  const acc={reach:{},pass:{},bReach:{},bPass:{}};
+  for(let i=0;i<N;i++) runFull("balance", acc);
+  const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_run:"스트봉인",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
+  console.log(`\n=== [밸런스 빌드] 조건부 클리어율 (도달자 중 통과%) · ${N} 런 ===`);
+  console.log(`  난이도는 24블라인드 게이트 길이의 곱연산(≈0.9^24). 평탄=건강. 🔴<60 🟡<75 🟢≥75`);
+  for(let a=1;a<=8;a++){ let line=`  안테${a}: `;
+    for(let b=0;b<=2;b++){ const k=`${a}-${b}`, r=acc.reach[k]||0, p=acc.pass[k]||0; if(!r){ continue; }
+      const c=p/r*100, bar=c<60?"🔴":c<75?"🟡":"🟢"; line+=`${BL[b]} ${bar}${c.toFixed(0)}%  `; }
+    console.log(line); }
+  console.log(`  --- 보스별 조건부 통과율(도달자 중) ---`);
+  BOSSES.forEach(bo=>{ const r=acc.bReach[bo.id]||0, p=acc.bPass[bo.id]||0; if(r<200) return;   // 표본 부족 보스(act3 도달 적음)는 노이즈라 생략
+    const c=p/r*100, bar=c<60?"🔴":c<75?"🟡":"🟢"; console.log(`  ${bar} ${(BOSS_KO[bo.id]||bo.id).padEnd(8)} act${bo.act}${bo.actBoss?"-fin":"   "} t=${bo.tmult}  도달 ${String(r).padStart(6)}  통과 ${c.toFixed(0)}%`); });
 }

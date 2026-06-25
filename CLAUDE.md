@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **플레이/테스트**: `prototype/index.html` 을 브라우저에서 연다 (설치·빌드 불필요).
 - **밸런스 + 문법 검증**: `node tools/balance-check.cjs` — (1) 인라인 `<script>` 를 `new Function()` 으로 파싱해 **문법 체크** + (2) 그리디(잘하는 플레이) 시뮬로 블라인드별 클리어율 측정. **점수/연결/족보 규칙을 바꾸면 항상 재실행.**
-- **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교, **골드 경제 포함**): `node tools/run-sim.cjs`
+- **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교, **골드 경제 포함**): `node tools/run-sim.cjs` — 끝에 **조건부 클리어율**(도달자 중 통과%, per 블라인드·per 보스)도 출력. ★사망'비중'은 생존자 편향(모두 안테1 지남)이라 초반에 쏠려 *오도* → 진짜 난이도 곡선·보스 벽은 **조건부 통과율**로 본다(평탄 85~97%=건강, 유일 벽=안테8 닻 ~69%).
 - **골드 경제 단위 검증** (환전 공식·스필오버·재도전 카드 불변식): `node tools/economy-check.cjs`
 - **족보 밸런싱** (노리는 봇 vs 그리디 클리어율 비교): `node tools/strategy-sim.cjs`
 - **8장 줄 족보 빈도 측정**: `node tools/hand-frequency.cjs`
