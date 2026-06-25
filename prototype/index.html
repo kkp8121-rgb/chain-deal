@@ -69,7 +69,7 @@
   .tallyBtn{width:100%; margin-top:10px}
   .tallyRecord{text-align:center; color:var(--gold); font-weight:800; font-size:14px; margin-top:8px}
   /* 정산 순차 연출(v3.18): 카운트업 중에는 결과/버튼 숨김 → 마지막에 등장 */
-  .tallyCard.revealing .tallyResult, .tallyCard.revealing #tBtn, .tallyCard.revealing #tRetry, .tallyCard.revealing #tRecord{ visibility:hidden }
+  .tallyCard.revealing .tallyResult, .tallyCard.revealing #tBtn, .tallyCard.revealing #tRetry, .tallyCard.revealing #tShare, .tallyCard.revealing #tRecord{ visibility:hidden }
   @keyframes bumpfx{ 0%{transform:scale(1)} 30%{transform:scale(1.28)} 100%{transform:scale(1)} }
   .bump{ display:inline-block; animation:bumpfx .42s cubic-bezier(0.34,1.56,0.64,1) }
   .stats{text-align:center; font-size:12px; color:#8a93b6; margin:6px 0 2px; cursor:pointer}
@@ -495,6 +495,7 @@ function settle(){
     if(pass) stx.wins=(stx.wins||0)+1;
     if(S.ante>(stx.bestAnte||0)){ stx.bestAnte=S.ante; newRec=true; }
     submitScore(S.runBest);                         // ★ 런 종료 시 리더보드 제출
+    S.lastResult={daily:!!S.daily, seed:S.seed, ante:S.ante, best:S.runBest, won:pass};   // 공유용 스냅샷
   }
   saveStats(stx);
   // stx.bestAnte는 런 종료시에만 갱신되므로, '현재 도달 안테'를 즉시 반영해 noir 해금 지연 방지(저장 stats·newRec엔 영향 X)
@@ -508,6 +509,7 @@ function settle(){
   { const rt=document.getElementById("tRetry");
     if(!pass && S.retry>0){ rt.style.display="block"; rt.textContent=`🎟 재도전권 사용 (재시도) · 보유 ${S.retry}`; }
     else rt.style.display="none"; }
+  document.getElementById("tShare").style.display = (!pass || (wasBoss && S.ante>=ANTES)) ? "block" : "none";   // 런 종료(승/패)에만 공유
   render(); renderStats();
   revealTally(chain, hb, S.score, S.target, pass, wasBoss);
 }
@@ -771,6 +773,34 @@ function deckHTML(){
 function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
+/* ---------- 결과 공유 (v3.21) — 모바일=navigator.share 시트 / 데스크탑=클립보드. 데일리=같은 보드 경쟁 공유(스포일러 없음) ---------- */
+function shareText(r){
+  const url="https://kkp8121-rgb.github.io/chain-deal/";
+  let strip="";
+  for(let a=1;a<=ANTES;a++){
+    if(r.won) strip += (a===ANTES?"👑":"🟩");      // 승리=전부 클리어
+    else if(a<r.ante) strip += "🟩";               // 통과한 안테
+    else if(a===r.ante) strip += "🟥";             // 죽은 안테
+    else strip += "⬜";                            // 미도달
+  }
+  const sd=""+r.seed, tag = r.daily ? `데일리 ${sd.slice(4,6)}/${sd.slice(6,8)}` : "프리런";
+  const head = r.won ? `🏆 안테 ${ANTES} 클리어!` : `안테 ${r.ante}/${ANTES} 💀`;
+  return `CHAIN DEAL 🔗 ${tag}\n${head} · 최고 ${r.best.toLocaleString()}\n${strip}\n${url}`;
+}
+function shareResult(btn){
+  if(!S || !S.lastResult) return;
+  const txt = shareText(S.lastResult);
+  try{beep(620,.06);}catch(e){}
+  if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); return; }   // 모바일 네이티브 공유 시트
+  const done=()=>{ if(btn){ const o=btn.textContent; btn.textContent="✓ 복사됨!"; setTimeout(()=>{ btn.textContent=o; },1400); } };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){
+  try{ const ta=document.createElement("textarea"); ta.value=txt; ta.style.cssText="position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); if(done)done(); }
+  catch(e){ alert(txt); }
+}
+
 /* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
 function nickOr(){ return localStorage.getItem("cd_nick")||"익명"; }
 function setNick(){ const cur=nickOr()==="익명"?"":nickOr(); const n=((prompt("리더보드 닉네임 (최대 12자):",cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
@@ -809,6 +839,7 @@ newGame();
     <div class="tallyResult" id="tResult"></div>
     <div class="tallyRecord" id="tRecord" style="display:none">🎉 신기록!</div>
     <button class="tallyBtn" id="tRetry" style="display:none;background:#7a4dd1" onclick="useRetry()">🎟 재도전권 사용</button>
+    <button class="tallyBtn" id="tShare" style="display:none;background:#2d7d46" onclick="shareResult(this)">📋 결과 공유</button>
     <button class="tallyBtn" id="tBtn" onclick="tallyNext()">다음</button>
   </div>
 </div>
