@@ -34,7 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 게임 루프 핵심 함수
 
 - `placeCard(hi)` — 카드 깔기 + 체인 점수 계산. 8장 채우면 `settle()`.
-- `settle()` — 정산: 체인 점수 + 족보 보너스(가산) → 목표 비교 → 통과(`openShop`)/패배(`newGame`)/승리(`victory`). 카드 회수도 여기서.
+- `settle()` — 정산: 체인 점수 + 족보 보너스(가산) → 목표 비교 → 통과(`openShop`)/패배(`newGame`)/승리(`victory`). 카드 회수도 여기서. 표시는 `revealTally()`가 **순차 카운트업**(v3.18, 체인→보너스→최종, 목표돌파 순간 클라이맥스) — ⏩`#fxToggle`/클릭 스킵. ★연출은 **순수 표시**: 점수계산·카드회수는 settle서 끝, `revealTally`는 오버레이 텍스트만 rAF 갱신(`render()` 미호출 → 카드 불변식 무관, **`.cjs` 동기화 불필요**).
 - `connect(a,b)` — 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드는 무조건). 보스 규칙(`seal_suit`/`seal_run`)이 일부 봉인.
 - `evalHand(8장)` / `handBonus()` — 텍사스 서열 최고 족보 1개 판정 → `HAND_BONUS` 계수 × 안테 기본 목표 = **가산** 보너스.
 - `startBlind()`/`advanceBlind()`/`openShop()` — 안테/블라인드/상점 진행. `pickBoss(ante)` — `actOf(ante)` 액트 풀(A1=1-3/A2=4-6/A3=7-8)에서 선택, 액트-final 안테(3·6·8)는 `actBoss` 서브셋.

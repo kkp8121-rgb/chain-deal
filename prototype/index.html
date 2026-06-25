@@ -64,6 +64,10 @@
   .tallyResult.fail{color:#ff7a7a}
   .tallyBtn{width:100%; margin-top:10px}
   .tallyRecord{text-align:center; color:var(--gold); font-weight:800; font-size:14px; margin-top:8px}
+  /* 정산 순차 연출(v3.18): 카운트업 중에는 결과/버튼 숨김 → 마지막에 등장 */
+  .tallyCard.revealing .tallyResult, .tallyCard.revealing #tBtn, .tallyCard.revealing #tRetry, .tallyCard.revealing #tRecord{ visibility:hidden }
+  @keyframes bumpfx{ 0%{transform:scale(1)} 30%{transform:scale(1.28)} 100%{transform:scale(1)} }
+  .bump{ display:inline-block; animation:bumpfx .42s cubic-bezier(0.34,1.56,0.64,1) }
   .stats{text-align:center; font-size:12px; color:#8a93b6; margin:6px 0 2px; cursor:pointer}
   .stats b{color:#cdd6f5}
   .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
@@ -149,6 +153,7 @@
     <div class="chip" id="goldChip">💰 <b id="hGold">0</b></div>
     <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
     <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ 체인 예고</label>
+    <label class="toggle"><input type="checkbox" id="fxToggle"> ⏩ 빠른 연출</label>
   </div>
   <div class="blindinfo" id="blindinfo"></div>
   <div class="handbonus" id="handbonus" onclick="openDrawer('hands')" style="cursor:pointer"></div>
@@ -460,14 +465,12 @@ function settle(){
     S.gold += goldEarned(S.score, S.target);                 // 통과 시 초과율 환전
     document.getElementById("hGold").textContent=S.gold;
     res.textContent = wasBoss ? `${S.anteBoss.icon} 보스 격파!` : "✦ 통과!"; res.className="tallyResult pass";
-    flash("#ffd15c"); boom(wasBoss?170:130); if(hb>0){ beep(640,.07); setTimeout(()=>beep(860,.09),90); }
     logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
     if(wasBoss && S.ante>=ANTES){ btn.textContent="🏆 승리!"; _tallyNext=victory; }
     else { btn.textContent="다음 → 상점"; _tallyNext=openShop; }
   } else {
     S.over=true;
     res.textContent="💀 패배 — 목표 미달"; res.className="tallyResult fail";
-    boom(70);
     logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
     btn.textContent="새 게임 (런 다시)"; _tallyNext=()=>{ cashOut(); newGame(); };
   }
@@ -494,8 +497,8 @@ function settle(){
   { const rt=document.getElementById("tRetry");
     if(!pass && S.retry>0){ rt.style.display="block"; rt.textContent=`🎟 재도전권 사용 (재시도) · 보유 ${S.retry}`; }
     else rt.style.display="none"; }
-  document.getElementById("tally").classList.add("show");
   render(); renderStats();
+  revealTally(chain, hb, S.score, S.target, pass, wasBoss);
 }
 function victory(){
   cashOut();
@@ -675,6 +678,45 @@ function boom(f){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.c
   o.frequency.setValueAtTime(f,a.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,a.currentTime+.3);
   g.gain.setValueAtTime(.3,a.currentTime); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.4); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.42); }
 
+/* ---------- 정산 순차 연출 (v3.18 Top Rec) — 표시 타이밍만; 점수 계산은 settle서 이미 끝남(★불변식 무손상) ---------- */
+function fxFast(){ const c=document.getElementById("fxToggle"); return !!(c && c.checked); }
+function bump(el){ if(!el)return; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+let _revealTok=0, _revealEnd=null, _climaxed=false;
+function countNum(el, from, to, dur, tok, crossCb, crossVal, done){   // 숫자 0→to ease-out, 목표 교차 시 1회 콜백. render() 안 부름(오버레이 텍스트만).
+  if(!el){ if(done)done(); return; }
+  const t0=performance.now(); let crossed=false;
+  (function step(now){
+    if(tok!==_revealTok) return;                                       // 스킵/다음 정산이 무효화
+    const p=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-p,3);
+    const v=Math.round(from+(to-from)*e); el.textContent=v.toLocaleString();
+    if(!crossed && crossCb && crossVal!=null && v>=crossVal){ crossed=true; crossCb(); }
+    if(p<1) requestAnimationFrame(step); else { el.textContent=to.toLocaleString(); if(done)done(); }
+  })(performance.now());
+}
+function revealTally(chain, hb, finalScore, target, pass, wasBoss){
+  const ov=document.getElementById("tally"); ov.classList.add("show");
+  const card=ov.querySelector(".tallyCard");
+  const elC=document.getElementById("tChain"), elB=document.getElementById("tBonus"), elF=document.getElementById("tFinal");
+  const tok=++_revealTok; _climaxed=false;
+  const climax=()=>{ if(_climaxed)return; _climaxed=true; if(pass){ flash("#ffd15c"); boom(wasBoss?170:130); shake(); } bump(elF); };
+  const finish=()=>{ card.classList.remove("revealing"); _revealEnd=null; elC.textContent=chain.toLocaleString(); elF.textContent=finalScore.toLocaleString(); };
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(fxFast() || reduce){                                              // ⏩ 빠른 연출 / 모션 축소 → 즉시(구 동작과 동치)
+    elC.textContent=chain.toLocaleString(); elF.textContent=finalScore.toLocaleString();
+    if(pass){ flash("#ffd15c"); boom(wasBoss?170:130); } else boom(70); return;
+  }
+  card.classList.add("revealing"); elC.textContent="0"; elF.textContent="0";
+  _revealEnd=()=>{ if(pass) climax(); else boom(70); finish(); };       // 오버레이 클릭=스킵 시 즉시 마무리
+  for(let k=0;k<5;k++) setTimeout(()=>{ if(tok===_revealTok) try{beep(300+k*80,.05);}catch(e){} }, k*120);  // 음정 상승(도-레-미-파-솔)
+  countNum(elC,0,chain,640,tok, null,null, ()=>{ bump(elC);
+    if(hb>0){ try{beep(660,.07);}catch(e){} bump(elB); }              // 족보 보너스 등장
+    setTimeout(()=>{ countNum(elF,0,finalScore,760,tok, pass?climax:null, pass?target:null, ()=>{
+      if(pass) climax(); else { boom(70); bump(elF); } finish();        // 목표 돌파=클라이맥스(경계 누락 안전망) / 미달=둔탁
+    }); }, hb>0?260:120);
+  });
+}
+function skipReveal(){ if(_revealEnd){ _revealTok++; const f=_revealEnd; _revealEnd=null; f(); } }
+
 /* ---------- 룰 / 족보 드로어 (터치 → 펼침, 백드롭 터치 → 닫힘) ---------- */
 const mc=(r,s)=>`<span class="mcard${s==="♥"||s==="♦"?" red":""}">${r}${s}</span>`;
 const HANDS_HTML=`
@@ -744,7 +786,7 @@ newGame();
   <button class="closeBtn" onclick="closeDrawer()">닫기</button>
 </div>
 
-<div class="tallyOverlay" id="tally">
+<div class="tallyOverlay" id="tally" onclick="if(this.querySelector('.tallyCard').classList.contains('revealing')) skipReveal();">
   <div class="tallyCard">
     <div class="tallyTitle">— 정산 —</div>
     <div class="tallyRow"><span>체인 점수</span><b id="tChain">0</b></div>
