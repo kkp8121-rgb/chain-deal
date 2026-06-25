@@ -161,6 +161,7 @@
   <div class="antedots" id="antedots"></div>
   <div class="hud">
     <div class="chip">안테 <b id="hAnte">1</b>/8</div>
+    <div class="chip" id="stakeChip" style="display:none;color:var(--gold)">⚔ St<b id="hStake">0</b></div>
     <div class="chip" id="goldChip">💰 <b id="hGold">0</b></div>
     <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
     <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ 체인 예고</label>
@@ -178,7 +179,9 @@
 
   <div class="charms" id="charms"></div>
   <div class="banner" id="banner"></div>
-  <div class="controls"><button onclick="newGame()">새 게임</button> <button onclick="newGame(dailySeed())">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button> <button onclick="openDrawer('charms')">🧿 부적</button> <button onclick="openDrawer('meta')">🪙 상점</button></div>
+  <div class="controls" style="align-items:center;gap:6px">난이도 <button onclick="stakeStep(-1)">◀</button> <b id="stakeLbl" style="min-width:150px;display:inline-block;text-align:center">St0 평지</b> <button onclick="stakeStep(1)">▶</button></div>
+  <div id="stakeDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">기본 난이도</div>
+  <div class="controls"><button onclick="newGame(null,selStake)">새 게임</button> <button onclick="newGame(dailySeed(),selStake)">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button> <button onclick="openDrawer('charms')">🧿 부적</button> <button onclick="openDrawer('meta')">🪙 상점</button></div>
 
   <div class="help">
     <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style="color:#ff9a9a">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.
@@ -294,6 +297,7 @@ const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"]
 
 /* ---------- 상태 ---------- */
 const SLOTS=8, ANTES=8, MAX_STAKE=5;   // 난이도 사다리: 0(평지)~5. run-sim STK_T/STK_AC와 길이 일치
+const STAKE_NAMES=["평지","백금","인색","강철","서리","심연"], STAKE_DESC=["기본 난이도","목표 +3%","+ 통과 골드 없음","+ 후반 안테 가속","+ 보스전 손패 2장","+ 목표 추가 가속"];   // 각 티어 시그니처 규칙(누적)
 /* ---------- 골드 경제 파라미터 (캘리브 대상 · run-sim.cjs와 동기화 필수) ---------- */
 const GOLD_BASE=1, GOLD_K=4;           // 통과 환전: floor(BASE + 초과율*K) · run-sim 캘리브(balance 8.9%≈기준선 8.6%)
 const START_GOLD_PER_LV=3;             // 시작 골드 = goldLv * 3
@@ -498,7 +502,7 @@ function settle(){
     if(pass) stx.wins=(stx.wins||0)+1;
     if(S.ante>(stx.bestAnte||0)){ stx.bestAnte=S.ante; newRec=true; }
     submitScore(S.runBest);                         // ★ 런 종료 시 리더보드 제출
-    S.lastResult={daily:!!S.daily, seed:S.seed, ante:S.ante, best:S.runBest, won:pass};   // 공유용 스냅샷
+    S.lastResult={daily:!!S.daily, seed:S.seed, ante:S.ante, best:S.runBest, won:pass, stake:S.stake||0};   // 공유용 스냅샷
   }
   saveStats(stx);
   // stx.bestAnte는 런 종료시에만 갱신되므로, '현재 도달 안테'를 즉시 반영해 noir 해금 지연 방지(저장 stats·newRec엔 영향 X)
@@ -518,7 +522,8 @@ function settle(){
 }
 function victory(){
   cashOut();
-  { const m=getMeta(); const nx=Math.min(MAX_STAKE,(S.stake||0)+1); if(nx>m.maxStake){ m.maxStake=nx; saveMeta(m); } }   // 스테이크 N 클리어 → N+1 해금
+  { const m=getMeta(); const nx=Math.min(MAX_STAKE,(S.stake||0)+1); if(nx>m.maxStake){ m.maxStake=nx; saveMeta(m);   // 스테이크 N 클리어 → N+1 해금
+      setTimeout(()=>{ banner(`🔓 난이도 St${nx} ${STAKE_NAMES[nx]} 해금! (${STAKE_DESC[nx]})`, "var(--gold)"); try{beep(720,.08); setTimeout(()=>beep(960,.1),100);}catch(e){} }, 1500); } }
   logEvent("win",{ante:S.ante,score:S.score,stake:S.stake});
   S.over=true; S.score=0;
   banner("🏆 런 클리어! 안테 8 정복! 🏆","var(--gold)");
@@ -611,6 +616,8 @@ let cellEls=[];
 function render(){
   if(!S) return;
   document.getElementById("hAnte").textContent=S.ante;
+  { const sc=document.getElementById("stakeChip"); if(sc){ if(S.stake>0){ sc.style.display=""; document.getElementById("hStake").textContent=S.stake; } else sc.style.display="none"; } }
+  renderStakeLbl();
   { const gc=document.getElementById("hGold"); if(gc) gc.textContent=S.gold; }
   const pct=Math.min(100,Math.round(S.score/S.target*100));
   document.getElementById("fill").style.width=pct+"%";
@@ -787,7 +794,7 @@ function shareText(r){
     else if(a===r.ante) strip += "🟥";             // 죽은 안테
     else strip += "⬜";                            // 미도달
   }
-  const sd=""+r.seed, tag = r.daily ? `데일리 ${sd.slice(4,6)}/${sd.slice(6,8)}` : "프리런";
+  const sd=""+r.seed, tag = (r.daily ? `데일리 ${sd.slice(4,6)}/${sd.slice(6,8)}` : "프리런") + (r.stake ? ` · St${r.stake} ${STAKE_NAMES[r.stake]}` : "");
   const head = r.won ? `🏆 안테 ${ANTES} 클리어!` : `안테 ${r.ante}/${ANTES} 💀`;
   return `CHAIN DEAL 🔗 ${tag}\n${head} · 최고 ${r.best.toLocaleString()}\n${strip}\n${url}`;
 }
@@ -805,10 +812,17 @@ function fallbackCopy(txt,done){
   catch(e){ alert(txt); }
 }
 
+/* ---------- 난이도 사다리 선택 UI (v3.22) ---------- */
+let selStake=0;
+function stakeStep(d){ const mx=getMeta().maxStake; selStake=Math.max(0,Math.min(mx, selStake+d)); try{beep(selStake>0?520:420,.04);}catch(e){} renderStakeLbl(); }
+function renderStakeLbl(){ const el=document.getElementById("stakeLbl"); if(!el) return; const mx=getMeta().maxStake; if(selStake>mx) selStake=mx;
+  el.innerHTML=`St${selStake} <span style="color:${selStake>0?'#ffd15c':'#cdd6f5'}">${STAKE_NAMES[selStake]}</span>`;
+  const d=document.getElementById("stakeDesc"); if(d) d.textContent = STAKE_DESC[selStake] + (selStake>=mx ? (mx<MAX_STAKE?"  ·  클리어 시 다음 해금":"  ·  최고 난이도") : ""); }
+
 /* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
 function nickOr(){ return localStorage.getItem("cd_nick")||"익명"; }
 function setNick(){ const cur=nickOr()==="익명"?"":nickOr(); const n=((prompt("리더보드 닉네임 (최대 12자):",cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
-function submitScore(score){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"score",nick:nickOr(),score:score||0,seed:S.seed,ante:S.ante,daily:S.daily?1:0})}); }catch(e){} }
+function submitScore(score){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"score",nick:nickOr(),score:score||0,seed:S.seed,ante:S.ante,daily:S.daily?1:0,stake:S.stake||0})}); }catch(e){} }
 function jsonp(action,seed,cb){ const fn="cb_"+Math.floor(Math.random()*1e9); const s=document.createElement("script"); window[fn]=d=>{ cb(d); delete window[fn]; s.remove(); }; s.onerror=()=>{ cb(null); s.remove(); }; s.src=`${LOG_URL}?action=${action}&seed=${seed||""}&callback=${fn}`; document.body.appendChild(s); }
 function boardRows(arr){ if(!arr) return `<p class="hbdim" style="padding:6px 0">불러오기 실패 — Apps Script 재배포(doGet) 확인</p>`; if(!arr.length) return `<p class="hbdim" style="padding:6px 0">아직 기록 없음 — 첫 주자가 되세요!</p>`;
   return arr.map((r,i)=>`<div class="hrow"><span><b style="color:${i<3?'var(--gold)':'#cdd6f5'}">${i+1}. ${r.nick}</b></span><span class="hname">${(r.score||0).toLocaleString()} <span class="hbdim">안테${r.ante||"-"}</span></span></div>`).join(""); }
