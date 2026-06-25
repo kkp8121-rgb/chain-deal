@@ -134,7 +134,9 @@ function applyShop(state, strat){
   for(const it of offers){ if(state.gold>=it.cost){ state.gold-=it.cost; applyOne(state,it.o,strat); } }
 }
 
-function runFull(strat, acc){   // acc(선택): 조건부 클리어율 계측용 reach/pass 누산기
+let STK=0;   // 난이도 사다리 스테이크 — runFull이 설정, 티어 델타가 읽음(stake 0=no-op, 기준선 불변)
+function runFull(strat, acc, stake){   // acc(선택): 조건부 클리어율 누산기 / stake: 난이도 사다리(0~7)
+  STK = stake|0;
   const state={deck:starterDeck(), owned:[], bonusHand:0, gold:0};
   for(let ante=1;ante<=8;ante++){
     for(let blind=0;blind<=2;blind++){
@@ -182,3 +184,9 @@ for(const strat of ["balance","flush","black","jokbo","compact"]){
   BOSSES.forEach(bo=>{ const r=acc.bReach[bo.id]||0, p=acc.bPass[bo.id]||0; if(r<200) return;   // 표본 부족 보스(act3 도달 적음)는 노이즈라 생략
     const c=p/r*100, bar=c<60?"🔴":c<75?"🟡":"🟢"; console.log(`  ${bar} ${(BOSS_KO[bo.id]||bo.id).padEnd(8)} act${bo.act}${bo.actBoss?"-fin":"   "} t=${bo.tmult}  도달 ${String(r).padStart(6)}  통과 ${c.toFixed(0)}%`); });
 }
+
+// ★ 난이도 사다리(Stakes) 캘리브 대시보드 — 스테이크별 전체 클리어율(밸런스 빌드). St0=기준선(델타 no-op 가드).
+console.log(`\n=== 난이도 사다리: 스테이크별 클리어율 (밸런스, ${N} 런) ===`);
+{ const targets=["~9%","~6%","~4.5%","~3.3%","~2.5%","~1.8%","~1.2%","<1%"];
+  for(let stk=0;stk<=7;stk++){ let win=0; for(let i=0;i<N;i++){ if(runFull("balance",null,stk).result==="win") win++; }
+    console.log(`  St${stk}: ${(win/N*100).toFixed(1).padStart(4)}%   (목표 ${targets[stk]})`); } }

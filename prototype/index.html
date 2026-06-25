@@ -277,7 +277,7 @@ function logEvent(type,data){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"P
 function getStats(){ try{ return JSON.parse(localStorage.getItem("cd_stats"))||{}; }catch(e){ return {}; } }
 function saveStats(s){ try{ localStorage.setItem("cd_stats",JSON.stringify(s)); }catch(e){} }
 /* ---------- 아웃게임 메타 (localStorage cd_meta) ---------- */
-const META_DEFAULT={coins:0,retry:0,goldLv:0,rerollLv:0};
+const META_DEFAULT={coins:0,retry:0,goldLv:0,rerollLv:0,maxStake:0};   // maxStake=해금된 최고 난이도 사다리(클리어로 N→N+1)
 function getMeta(){ try{ const m=JSON.parse(localStorage.getItem("cd_meta")); if(m&&typeof m==="object") return Object.assign({},META_DEFAULT,m); }catch(e){} return {...META_DEFAULT}; }
 function saveMeta(m){ try{ localStorage.setItem("cd_meta",JSON.stringify(m)); }catch(e){} }
 function renderStats(){ const s=getStats(), el=document.getElementById("stats"); if(!el) return;
@@ -364,15 +364,16 @@ function buyMeta(kind){
   saveMeta(m); try{beep(660,.06);}catch(e){} openDrawer('meta');
 }
 
-function newGame(seed){
+function newGame(seed, stake){
   const daily = seed!=null;
   const useSeed = daily ? seed : Math.floor(Math.random()*2147483647);
   RNG = mulberry32(useSeed);                          // ★ S 생성 전 시드 설정 (shuffle/pickBoss가 시드 사용)
   const meta=getMeta();
   S={ante:1, blind:0, anteBoss:pickBoss(1), owned:[], over:false, busy:false, settled:false,
      bonusHand:0, rerollMax:meta.rerollLv, gold:meta.goldLv*START_GOLD_PER_LV, retry:meta.retry, seed:useSeed, daily, runBest:0,
+     stake:Math.max(0,Math.min(7, stake|0)),         // 난이도 사다리(0~7). 모든 티어 델타가 이 전역을 읽음(stake 0=no-op)
      showPreview:document.getElementById("pvToggle").checked, deck:shuffle(fullDeck()), discard:[]};
-  logEvent("run_start",{seed:useSeed, daily:daily?1:0});
+  logEvent("run_start",{seed:useSeed, daily:daily?1:0, stake:S.stake});
   startBlind();
   renderStats();
 }
@@ -515,7 +516,8 @@ function settle(){
 }
 function victory(){
   cashOut();
-  logEvent("win",{ante:S.ante,score:S.score});
+  { const m=getMeta(); const nx=Math.min(7,(S.stake||0)+1); if(nx>m.maxStake){ m.maxStake=nx; saveMeta(m); } }   // 스테이크 N 클리어 → N+1 해금
+  logEvent("win",{ante:S.ante,score:S.score,stake:S.stake});
   S.over=true; S.score=0;
   banner("🏆 런 클리어! 안테 8 정복! 🏆","var(--gold)");
   flash("#ffd15c"); boom(200); setTimeout(()=>{flash("#ffffff22");boom(150);},250);
