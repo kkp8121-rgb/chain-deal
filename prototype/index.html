@@ -302,7 +302,7 @@ const STAKE_NAMES=["평지","백금","인색","강철","서리","심연"], STAKE
 const GOLD_BASE=1, GOLD_K=4;           // 통과 환전: floor(BASE + 초과율*K) · run-sim 캘리브(balance 8.9%≈기준선 8.6%)
 const START_GOLD_PER_LV=3;             // 시작 골드 = goldLv * 3
 const REROLL_BASE=2;                   // 상점 리롤 기본 cost (에스컬레이팅: +S.shopRerolls) · run-sim·economy-check 동기화
-const CLUSTER_W=0.3;                    // 미투자 클러스터 부적 오퍼 가중(희석 완화 — 투자 시 1.0) · run-sim 동기화
+const CLUSTER_W=0.15;                   // 미투자 클러스터 부적 오퍼 가중(희석 완화 — 투자 시 1.0) · run-sim 동기화 (캘리브: balance 7.3% 회복)
 const META_PRICE={ retry:3, gold:[5,8,12], reroll:[6,10] };
 function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
 function spillover(gold){ return Math.floor(gold*0.1); }

@@ -150,8 +150,23 @@ function applyOne(state, o, strat){
   else if(o.type==="enh") { let idx=ri(d.length); if(strat==="flush"){ const c=d.findIndex(x=>x.suit===1&&!x.enh); if(c>=0) idx=c; } d[idx]={...d[idx],enh:o.enh}; }
 }
 // 유료 상점: 3장 제시 → 우선순위 높은 것부터 살 수 있는 만큼 구매(골드 차감)
+// 가중 오퍼 (index.html 미러): 미투자 클러스터 부적을 CLUSTER_W로 감량 → 희석 완화
+const CLUSTER={lapidary:"gem",prism:"gem",jewelbox:"gem",highmult:"apex",magnate:"apex",echo:"cartel",loaded:"cartel",climax:"cartel",evenodd:"parity",paritybet:"parity"};
+const CLUSTER_W=0.15;   // index.html 동기화 (캘리브: balance 3.5%→7.3% 회복, 베이스라인 9.6% 미초과)
+function ownsClusterSim(owned, cl){ for(const id of owned) if(CLUSTER[id]===cl) return true; return false; }
+function offerWeightSim(o, owned){ if(o.type!=="charm") return 1; const cl=CLUSTER[o.id]; if(!cl) return 1; return ownsClusterSim(owned,cl)?1:CLUSTER_W; }
+function weightedSampleSim(pool, owned, n){
+  const p=pool.slice(), out=[];
+  for(let k=0;k<n && p.length;k++){
+    let tot=0; for(const o of p) tot+=offerWeightSim(o,owned);
+    let r=Math.random()*tot, idx=p.length-1;
+    for(let i=0;i<p.length;i++){ r-=offerWeightSim(p[i],owned); if(r<=0){ idx=i; break; } }
+    out.push(p[idx]); p.splice(idx,1);
+  }
+  return out;
+}
 function applyShop(state, strat){
-  const offers=shuffle(shopPool(state)).slice(0,3).map(o=>({o,pr:priority(o,strat),cost:costOf(o)}));
+  const offers=weightedSampleSim(shopPool(state), state.owned, 3).map(o=>({o,pr:priority(o,strat),cost:costOf(o)}));   // 가중 샘플(희석 fix)
   offers.sort((a,b)=>b.pr-a.pr);
   for(const it of offers){ if(state.gold>=it.cost){ state.gold-=it.cost; applyOne(state,it.o,strat); } }
 }
