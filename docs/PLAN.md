@@ -1,7 +1,7 @@
 # CHAIN DEAL — 개발 플랜 (체크리스트)
 
 > 진행하며 `[ ]` → `[x]`로 체크. 상세 인수인계는 `../HANDOVER.md`, 디자인 근거는 `roguelite_idea_formula.html`.
-> 최종 업데이트: 2026-06-25 (v3.23 기준)
+> 최종 업데이트: 2026-06-29 (v3.24 기준)
 
 ---
 
@@ -52,8 +52,9 @@
 - [x] **B7. 난이도 사다리 (Stakes)** ✅ (v3.22, 로드맵 MID 1번) — 6스테이크(St0 평지~St5 심연), 클리어로 해금(`cd_meta.maxStake`). `S.stake` 전역 델타(stake0=no-op): 목표 스칼라(STAKE_T/AC)·통과골드 바닥0·후반가속·보스전 손패2. UI 선택기+HUD 배지+해금 배너+공유/리더보드 동봉. 캘리브 run-sim 8.9→0.6 단조. ★교훈: 게이트 곱연산→6티어가 정직, 캡·보스룰큰 레버 제외/보류. 검증 run-sim 스윕·Playwright·economy-check. 설계 `docs/superpowers/specs/2026-06-25-difficulty-ladder-design.md`, 상세 HANDOVER §6
 
 - [x] **B8. 위치-맥락 부적 3종** ✅ (v3.23, 로드맵 MID 2번) — 다리(양옆연결)·오름계단(최장 오름차순)·주춧돌(0·3·7칸 자리값 평균초과분). 정산 가산·blindBase·바운드. 카드추가 0. 캘리브: 밸런스 9.4%(기준선 복귀)·spatial 3.4%(비지배). 메트릭 index↔run-sim 미러. 검증 run-sim 6빌드·unlock-check·Playwright. 상세 HANDOVER §6
+- [x] **B9. 부적 시너지 확장 10종** ✅ (v3.24, 로드맵 MID — 부적 13→23종) — 4클러스터(보석세공 enh스태킹·정점 고랭크7·8·같은수카르텔 족보↔체인·홀짝패리티). 전부 가산·바운드, connect 시그니처 무변경(2파일 미러). cost 차등 도입. 5렌즈 생성→적대적 밸런스 심사(27 agents)→합성. 컷: scout(41%인플레)·mono(보스id)·색계열5종. ★**희석 발견**: 23종 풀이 sim balance 9.6→3.5%(인플레 아님 — 완성형 베테랑 최악케이스, 신규 전부 비지배 gem1.3/apex2.7/cartel1.9/parity1.1%). **상점 희석 메커니즘이 최우선 후속**. 검증 run-sim 무인플레·unlock-check 26/0·노드 DOM 스모크 9/0(Playwright 미설치 대체). 설계 `docs/superpowers/specs/2026-06-29-charm-synergy-expansion-design.md`·계획 `…/plans/2026-06-29-charm-synergy-expansion.md`. 상세 HANDOVER §6
 
-> **📍 중장기 로드맵(웹리서치 2026-06-25) = HANDOVER §7 🧭.** ✅**NEAR(폴리시)**(v3.18~21) + ✅**MID 1 난이도 사다리(v3.22)** + ✅**MID 2 위치-맥락 부적(v3.23)**. **▶다음 = 부적 20~25종 확장**(현 13) 또는 위치-맥락 보스룰 → LONG(시작덱 변형·Steam 포트). 수익화 보류.
+> **📍 중장기 로드맵(웹리서치 2026-06-25) = HANDOVER §7 🧭.** ✅**NEAR(폴리시)**(v3.18~21) + ✅**MID 1 난이도 사다리(v3.22)** + ✅**MID 2 위치-맥락 부적(v3.23)** + ✅**MID 3 부적 시너지 확장 23종(v3.24)**. **▶다음 = ★상점 희석 메커니즘**(v3.24 희석 -6pp 직접 후속, 최우선) 또는 위치-맥락 보스룰 → LONG(시작덱 변형·Steam 포트). 수익화 보류.
 
 ---
 
