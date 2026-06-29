@@ -319,6 +319,9 @@ const CHARMS=[
   {id:"bridge",   name:"다리",   desc:"양옆 모두와 연결되는 카드(징검다리)마다 정산 보너스 +5% (최대 4장)"},
   {id:"stair",    name:"오름계단",desc:"줄이 왼→오 오름차순인 구간이 길수록 정산 보너스 (3칸+부터)"},
   {id:"keystone", name:"주춧돌", desc:"양 끝(맨 왼·맨 오)과 한가운데 칸 카드의 숫자가 클수록 정산 보너스 (자리값)"},
+  {id:"lapidary", name:"세공사", desc:"강화 카드(★●◆)를 깔면 기본 점수 +3 (부식 보스 중엔 무효)", cost:5},
+  {id:"prism",    name:"프리즘", desc:"줄에 와일드·황금·배율석이 모두 있으면 정산 보너스 +12% (부식 보스 중엔 무효)", cost:5},
+  {id:"jewelbox", name:"보석함", desc:"정산 시 줄에 깔린 강화 카드(★●◆) 1장마다 보너스 +2.5% (최대 6장)"},
 ];
 const has=id=>S.owned.includes(id);
 
@@ -341,6 +344,9 @@ const UNLOCKS={
   bridge:   {cond:(st,row)=> bridgeCount(row)>=3,                hint:"한 줄에 양옆 연결 카드 3장"},
   stair:    {cond:(st,row)=> maxAscLen(row)>=5,                  hint:"한 줄에 5칸 연속 오름차순"},
   keystone: {cond:(st,row)=> row.length>=8 && row[0].rank>=7 && row[3].rank>=7 && row[7].rank>=7, hint:"0·3·7번 칸에 7+ 배치"},
+  lapidary: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
+  jewelbox: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
+  prism:    {cond:(st,row)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return !!(w&&g&&m); }, hint:"한 줄에 와일드·황금·배율석 동시"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(localStorage.getItem("cd_unlocked")); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ try{ localStorage.setItem("cd_unlocked",JSON.stringify(a)); }catch(e){} }
@@ -431,6 +437,7 @@ function placeCard(hi){
   if(S.boss){ if(S.boss.id==="tax"&&card.rank>=7) base=0; else if(S.boss.id==="peasant"&&card.rank<=3) base=0; }   // 사치세/보릿고개
   if(has("greed")) base+=3;
   if(card.enh==="gold" && !rust) base+=5;
+  if(has("lapidary") && card.enh && !rust) base+=3;   // 강화카드 한정 +3 (greed/runts 선례, ×엔진 미경유)
   if(has("compactor")) base+=Math.min(8, Math.max(0, 32-(S.deck.length+S.discard.length+S.hand.length+S.row.length)));  // 라이브 덱 크기(4더미 합), 시작 32→0
   if(has("runts") && card.rank<=3) base+=4;   // A·2·3 한정 (8 초과 불가하게 +4로 묶음)
   let gained=base, runLen=1, bonus=0;
@@ -480,6 +487,8 @@ function settle(){
   if(has("bridge"))   hb+=Math.round(blindBase(S.ante)*.03*Math.min(bridgeCount(S.row),3));                     // 다리: 양옆연결 카드 최대3
   if(has("stair"))    hb+=Math.round(blindBase(S.ante)*.04*Math.max(0,Math.min(maxAscLen(S.row),6)-2));         // 오름계단: 3칸+부터, 최대6
   if(has("keystone")) hb+=Math.round(blindBase(S.ante)*.18*Math.max(0,(edgeVal(S.row)-12)/12));                 // 주춧돌: 0·3·7칸, 평균(12) 초과분만 보상(고카드 배치)
+  if(has("prism")){ let w=0,g=0,m=0; for(const c of S.row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } if(w&&g&&m && !(S.boss&&S.boss.id==="rust")) hb+=Math.round(blindBase(S.ante)*.12); }   // 프리즘: enh 3종 동시(부식 무효)
+  if(has("jewelbox")){ let e=0; for(const c of S.row) if(c.enh) e++; hb+=Math.round(blindBase(S.ante)*.025*Math.min(e,6)); }   // 보석함: enh 1장당 +2.5%, 최대6
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
   S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)

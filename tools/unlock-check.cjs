@@ -13,6 +13,9 @@ const UNLOCKS = {
   broker:   {cond:(st,row)=> maxRankCount(row)>=3,              hint:"한 줄에 같은 숫자 3장"},
   twins:    {cond:(st,row)=> pairGroups(row)>=2,                hint:"한 줄에 같은 숫자 2장 그룹 2개"},
   runts:    {cond:(st,row)=> row.filter(c=>c.rank<=3).length>=4, hint:"한 줄에 A·2·3 4장"},
+  lapidary: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
+  jewelbox: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
+  prism:    {cond:(st,row)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return !!(w&&g&&m); }, hint:"한 줄에 와일드·황금·배율석 동시"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(STORE["cd_unlocked"]); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ STORE["cd_unlocked"]=JSON.stringify(a); }
@@ -49,6 +52,13 @@ reset(); eq("runts 고랭크 안열림", checkUnlocks({},highs).includes("runts"
 reset(); const g=checkUnlocks({bestAnte:5,wins:1},[]);
 eq("grandfather noir+compactor", g.slice().sort(), ["compactor","noir"]);
 eq("grandfather broker 잠김", isUnlocked("broker"), false);
+
+// Gem 클러스터
+const enh3=[card(0,5,"wild"),card(1,6,"gold"),card(2,7,"mult"),card(3,2),card(0,3)];
+reset(); eq("lapidary enh3 해금", checkUnlocks({},enh3).includes("lapidary"), true);
+reset(); eq("prism 3종동시 해금", checkUnlocks({},enh3).includes("prism"), true);
+const enh2=[card(0,5,"wild"),card(1,6,"wild"),card(2,7,"gold"),card(3,2),card(0,3)];
+reset(); eq("prism 2종선 안열림", checkUnlocks({},enh2).includes("prism"), false);
 
 // 중복 해금 안 함
 reset(); checkUnlocks({wins:1},[]); eq("재호출 시 빈 배열", checkUnlocks({wins:1},[]), []);

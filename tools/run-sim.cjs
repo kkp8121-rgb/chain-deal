@@ -21,6 +21,7 @@ function gain(row, card, boss, owned, deckSize){
   if(boss==="tax"&&card.rank>=7) base=0; else if(boss==="peasant"&&card.rank<=3) base=0;   // 사치세/보릿고개
   if(owned.includes("greed")) base+=3;
   if(card.enh==="gold" && !rust) base+=5;
+  if(owned.includes("lapidary")&&card.enh&&!rust) base+=3;
   if(owned.includes("compactor")) base+=Math.min(8, Math.max(0, 32-(deckSize||32)));
   if(owned.includes("runts")&&card.rank<=3) base+=4;
   let g=base, rl=1;
@@ -72,6 +73,8 @@ function handBonus(row, ante, owned, boss){
   if(owned&&owned.includes("bridge")){ let n=0; for(let i=1;i<=6&&i+1<row.length;i++){ if(connect(row[i],row[i-1],boss)&&connect(row[i],row[i+1],boss)) n++; } hb+=Math.round(blindBase(ante)*.03*Math.min(n,3)); }
   if(owned&&owned.includes("stair")){ let mx=1,cur=1; for(let i=1;i<row.length;i++){ if(row[i].enh!=="wild"&&row[i-1].enh!=="wild"&&row[i].rank>row[i-1].rank){cur++;if(cur>mx)mx=cur;}else cur=1;} hb+=Math.round(blindBase(ante)*.04*Math.max(0,Math.min(mx,6)-2)); }
   if(owned&&owned.includes("keystone")){ const rv=c=>c&&c.enh!=="wild"?c.rank:0; hb+=Math.round(blindBase(ante)*.18*Math.max(0,((rv(row[0])+rv(row[3])+rv(row[7]))-12)/12)); }
+  if(owned&&owned.includes("prism")){ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } if(w&&g&&m&&boss!=="rust") hb+=Math.round(blindBase(ante)*.12); }
+  if(owned&&owned.includes("jewelbox")){ let e=0; for(const c of row) if(c.enh) e++; hb+=Math.round(blindBase(ante)*.025*Math.min(e,6)); }
   return hb;
 }
 const BOSSES=[
@@ -97,7 +100,7 @@ function playRound(deck, owned, boss, handN, ante){
 }
 
 // 상점: 3택1 (전략 우선순위로 선택)
-const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone"];
+const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone","lapidary","prism","jewelbox"];
 function shopPool(state){
   const pool=[];
   CHARMS.filter(c=>!state.owned.includes(c)).forEach(c=>pool.push({type:"charm",id:c}));
@@ -118,6 +121,7 @@ const STRATS={
   jokbo:  { charm:{broker:10,twins:9,greed:4,jackpot:3,suited:3}, enh:{mult:3,gold:3,wild:2}, item:{thin:8,copy:7,hand:6,add:2,reroll:1} },
   compact:{ charm:{compactor:10,runts:9,greed:5,suited:4,runner:4}, enh:{gold:4,mult:4,wild:2}, item:{thin:9,hand:5,add:1,copy:1,reroll:1} },
   spatial:{ charm:{bridge:10,stair:7,keystone:6,suited:6,runner:6,greed:4}, enh:{wild:5,mult:3,gold:2}, item:{thin:6,hand:6,add:4,copy:3,reroll:2} },   // 위치-맥락 빌드(연결 밀도+오름+자리값)
+  gem:    { charm:{jewelbox:10,lapidary:8,prism:7,greed:5,suited:4}, enh:{wild:8,gold:7,mult:7}, item:{thin:5,hand:5,add:2,copy:2,reroll:1} },   // enh 스태킹(강화카드 떡칠)
 };
 function priority(o, strat){
   const S=STRATS[strat]||STRATS.balance;
