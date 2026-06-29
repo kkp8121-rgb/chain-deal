@@ -7,6 +7,21 @@ let STORE = {};                                  // 가짜 localStorage
 const STARTER_CHARMS = ["greed","pyro","suited","runner","jackpot"];
 function maxRankCount(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let m=0; for(const k in rc) if(rc[k]>m) m=rc[k]; return m; }
 function pairGroups(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return g; }
+// ↓ run-sim.cjs L14·L52~L64 verbatim 복사 (loaded/climax 해금 cond용 — evalHand/connect 필요). run-sim 변경 시 동기화.
+function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1&&boss!=="seal_run"; return a.suit===b.suit||a.rank===b.rank||run; }
+function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ok=0;break;} if(ok) return true; } return false; }
+function evalHand(cards){
+  const rc={},bs={}; for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
+  const cnt=Object.values(rc).sort((a,b)=>b-a), mr=cnt[0]||0;
+  const pairs=cnt.filter(x=>x>=2).length, trips=cnt.filter(x=>x>=3).length;
+  const mx=Math.max(...Object.values(bs).map(a=>a.length));
+  const fl=mx>=5, st=hasRun5(Object.keys(rc).map(Number));
+  let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
+  const full=trips>=1&&(pairs>=2||trips>=2);
+  if(mr>=5) return"fiveKind"; if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
+  if(fl) return"flush"; if(st) return"straight"; if(mr>=3) return"trips";
+  if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
+}
 const UNLOCKS = {
   noir:     {cond:(st,row)=> (st.bestAnte||0)>=4,               hint:"안테 4 도달"},
   compactor:{cond:(st,row)=> (st.wins||0)>=1,                   hint:"런 1회 클리어"},
@@ -18,6 +33,9 @@ const UNLOCKS = {
   prism:    {cond:(st,row)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return !!(w&&g&&m); }, hint:"한 줄에 와일드·황금·배율석 동시"},
   highmult: {cond:(st,row)=> row.filter(c=>c.rank===8).length>=3, hint:"한 줄에 8 카드 3장"},
   magnate:  {cond:(st,row)=> row.filter(c=>c.rank>=7).length>=5, hint:"한 줄에 7·8 카드 5장"},
+  echo:   {cond:(st,row)=> maxRankCount(row)>=4, hint:"한 줄에 같은 숫자 4장"},
+  loaded: {cond:(st,row)=> evalHand(row)==="fiveKind", hint:"파이브 카드 완성"},
+  climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:"8칸 전부 연결 + 풀하우스↑"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(STORE["cd_unlocked"]); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ STORE["cd_unlocked"]=JSON.stringify(a); }
@@ -68,6 +86,15 @@ reset(); eq("highmult 8×3 해금", checkUnlocks({},hi8).includes("highmult"), t
 const hi5=[card(0,8),card(1,7),card(2,8),card(3,7),card(0,7),card(1,2),card(2,3),card(3,4)];
 reset(); eq("magnate 7·8×5 해금", checkUnlocks({},hi5).includes("magnate"), true);
 reset(); eq("magnate 4장선 안열림", checkUnlocks({},hi8).includes("magnate"), false);
+
+// Cartel 클러스터
+const rank4=[card(0,5),card(1,5),card(2,5),card(3,5),card(0,2)];
+reset(); eq("echo 같은수4 해금", checkUnlocks({},rank4).includes("echo"), true);
+const five=[card(0,5),card(1,5),card(2,5),card(3,5),card(0,5),card(1,2),card(2,3),card(3,4)];
+reset(); eq("loaded 파이브카드 해금", checkUnlocks({},five).includes("loaded"), true);
+reset(); eq("loaded 포카드선 안열림", checkUnlocks({},[card(0,5),card(1,5),card(2,5),card(3,5),card(0,2),card(1,3),card(2,4),card(3,6)]).includes("loaded"), false);
+const fullChain=[card(0,1),card(0,2),card(1,2),card(1,3),card(2,3),card(2,4),card(3,4),card(0,4)];   // 1-2-2-3-3-4-4-4: 풀하우스+전연결
+reset(); eq("climax 전연결+풀하우스 해금", checkUnlocks({},fullChain).includes("climax"), true);
 
 // 중복 해금 안 함
 reset(); checkUnlocks({wins:1},[]); eq("재호출 시 빈 배열", checkUnlocks({wins:1},[]), []);
