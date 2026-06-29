@@ -40,5 +40,14 @@ const GOLD_LV = [5, 8, 12], REROLL_LV = [6, 10];
 ok("시작골드 가격 단조 증가", GOLD_LV[0] < GOLD_LV[1] && GOLD_LV[1] < GOLD_LV[2]);
 ok("시작리롤 가격 단조 증가", REROLL_LV[0] < REROLL_LV[1]);
 
+// 5) 상점 리롤 에스컬레이팅 (cost = REROLL_BASE + shopRerolls) — index.html 동기화
+const REROLL_BASE = 2;
+const rerollCost = n => REROLL_BASE + n;
+ok("리롤 1회차 = BASE(2)", rerollCost(0) === 2);
+ok("리롤 2회차 = 3", rerollCost(1) === 3);
+ok("리롤 단조 증가", rerollCost(0) < rerollCost(1) && rerollCost(1) < rerollCost(2));
+const canReroll = (gold, n) => gold >= rerollCost(n);
+ok("골드 부족 리롤 차단", canReroll(1, 0) === false && canReroll(2, 0) === true);
+
 console.log(fail ? `\n❌ ${fail} 실패` : "\n✅ 전체 통과");
 process.exit(fail ? 1 : 0);
