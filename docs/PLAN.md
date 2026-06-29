@@ -1,7 +1,7 @@
 # CHAIN DEAL — 개발 플랜 (체크리스트)
 
 > 진행하며 `[ ]` → `[x]`로 체크. 상세 인수인계는 `../HANDOVER.md`, 디자인 근거는 `roguelite_idea_formula.html`.
-> 최종 업데이트: 2026-06-29 (v3.25 기준)
+> 최종 업데이트: 2026-06-29 (v3.26 기준)
 
 ---
 
@@ -54,8 +54,9 @@
 - [x] **B8. 위치-맥락 부적 3종** ✅ (v3.23, 로드맵 MID 2번) — 다리(양옆연결)·오름계단(최장 오름차순)·주춧돌(0·3·7칸 자리값 평균초과분). 정산 가산·blindBase·바운드. 카드추가 0. 캘리브: 밸런스 9.4%(기준선 복귀)·spatial 3.4%(비지배). 메트릭 index↔run-sim 미러. 검증 run-sim 6빌드·unlock-check·Playwright. 상세 HANDOVER §6
 - [x] **B9. 부적 시너지 확장 10종** ✅ (v3.24, 로드맵 MID — 부적 13→23종) — 4클러스터(보석세공 enh스태킹·정점 고랭크7·8·같은수카르텔 족보↔체인·홀짝패리티). 전부 가산·바운드, connect 시그니처 무변경(2파일 미러). cost 차등 도입. 5렌즈 생성→적대적 밸런스 심사(27 agents)→합성. 컷: scout(41%인플레)·mono(보스id)·색계열5종. ★**희석 발견**: 23종 풀이 sim balance 9.6→3.5%(인플레 아님 — 완성형 베테랑 최악케이스, 신규 전부 비지배 gem1.3/apex2.7/cartel1.9/parity1.1%). **상점 희석 메커니즘이 최우선 후속**. 검증 run-sim 무인플레·unlock-check 26/0·노드 DOM 스모크 9/0(Playwright 미설치 대체). 설계 `docs/superpowers/specs/2026-06-29-charm-synergy-expansion-design.md`·계획 `…/plans/2026-06-29-charm-synergy-expansion.md`. 상세 HANDOVER §6
 - [x] **B10. 상점 희석 완화** ✅ (v3.25, B9 희석 직접 후속) — ①상점 리롤(에스컬레이팅 골드, 주체성 도구) ②**가중 오퍼**(cluster 태그·미투자 클러스터 0.15 가중=실제 fix). ★발견: 리롤은 sim서 희석 못 고침(다부적 스태킹 경제선 선택성=손해)→주체성으로만 유지·sim 미모델. 가중이 fix(balance 3.5→7.6% 회복, 베이스라인 9.6% 미초과). W 캘리브로 0.15 확정(저W가 교차클러스터 희석까지↓). 검증 run-sim 회복·노드 스모크(리롤 8/0·가중 10/0)·economy/unlock. 설계 `…/specs/2026-06-29-shop-reroll-design.md`. 상세 HANDOVER §6
+- [x] **B11. 위치-맥락 보스룰 내리막** ✅ (v3.26, seal_run 교체) — 오름차순 ±1 연결 봉인(내림·같은무늬/숫자·와일드 정상). 보스 추가 금지 준수(12종 유지). ★connect 대칭성 보존 위해 climbSealed를 connect서 빼고 placeCard/gain 체인 판정에만(bridge 무영향). 3파일 동기화. tmult 0.72 캘리브(balance 7.5%≈기준선 불변, 내리막 조건부 90% 건강). stair/오름 빌드 타겟 counterplay. 검증 balance-check 게이지·run-sim·DOM 스모크 13/0. 설계 `…/specs/2026-06-29-position-boss-rule-design.md`. 상세 HANDOVER §6
 
-> **📍 중장기 로드맵(웹리서치 2026-06-25) = HANDOVER §7 🧭.** ✅**NEAR(폴리시)**(v3.18~21) + ✅**MID 1 난이도 사다리(v3.22)** + ✅**MID 2 위치-맥락 부적(v3.23)** + ✅**MID 3 부적 시너지 확장 23종(v3.24)** + ✅**MID 4 상점 희석 완화(v3.25, 리롤+가중오퍼)**. **▶다음 = 위치-맥락 보스룰** 또는 색 settle 페이오프 → LONG(시작덱 변형·Steam 포트). 수익화 보류.
+> **📍 중장기 로드맵(웹리서치 2026-06-25) = HANDOVER §7 🧭.** ✅**NEAR(폴리시)**(v3.18~21) + ✅**MID 1 난이도 사다리(v3.22)** + ✅**MID 2 위치-맥락 부적(v3.23)** + ✅**MID 3 부적 시너지 확장 23종(v3.24)** + ✅**MID 4 상점 희석 완화(v3.25)** + ✅**MID 5 위치-맥락 보스룰 내리막(v3.26)**. **▶다음 = 색 settle 페이오프** 또는 시작덱 변형(LONG) → Steam 포트. 수익화 보류.
 
 ---
 
