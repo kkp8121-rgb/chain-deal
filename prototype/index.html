@@ -301,6 +301,7 @@ const STAKE_NAMES=["평지","백금","인색","강철","서리","심연"], STAKE
 /* ---------- 골드 경제 파라미터 (캘리브 대상 · run-sim.cjs와 동기화 필수) ---------- */
 const GOLD_BASE=1, GOLD_K=4;           // 통과 환전: floor(BASE + 초과율*K) · run-sim 캘리브(balance 8.9%≈기준선 8.6%)
 const START_GOLD_PER_LV=3;             // 시작 골드 = goldLv * 3
+const REROLL_BASE=2;                   // 상점 리롤 기본 cost (에스컬레이팅: +S.shopRerolls) · run-sim·economy-check 동기화
 const META_PRICE={ retry:3, gold:[5,8,12], reroll:[6,10] };
 function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
 function spillover(gold){ return Math.floor(gold*0.1); }
@@ -591,6 +592,7 @@ function shopPool(){
   return pool;
 }
 function openShop(){
+  S.shopRerolls=0;
   S.shopOffers = shuffle(shopPool()).slice(0,3).map(o=>({...o, sold:false}));
   document.getElementById("shopTitle").textContent=`안테 ${S.ante} · ${BLINDNAME[S.blind]} 통과! (덱 ${S.deck.length+S.discard.length}장)`;
   renderShop();
@@ -606,9 +608,22 @@ function renderShop(){
     if(afford) d.onclick=()=>buyShop(i);
     off.appendChild(d); });
   body.appendChild(off);
+  const rrCost=REROLL_BASE+S.shopRerolls, canRR=S.gold>=rrCost;
+  const rr=document.createElement("div"); rr.style.marginTop="10px";
+  rr.innerHTML=`<button onclick="rerollShop()"${canRR?"":" disabled style='opacity:.45;cursor:not-allowed'"}>🔄 오퍼 새로고침 (💰${rrCost})</button>`;
+  body.appendChild(rr);
   const skip=document.createElement("div"); skip.style.marginTop="14px";
   skip.innerHTML=`<button onclick="advanceBlind()">상점 나가기 → (골드 ${S.gold} 보유)</button>`;
   body.appendChild(skip);
+}
+function rerollShop(){
+  const cost=REROLL_BASE+S.shopRerolls;
+  if(S.gold<cost) return;
+  S.gold-=cost; S.shopRerolls++;
+  S.shopOffers = shuffle(shopPool()).slice(0,3).map(o=>({...o, sold:false}));   // 보유 charm은 shopPool !has로 자동 제외
+  document.getElementById("hGold").textContent=S.gold;
+  try{beep(500,.05);}catch(e){}
+  renderShop();
 }
 function buyShop(i){
   const p=S.shopOffers[i]; if(!p || p.sold || S.gold<p.cost) return;
