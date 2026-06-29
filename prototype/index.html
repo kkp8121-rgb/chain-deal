@@ -217,10 +217,11 @@ function connect(a,b){
   if(boss&&boss.id==="seal_suit"){ if(a.suit===0||b.suit===0) return false; }   // ♠ 봉인
   const suitOk=a.suit===b.suit, rankOk=a.rank===b.rank;
   if(boss&&boss.id==="mono") return suitOk;                                      // 단일강요: 같은 무늬만
-  const runOk=Math.abs(a.rank-b.rank)===1 && !(boss&&boss.id==="seal_run");      // 스트레이트 봉인
+  const runOk=Math.abs(a.rank-b.rank)===1;                                       // ±1 (방향 봉인은 placeCard climbSealed에서)
   return suitOk||rankOk||runOk;
 }
 function cardSealed(c){ return S&&S.boss&&S.boss.id==="seal_suit"&&c.suit===0; }
+function climbSealed(right,left){ return S.boss && S.boss.id==="seal_climb" && right.enh!=="wild" && left.enh!=="wild" && right.suit!==left.suit && right.rank-left.rank===1; }   // 내리막: 오름 +1(다른무늬·비와일드) 체인 봉인
 
 /* ---------- 보스 블라인드 ---------- */
 // tmult = 보스마다 룰 가혹도가 달라 목표치를 보정 (점수 깎는 보스일수록 목표↓ → 균형)
@@ -233,7 +234,7 @@ const BOSSES=[
   {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1",              tmult:0.85, act:1, actBoss:false},
   {id:"peasant",  icon:"🥖", name:"보릿고개",        desc:"A·2·3 카드 기본 점수 0",    tmult:0.82, act:1, actBoss:false},
   {id:"tax",      icon:"👑", name:"사치세",          desc:"7·8 카드 기본 점수 0",      tmult:0.8,  act:1, actBoss:true},
-  {id:"seal_run", icon:"🚫", name:"스트레이트 봉인", desc:"연속 숫자(±1) 연결 무효",   tmult:0.58, act:2, actBoss:false},
+  {id:"seal_climb",icon:"⤵", name:"내리막",           desc:"오르막(↑) ±1 연결 무효 — 내림·같은무늬·같은숫자만", tmult:0.72, act:2, actBoss:false},
   {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦",         tmult:0.58, act:2, actBoss:false},
   {id:"toll",     icon:"💸", name:"연결세",          desc:"체인 보너스 절반",          tmult:0.54, act:2, actBoss:false},
   {id:"rust",     icon:"🦠", name:"부식",            desc:"enh(★◆●) 효과 전부 무효",   tmult:0.6,  act:2, actBoss:true},
@@ -458,9 +459,9 @@ function placeCard(hi){
   if(has("runts") && card.rank<=3) base+=4;   // A·2·3 한정 (8 초과 불가하게 +4로 묶음)
   let gained=base, runLen=1, bonus=0;
 
-  if(left && connect(card,left) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효
+  if(left && connect(card,left) && !climbSealed(card,left) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효 / 내리막: 오름 ±1 봉인
     const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
-    runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1])) runLen++; else break; }
+    runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1]) && !climbSealed(S.row[i],S.row[i-1])) runLen++; else break; }
     let mult=runLen-1;
     if(has("pyro") && isRed(card.suit)) mult+=2;
     if(has("noir") && !isRed(card.suit)) mult+=2;   // 검정(♠♣) — 발화의 거울

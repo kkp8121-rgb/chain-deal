@@ -30,17 +30,18 @@ function connect(a, b, boss) {
   if (boss !== "rust" && (a.enh === "wild" || b.enh === "wild")) return true;   // 부식: 와일드 무력화
   if (boss === "seal_suit" && (a.suit === 0 || b.suit === 0)) return false;
   if (boss === "mono") return a.suit === b.suit;                                // 단일강요: 같은 무늬만
-  const run = Math.abs(a.rank - b.rank) === 1 && boss !== "seal_run";
+  const run = Math.abs(a.rank - b.rank) === 1;
   return a.suit === b.suit || a.rank === b.rank || run;
 }
+function climbSealedBC(right, left, boss) { return boss === "seal_climb" && right.enh !== "wild" && left.enh !== "wild" && right.suit !== left.suit && right.rank - left.rank === 1; }   // 내리막: 오름 +1 체인 봉인
 function gain(row, card, boss) {   // 맨 덱(enh 없음) 단일라운드 → rust는 여기선 무효(enh 의존, run-sim에서 검증)
   row.push(card);
   let base = (boss === "red_curse" && isRed(card.suit)) ? 0 : card.rank;
   if (boss === "tax" && card.rank >= 7) base = 0; else if (boss === "peasant" && card.rank <= 3) base = 0;   // 사치세/보릿고개
   let g = base, rl = 1;
   const left = row[row.length - 2];
-  if (left && connect(card, left, boss) && !(boss === "frost" && row.length <= 2)) {   // 냉각: 첫 2장 무연결
-    for (let i = row.length - 1; i > 0; i--) { if (connect(row[i], row[i - 1], boss)) rl++; else break; }
+  if (left && connect(card, left, boss) && !climbSealedBC(card, left, boss) && !(boss === "frost" && row.length <= 2)) {   // 냉각: 첫 2장 무연결 / 내리막: 오름 ±1 봉인
+    for (let i = row.length - 1; i > 0; i--) { if (connect(row[i], row[i - 1], boss) && !climbSealedBC(row[i], row[i - 1], boss)) rl++; else break; }
     let mult = rl - 1;
     if (boss === "dull") mult = Math.max(1, mult - 1);
     mult = Math.min(mult, boss === "anchor" ? 3 : 25);   // 닻: 배율 3 캡
@@ -104,7 +105,7 @@ const BOSSES = [   // index.html과 동기화 (act/actBoss/tmult). hand=stingy�
   { id: "dull", name: "🗡 무딘칼날", tmult: 0.85, hand: 3, act: 1, actBoss: false },
   { id: "peasant", name: "🥖 보릿고개", tmult: 0.82, hand: 3, act: 1, actBoss: false },
   { id: "tax", name: "👑 사치세", tmult: 0.8, hand: 3, act: 1, actBoss: true },
-  { id: "seal_run", name: "🚫 스트레이트봉인", tmult: 0.58, hand: 3, act: 2, actBoss: false },
+  { id: "seal_climb", name: "⤵ 내리막", tmult: 0.72, hand: 3, act: 2, actBoss: false },
   { id: "stingy", name: "✋ 인색한손", tmult: 0.58, hand: 2, act: 2, actBoss: false },
   { id: "toll", name: "💸 연결세", tmult: 0.54, hand: 3, act: 2, actBoss: false },
   { id: "rust", name: "🦠 부식", tmult: 0.6, hand: 3, act: 2, actBoss: true },

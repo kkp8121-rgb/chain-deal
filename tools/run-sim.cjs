@@ -11,9 +11,10 @@ const ri = n => Math.floor(Math.random() * n);
 const isRed = s => s === 1 || s === 2;
 function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); return d; }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1&&boss!=="seal_run"; return a.suit===b.suit||a.rank===b.rank||run; }
+function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1; return a.suit===b.suit||a.rank===b.rank||run; }
 
 // index.html placeCard 점수 규칙 (부적 owned 반영)
+function climbSealedSim(right,left,boss){ return boss==="seal_climb" && right.enh!=="wild" && left.enh!=="wild" && right.suit!==left.suit && right.rank-left.rank===1; }   // 내리막: 오름 +1 체인 봉인
 function gain(row, card, boss, owned, deckSize){
   row.push(card);
   const rust=boss==="rust";
@@ -26,9 +27,9 @@ function gain(row, card, boss, owned, deckSize){
   if(owned.includes("runts")&&card.rank<=3) base+=4;
   let g=base, rl=1;
   const left=row[row.length-2];
-  if(left&&connect(card,left,boss) && !(boss==="frost"&&row.length<=2)){   // 냉각: 줄 첫 2장 무연결
+  if(left&&connect(card,left,boss) && !climbSealedSim(card,left,boss) && !(boss==="frost"&&row.length<=2)){   // 냉각: 줄 첫 2장 무연결 / 내리막: 오름 ±1 봉인
     const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
-    for(let i=row.length-1;i>0;i--){ if(connect(row[i],row[i-1],boss)) rl++; else break; }
+    for(let i=row.length-1;i>0;i--){ if(connect(row[i],row[i-1],boss) && !climbSealedSim(row[i],row[i-1],boss)) rl++; else break; }
     let mult=rl-1;
     if(owned.includes("pyro")&&isRed(card.suit)) mult+=2;
     if(owned.includes("noir")&&!isRed(card.suit)) mult+=2;
@@ -86,7 +87,7 @@ function handBonus(row, ante, owned, boss){
 }
 const BOSSES=[
   {id:"red_curse",tmult:1.0,act:1,actBoss:false},{id:"dull",tmult:.85,act:1,actBoss:false},{id:"peasant",tmult:.82,act:1,actBoss:false},{id:"tax",tmult:.8,act:1,actBoss:true},
-  {id:"seal_run",tmult:.58,act:2,actBoss:false},{id:"stingy",tmult:.58,act:2,actBoss:false},{id:"toll",tmult:.54,act:2,actBoss:false},{id:"rust",tmult:.6,act:2,actBoss:true},
+  {id:"seal_climb",tmult:.72,act:2,actBoss:false},{id:"stingy",tmult:.58,act:2,actBoss:false},{id:"toll",tmult:.54,act:2,actBoss:false},{id:"rust",tmult:.6,act:2,actBoss:true},
   {id:"seal_suit",tmult:.47,act:3,actBoss:false},{id:"frost",tmult:.48,act:3,actBoss:false},{id:"mono",tmult:.4,act:3,actBoss:false},{id:"anchor",tmult:.44,act:3,actBoss:true},
 ];
 const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
@@ -211,7 +212,7 @@ for(const strat of Object.keys(STRATS)){
 {
   const acc={reach:{},pass:{},bReach:{},bPass:{}};
   for(let i=0;i<N;i++) runFull("balance", acc);
-  const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_run:"스트봉인",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
+  const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_climb:"내리막",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
   console.log(`\n=== [밸런스 빌드] 조건부 클리어율 (도달자 중 통과%) · ${N} 런 ===`);
   console.log(`  난이도는 24블라인드 게이트 길이의 곱연산(≈0.9^24). 평탄=건강. 🔴<60 🟡<75 🟢≥75`);
   for(let a=1;a<=8;a++){ let line=`  안테${a}: `;
