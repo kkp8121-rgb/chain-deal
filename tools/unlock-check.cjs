@@ -36,6 +36,8 @@ const UNLOCKS = {
   echo:   {cond:(st,row)=> maxRankCount(row)>=4, hint:"한 줄에 같은 숫자 4장"},
   loaded: {cond:(st,row)=> evalHand(row)==="fiveKind", hint:"파이브 카드 완성"},
   climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:"8칸 전부 연결 + 풀하우스↑"},
+  evenodd:   {cond:(st,row)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.max(ev,od)>=6; }, hint:"한 줄에 같은 홀짝 6장"},
+  paritybet: {cond:(st,row)=>{ const nw=row.filter(c=>c.enh!=="wild"); return row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1)); }, hint:"줄 전체 짝수만/홀수만"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(STORE["cd_unlocked"]); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ STORE["cd_unlocked"]=JSON.stringify(a); }
@@ -95,6 +97,13 @@ reset(); eq("loaded 파이브카드 해금", checkUnlocks({},five).includes("loa
 reset(); eq("loaded 포카드선 안열림", checkUnlocks({},[card(0,5),card(1,5),card(2,5),card(3,5),card(0,2),card(1,3),card(2,4),card(3,6)]).includes("loaded"), false);
 const fullChain=[card(0,1),card(0,2),card(1,2),card(1,3),card(2,3),card(2,4),card(3,4),card(0,4)];   // 1-2-2-3-3-4-4-4: 풀하우스+전연결
 reset(); eq("climax 전연결+풀하우스 해금", checkUnlocks({},fullChain).includes("climax"), true);
+
+// Parity 클러스터
+const ev6=[card(0,2),card(1,4),card(2,6),card(3,8),card(0,2),card(1,4),card(2,3),card(3,5)];   // 짝6
+reset(); eq("evenodd 짝6 해금", checkUnlocks({},ev6).includes("evenodd"), true);
+const allOdd=[card(0,1),card(1,3),card(2,5),card(3,7),card(0,1),card(1,3),card(2,5),card(3,7)];   // 전홀
+reset(); eq("paritybet 전홀 해금", checkUnlocks({},allOdd).includes("paritybet"), true);
+reset(); eq("paritybet 혼합선 안열림", checkUnlocks({},ev6).includes("paritybet"), false);
 
 // 중복 해금 안 함
 reset(); checkUnlocks({wins:1},[]); eq("재호출 시 빈 배열", checkUnlocks({wins:1},[]), []);

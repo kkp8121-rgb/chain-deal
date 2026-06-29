@@ -80,6 +80,8 @@ function handBonus(row, ante, owned, boss){
   if(owned&&owned.includes("magnate")){ let h=0; for(const c of row) if(c.enh!=="wild"&&c.rank>=7) h++; hb+=Math.round(blindBase(ante)*.03*Math.min(h,5)); }
   if(owned&&owned.includes("loaded")){ if(hk==="fourKind") hb+=Math.round(blindBase(ante)*.10); else if(hk==="fiveKind") hb+=Math.round(blindBase(ante)*.30); }
   if(owned&&owned.includes("climax") && ["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)){ let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1],boss)){ cur++; if(cur>L)L=cur; } else cur=1; } hb+=Math.round(blindBase(ante)*.03*Math.max(0,Math.min(L,8)-5)); }
+  if(owned&&owned.includes("evenodd")){ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); hb+=Math.round(blindBase(ante)*.04*Math.max(0,Math.max(ev,od)-5)); }
+  if(owned&&owned.includes("paritybet")){ const nw=row.filter(c=>c.enh!=="wild"); if(row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1))) hb+=Math.round(blindBase(ante)*.30); }
   return hb;
 }
 const BOSSES=[
@@ -105,7 +107,7 @@ function playRound(deck, owned, boss, handN, ante){
 }
 
 // 상점: 3택1 (전략 우선순위로 선택)
-const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone","lapidary","prism","jewelbox","highmult","magnate","echo","loaded","climax"];
+const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone","lapidary","prism","jewelbox","highmult","magnate","echo","loaded","climax","evenodd","paritybet"];
 function shopPool(state){
   const pool=[];
   CHARMS.filter(c=>!state.owned.includes(c)).forEach(c=>pool.push({type:"charm",id:c}));
@@ -129,6 +131,7 @@ const STRATS={
   gem:    { charm:{jewelbox:10,lapidary:8,prism:7,greed:5,suited:4}, enh:{wild:8,gold:7,mult:7}, item:{thin:5,hand:5,add:2,copy:2,reroll:1} },   // enh 스태킹(강화카드 떡칠)
   apex:   { charm:{magnate:10,highmult:9,greed:5,jackpot:5,keystone:4}, enh:{mult:4,gold:3,wild:3}, item:{add:9,thin:4,copy:6,hand:5,reroll:1} },   // 고랭크 7·8(add로 7~8 카드 매입)
   cartel: { charm:{loaded:10,echo:9,twins:8,broker:7,climax:6,jackpot:4}, enh:{wild:3,mult:3,gold:2}, item:{copy:9,thin:6,hand:5,add:1,reroll:1} },   // 같은수(copy로 동일 랭크 복제)
+  parity: { charm:{paritybet:10,evenodd:9,greed:5,twins:5,suited:4}, enh:{wild:6,mult:3,gold:3}, item:{thin:8,hand:5,add:3,copy:3,reroll:1} },   // 홀짝(thin으로 한쪽 패리티 정제 — 도구상 어려움=의도된 직교)
 };
 function priority(o, strat){
   const S=STRATS[strat]||STRATS.balance;
