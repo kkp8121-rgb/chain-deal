@@ -16,6 +16,8 @@ const UNLOCKS = {
   lapidary: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
   jewelbox: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
   prism:    {cond:(st,row)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return !!(w&&g&&m); }, hint:"한 줄에 와일드·황금·배율석 동시"},
+  highmult: {cond:(st,row)=> row.filter(c=>c.rank===8).length>=3, hint:"한 줄에 8 카드 3장"},
+  magnate:  {cond:(st,row)=> row.filter(c=>c.rank>=7).length>=5, hint:"한 줄에 7·8 카드 5장"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(STORE["cd_unlocked"]); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ STORE["cd_unlocked"]=JSON.stringify(a); }
@@ -59,6 +61,13 @@ reset(); eq("lapidary enh3 해금", checkUnlocks({},enh3).includes("lapidary"), 
 reset(); eq("prism 3종동시 해금", checkUnlocks({},enh3).includes("prism"), true);
 const enh2=[card(0,5,"wild"),card(1,6,"wild"),card(2,7,"gold"),card(3,2),card(0,3)];
 reset(); eq("prism 2종선 안열림", checkUnlocks({},enh2).includes("prism"), false);
+
+// Apex 클러스터
+const hi8=[card(0,8),card(1,8),card(2,8),card(3,7),card(0,2)];
+reset(); eq("highmult 8×3 해금", checkUnlocks({},hi8).includes("highmult"), true);
+const hi5=[card(0,8),card(1,7),card(2,8),card(3,7),card(0,7),card(1,2),card(2,3),card(3,4)];
+reset(); eq("magnate 7·8×5 해금", checkUnlocks({},hi5).includes("magnate"), true);
+reset(); eq("magnate 4장선 안열림", checkUnlocks({},hi8).includes("magnate"), false);
 
 // 중복 해금 안 함
 reset(); checkUnlocks({wins:1},[]); eq("재호출 시 빈 배열", checkUnlocks({wins:1},[]), []);

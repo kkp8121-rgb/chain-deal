@@ -34,6 +34,7 @@ function gain(row, card, boss, owned, deckSize){
     if(owned.includes("noir")&&!isRed(card.suit)) mult+=2;
     if(owned.includes("suited")&&byIcon) mult+=1;
     if(owned.includes("runner")&&byRun) mult+=1;
+    if(owned.includes("highmult")&&card.rank>=7) mult+=1;
     for(let i=row.length-rl;i<row.length;i++) if(row[i].enh==="mult" && !rust) mult+=1;
     if(boss==="dull") mult=Math.max(1,mult-1);
     mult=Math.min(mult, boss==="anchor"?3:25);   // 닻: 배율 3 캡 (캡 레버는 밸런스빌드에 무효라 사다리서 제외)
@@ -75,6 +76,7 @@ function handBonus(row, ante, owned, boss){
   if(owned&&owned.includes("keystone")){ const rv=c=>c&&c.enh!=="wild"?c.rank:0; hb+=Math.round(blindBase(ante)*.18*Math.max(0,((rv(row[0])+rv(row[3])+rv(row[7]))-12)/12)); }
   if(owned&&owned.includes("prism")){ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } if(w&&g&&m&&boss!=="rust") hb+=Math.round(blindBase(ante)*.12); }
   if(owned&&owned.includes("jewelbox")){ let e=0; for(const c of row) if(c.enh) e++; hb+=Math.round(blindBase(ante)*.025*Math.min(e,6)); }
+  if(owned&&owned.includes("magnate")){ let h=0; for(const c of row) if(c.enh!=="wild"&&c.rank>=7) h++; hb+=Math.round(blindBase(ante)*.03*Math.min(h,5)); }
   return hb;
 }
 const BOSSES=[
@@ -100,7 +102,7 @@ function playRound(deck, owned, boss, handN, ante){
 }
 
 // 상점: 3택1 (전략 우선순위로 선택)
-const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone","lapidary","prism","jewelbox"];
+const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone","lapidary","prism","jewelbox","highmult","magnate"];
 function shopPool(state){
   const pool=[];
   CHARMS.filter(c=>!state.owned.includes(c)).forEach(c=>pool.push({type:"charm",id:c}));
@@ -122,6 +124,7 @@ const STRATS={
   compact:{ charm:{compactor:10,runts:9,greed:5,suited:4,runner:4}, enh:{gold:4,mult:4,wild:2}, item:{thin:9,hand:5,add:1,copy:1,reroll:1} },
   spatial:{ charm:{bridge:10,stair:7,keystone:6,suited:6,runner:6,greed:4}, enh:{wild:5,mult:3,gold:2}, item:{thin:6,hand:6,add:4,copy:3,reroll:2} },   // 위치-맥락 빌드(연결 밀도+오름+자리값)
   gem:    { charm:{jewelbox:10,lapidary:8,prism:7,greed:5,suited:4}, enh:{wild:8,gold:7,mult:7}, item:{thin:5,hand:5,add:2,copy:2,reroll:1} },   // enh 스태킹(강화카드 떡칠)
+  apex:   { charm:{magnate:10,highmult:9,greed:5,jackpot:5,keystone:4}, enh:{mult:4,gold:3,wild:3}, item:{add:9,thin:4,copy:6,hand:5,reroll:1} },   // 고랭크 7·8(add로 7~8 카드 매입)
 };
 function priority(o, strat){
   const S=STRATS[strat]||STRATS.balance;
