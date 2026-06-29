@@ -302,6 +302,7 @@ const STAKE_NAMES=["평지","백금","인색","강철","서리","심연"], STAKE
 const GOLD_BASE=1, GOLD_K=4;           // 통과 환전: floor(BASE + 초과율*K) · run-sim 캘리브(balance 8.9%≈기준선 8.6%)
 const START_GOLD_PER_LV=3;             // 시작 골드 = goldLv * 3
 const REROLL_BASE=2;                   // 상점 리롤 기본 cost (에스컬레이팅: +S.shopRerolls) · run-sim·economy-check 동기화
+const CLUSTER_W=0.3;                    // 미투자 클러스터 부적 오퍼 가중(희석 완화 — 투자 시 1.0) · run-sim 동기화
 const META_PRICE={ retry:3, gold:[5,8,12], reroll:[6,10] };
 function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
 function spillover(gold){ return Math.floor(gold*0.1); }
@@ -320,16 +321,16 @@ const CHARMS=[
   {id:"bridge",   name:"다리",   desc:"양옆 모두와 연결되는 카드(징검다리)마다 정산 보너스 +3% (최대 3장)"},
   {id:"stair",    name:"오름계단",desc:"줄이 왼→오 오름차순인 구간이 길수록 정산 보너스 (3칸+부터)"},
   {id:"keystone", name:"주춧돌", desc:"양 끝(맨 왼·맨 오)과 한가운데 칸 카드의 숫자가 클수록 정산 보너스 (자리값)"},
-  {id:"lapidary", name:"세공사", desc:"강화 카드(★●◆)를 깔면 기본 점수 +3 (부식 보스 중엔 무효)", cost:5},
-  {id:"prism",    name:"프리즘", desc:"줄에 와일드·황금·배율석이 모두 있으면 정산 보너스 +12% (부식 보스 중엔 무효)", cost:5},
-  {id:"jewelbox", name:"보석함", desc:"정산 시 줄에 깔린 강화 카드(★●◆) 1장마다 보너스 +2.5% (최대 6장)"},
-  {id:"highmult", name:"위세", desc:"7·8 고카드로 연결하면 배율 +1", cost:5},
-  {id:"magnate",  name:"거물", desc:"정산 시 줄의 7·8 고카드 1장마다 보너스 +3% (최대 5장)"},
-  {id:"echo",   name:"메아리", desc:"같은 숫자로 연결하면 배율 +1", cost:3},
-  {id:"loaded", name:"사기패", desc:"정산 시 포카드면 보너스 +10%, 파이브카드(같은숫자 5장)면 +30%"},
-  {id:"climax", name:"절정",   desc:"풀하우스 이상 족보를 만든 라운드, 줄의 최장 연결이 6칸부터 길수록 정산 보너스 추가 (최대 8연결)"},
-  {id:"evenodd",   name:"홀짝 정렬", desc:"정산 시 줄이 짝수 또는 홀수 한쪽으로 6장부터 치우칠수록 보너스 (초과분마다 +4%)"},
-  {id:"paritybet", name:"패리티 도박", desc:"줄 전체가 짝수만 또는 홀수만이면 정산 보너스 +30% (와일드는 자유)"},
+  {id:"lapidary", name:"세공사", desc:"강화 카드(★●◆)를 깔면 기본 점수 +3 (부식 보스 중엔 무효)", cost:5, cluster:"gem"},
+  {id:"prism",    name:"프리즘", desc:"줄에 와일드·황금·배율석이 모두 있으면 정산 보너스 +12% (부식 보스 중엔 무효)", cost:5, cluster:"gem"},
+  {id:"jewelbox", name:"보석함", desc:"정산 시 줄에 깔린 강화 카드(★●◆) 1장마다 보너스 +2.5% (최대 6장)", cluster:"gem"},
+  {id:"highmult", name:"위세", desc:"7·8 고카드로 연결하면 배율 +1", cost:5, cluster:"apex"},
+  {id:"magnate",  name:"거물", desc:"정산 시 줄의 7·8 고카드 1장마다 보너스 +3% (최대 5장)", cluster:"apex"},
+  {id:"echo",   name:"메아리", desc:"같은 숫자로 연결하면 배율 +1", cost:3, cluster:"cartel"},
+  {id:"loaded", name:"사기패", desc:"정산 시 포카드면 보너스 +10%, 파이브카드(같은숫자 5장)면 +30%", cluster:"cartel"},
+  {id:"climax", name:"절정",   desc:"풀하우스 이상 족보를 만든 라운드, 줄의 최장 연결이 6칸부터 길수록 정산 보너스 추가 (최대 8연결)", cluster:"cartel"},
+  {id:"evenodd",   name:"홀짝 정렬", desc:"정산 시 줄이 짝수 또는 홀수 한쪽으로 6장부터 치우칠수록 보너스 (초과분마다 +4%)", cluster:"parity"},
+  {id:"paritybet", name:"패리티 도박", desc:"줄 전체가 짝수만 또는 홀수만이면 정산 보너스 +30% (와일드는 자유)", cluster:"parity"},
 ];
 const has=id=>S.owned.includes(id);
 
@@ -578,6 +579,18 @@ function victory(){
 }
 
 /* ---------- 덱빌딩 상점 (블라인드마다) ---------- */
+function ownsCluster(cl){ for(const c of CHARMS) if(c.cluster===cl && has(c.id)) return true; return false; }
+function offerWeight(o){ if(o.type!=="charm" || !o.charm.cluster) return 1; return ownsCluster(o.charm.cluster) ? 1 : CLUSTER_W; }   // 미투자 클러스터 charm만 감량
+function weightedSample(pool, n){   // 가중 비복원 샘플 (rng=시드 RNG → 데일리 결정론 유지)
+  const p=pool.slice(), out=[];
+  for(let k=0;k<n && p.length;k++){
+    let tot=0; for(const o of p) tot+=offerWeight(o);
+    let r=rng()*tot, idx=p.length-1;
+    for(let i=0;i<p.length;i++){ r-=offerWeight(p[i]); if(r<=0){ idx=i; break; } }
+    out.push(p[idx]); p.splice(idx,1);
+  }
+  return out;
+}
 function shopPool(){
   const pool=[];
   CHARMS.filter(c=>!has(c.id) && isUnlocked(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc,cost:(c.cost||8)}));
@@ -593,7 +606,7 @@ function shopPool(){
 }
 function openShop(){
   S.shopRerolls=0;
-  S.shopOffers = shuffle(shopPool()).slice(0,3).map(o=>({...o, sold:false}));
+  S.shopOffers = weightedSample(shopPool(),3).map(o=>({...o, sold:false}));
   document.getElementById("shopTitle").textContent=`안테 ${S.ante} · ${BLINDNAME[S.blind]} 통과! (덱 ${S.deck.length+S.discard.length}장)`;
   renderShop();
   document.getElementById("shop").classList.add("show");
@@ -620,7 +633,7 @@ function rerollShop(){
   const cost=REROLL_BASE+S.shopRerolls;
   if(S.gold<cost) return;
   S.gold-=cost; S.shopRerolls++;
-  S.shopOffers = shuffle(shopPool()).slice(0,3).map(o=>({...o, sold:false}));   // 보유 charm은 shopPool !has로 자동 제외
+  S.shopOffers = weightedSample(shopPool(),3).map(o=>({...o, sold:false}));   // 보유 charm은 shopPool !has로 자동 제외 · 가중 샘플
   document.getElementById("hGold").textContent=S.gold;
   try{beep(500,.05);}catch(e){}
   renderShop();
