@@ -549,7 +549,7 @@ function victory(){
 /* ---------- 덱빌딩 상점 (블라인드마다) ---------- */
 function shopPool(){
   const pool=[];
-  CHARMS.filter(c=>!has(c.id) && isUnlocked(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc,cost:8}));
+  CHARMS.filter(c=>!has(c.id) && isUnlocked(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc,cost:(c.cost||8)}));
   pool.push({type:"thin", name:"덱 압축 ✂", desc:"덱에서 카드 1장 영구 제거 (체인 확률↑)", cost:3});
   pool.push({type:"copy", name:"카드 복제 ⧉", desc:"덱 카드 1장을 복사해 추가 (같은 숫자·무늬 빌드 / 🃏파이브 카드)", cost:5});
   pool.push({type:"enh", enh:"wild", name:"와일드 부여 ★", desc:"덱 카드 1장을 '와일드'로 (무엇과도 연결)", cost:8});
