@@ -97,15 +97,22 @@ const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
 function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8); let pool=BOSSES.filter(b=>b.act===a&&b.actBoss===fin); if(!pool.length) pool=BOSSES.filter(b=>b.act===a); return pool[ri(pool.length)]; }
 const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_climb:"내리막",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
 
-// 한 라운드 그리디 (영구덱 근사: 전체 셔플) → 체인점수 + 족보보너스
-function playRound(deck, owned, boss, handN, ante){
+// 한 라운드 시뮬 (영구덱 근사: 전체 셔플) → 체인점수 + 족보보너스. pick=배치 정책 콜백(기본=그리디)
+// 기본 배치 정책 = 그리디(즉시 점수 최대). funqa 페르소나는 자체 runner에서 pick 주입.
+function defaultPick(hand, row, boss, ctx){
+  let bi=0, best=-1;
+  for(let h=0;h<hand.length;h++){ const t=row.slice(); const v=gain(t,hand[h],boss,ctx.owned,ctx.deckSize); if(v>best){ best=v; bi=h; } }
+  return bi;
+}
+function playRound(deck, owned, boss, handN, ante, pick){
+  pick = pick || defaultPick;
   const dk=shuffle(deck.slice()); let di=0; const ds=deck.length;
   const draw=()=> di<dk.length ? dk[di++] : dk[ri(dk.length)];
   let hand=[]; for(let i=0;i<handN;i++) hand.push(draw());
   let row=[], sc=0;
   for(let p=0;p<8;p++){
-    let bi=0,best=-1;
-    for(let h=0;h<handN;h++){ const t=row.slice(); const v=gain(t,hand[h],boss,owned,ds); if(v>best){ best=v; bi=h; } }
+    const ctx={ owned, deckSize:ds, ante, score:sc, target:0, slotsLeft:8-p };
+    const bi=pick(hand,row,boss,ctx);
     sc+=gain(row,hand[bi],boss,owned,ds); hand[bi]=draw();
   }
   return sc + handBonus(row,ante,owned,boss);
@@ -258,5 +265,5 @@ module.exports = {
   setRNG, ri, starterDeck, shuffle, connect, gain, evalHand, handBonus,
   blindBase, blindTarget, BOSSES, actOf, pickBoss, BOSS_KO,
   CHARMS, shopPool, goldEarned, costOf, STRATS, priority, applyOne,
-  CLUSTER, CLUSTER_W, applyShop,
+  CLUSTER, CLUSTER_W, applyShop, defaultPick, playRound,
 };
