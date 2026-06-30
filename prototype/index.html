@@ -719,8 +719,8 @@ function render(){
   const last=S.row[S.row.length-1];
   S.hand.forEach((c,i)=>{
     const w=document.createElement("div"); w.className="hcard"; let zap="";
-    if(S.showPreview && last && connect(c,last)){
-      let er=1; for(let j=S.row.length-1;j>0;j--){ if(connect(S.row[j],S.row[j-1])) er++; else break; }
+    if(S.showPreview && last && connect(c,last) && !climbSealed(c,last)){   // 내리막: 오름 ±1 봉인 예고 미러(placeCard 동기화)
+      let er=1; for(let j=S.row.length-1;j>0;j--){ if(connect(S.row[j],S.row[j-1]) && !climbSealed(S.row[j],S.row[j-1])) er++; else break; }
       w.classList.add("willchain"); zap=`<div class="zap">⚡×${er+1}</div>`;
     }
     w.appendChild(cardEl(c)); w.insertAdjacentHTML("beforeend",zap);

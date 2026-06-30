@@ -92,6 +92,7 @@ const BOSSES=[
 ];
 const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
 function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8); let pool=BOSSES.filter(b=>b.act===a&&b.actBoss===fin); if(!pool.length) pool=BOSSES.filter(b=>b.act===a); return pool[ri(pool.length)]; }
+const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_climb:"내리막",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
 
 // 한 라운드 그리디 (영구덱 근사: 전체 셔플) → 체인점수 + 족보보너스
 function playRound(deck, owned, boss, handN, ante){
@@ -212,7 +213,6 @@ for(const strat of Object.keys(STRATS)){
 {
   const acc={reach:{},pass:{},bReach:{},bPass:{}};
   for(let i=0;i<N;i++) runFull("balance", acc);
-  const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_climb:"내리막",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
   console.log(`\n=== [밸런스 빌드] 조건부 클리어율 (도달자 중 통과%) · ${N} 런 ===`);
   console.log(`  난이도는 24블라인드 게이트 길이의 곱연산(≈0.9^24). 평탄=건강. 🔴<60 🟡<75 🟢≥75`);
   for(let a=1;a<=8;a++){ let line=`  안테${a}: `;
@@ -222,6 +222,24 @@ for(const strat of Object.keys(STRATS)){
   console.log(`  --- 보스별 조건부 통과율(도달자 중) ---`);
   BOSSES.forEach(bo=>{ const r=acc.bReach[bo.id]||0, p=acc.bPass[bo.id]||0; if(r<200) return;   // 표본 부족 보스(act3 도달 적음)는 노이즈라 생략
     const c=p/r*100, bar=c<60?"🔴":c<75?"🟡":"🟢"; console.log(`  ${bar} ${(BOSS_KO[bo.id]||bo.id).padEnd(8)} act${bo.act}${bo.actBoss?"-fin":"   "} t=${bo.tmult}  도달 ${String(r).padStart(6)}  통과 ${c.toFixed(0)}%`); });
+}
+
+// ★ 내리막(seal_climb) 표적 검증 — 위치-맥락(stair/오름) 빌드 vs 밸런스 빌드 보스별 조건부 통과율.
+//   내리막은 '다른무늬 오름 ±1' 체인을 봉인 → 다리+계단+오름 빌드(spatial)를 표적. 밸런스는 오름 의존이 적어
+//   bite가 약함(=기준선 불변의 이유, 90% 🟢). 두 빌드 모두 같은 보스 집합을 만나므로 seal_climb '델타'(밸−stair)가
+//   다른 보스 델타보다 두드러지면 = 봉인 룰이 의도대로 stair 빌드에 표적 적중(설계 "bite는 stair에 집중" 입증).
+{
+  const aB={reach:{},pass:{},bReach:{},bPass:{}}, aS={reach:{},pass:{},bReach:{},bPass:{}};
+  for(let i=0;i<N;i++){ runFull("balance", aB); runFull("spatial", aS); }
+  console.log(`\n=== 내리막(seal_climb) 표적 검증: 밸런스 vs 위치-맥락(stair) 빌드 보스별 조건부 통과율 (${N} 런) ===`);
+  console.log(`  델타 = 밸런스통과% − stair통과%. ⤵내리막 델타가 클수록 stair 빌드에 표적 적중. (도달<200 보스 생략)`);
+  console.log(`  보스          밸런스   stair    델타`);
+  BOSSES.forEach(bo=>{
+    const rB=aB.bReach[bo.id]||0,pB=aB.bPass[bo.id]||0, rS=aS.bReach[bo.id]||0,pS=aS.bPass[bo.id]||0;
+    if(rB<200||rS<200) return;
+    const cB=pB/rB*100, cS=pS/rS*100, d=cB-cS, mk=bo.id==="seal_climb"?"⤵ ":"  ";
+    console.log(`  ${mk}${(BOSS_KO[bo.id]||bo.id).padEnd(8)} ${cB.toFixed(0).padStart(4)}%  ${cS.toFixed(0).padStart(4)}%   ${(d>=0?"+":"")}${d.toFixed(0)}pp`);
+  });
 }
 
 // ★ 난이도 사다리(Stakes) 캘리브 대시보드 — 스테이크별 전체 클리어율(밸런스 빌드). St0=기준선(델타 no-op 가드).
