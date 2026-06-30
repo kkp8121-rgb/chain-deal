@@ -13,7 +13,7 @@ const ri = n => Math.floor(Math.random() * n);
 const isRed = s => s === 1 || s === 2;
 function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); return d; }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function connect(a,b,boss){ if(a.enh==="wild"||b.enh==="wild") return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; const run=Math.abs(a.rank-b.rank)===1&&boss!=="seal_run"; return a.suit===b.suit||a.rank===b.rank||run; }
+function connect(a,b,boss){ if(a.enh==="wild"||b.enh==="wild") return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; const run=Math.abs(a.rank-b.rank)===1; return a.suit===b.suit||a.rank===b.rank||run; }
 function gain(row, card, boss){
   row.push(card);
   let base=(boss==="red_curse"&&isRed(card.suit))?0:card.rank, g=base, rl=1;
