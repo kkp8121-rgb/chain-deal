@@ -38,6 +38,7 @@ const UNLOCKS = {
   climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:"8칸 전부 연결 + 풀하우스↑"},
   evenodd:   {cond:(st,row)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.max(ev,od)>=6; }, hint:"한 줄에 같은 홀짝 6장"},
   paritybet: {cond:(st,row)=>{ const nw=row.filter(c=>c.enh!=="wild"); return row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1)); }, hint:"줄 전체 짝수만/홀수만"},
+  twotone:  {cond:(st,row)=>{ let r=0,b=0; for(const c of row) if(c.enh!=="wild"){ if(c.suit===1||c.suit===2)r++; else b++; } return Math.max(r,b)>=6; }, hint:"한 줄에 같은 색(♥♦/♠♣) 6장"},
 };
 function getUnlocked(){ try{ const a=JSON.parse(STORE["cd_unlocked"]); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ STORE["cd_unlocked"]=JSON.stringify(a); }
@@ -104,6 +105,12 @@ reset(); eq("evenodd 짝6 해금", checkUnlocks({},ev6).includes("evenodd"), tru
 const allOdd=[card(0,1),card(1,3),card(2,5),card(3,7),card(0,1),card(1,3),card(2,5),card(3,7)];   // 전홀
 reset(); eq("paritybet 전홀 해금", checkUnlocks({},allOdd).includes("paritybet"), true);
 reset(); eq("paritybet 혼합선 안열림", checkUnlocks({},ev6).includes("paritybet"), false);
+
+// Color 클러스터 (투톤)
+reset(); const tt6=[{suit:1,rank:1,enh:null},{suit:1,rank:2,enh:null},{suit:2,rank:3,enh:null},{suit:2,rank:4,enh:null},{suit:1,rank:5,enh:null},{suit:2,rank:6,enh:null},{suit:0,rank:7,enh:null},{suit:3,rank:8,enh:null}];
+eq("twotone 한색6(♥♦) 해금", checkUnlocks({},tt6).includes("twotone"), true);
+reset(); const tt44=[{suit:1,rank:1,enh:null},{suit:2,rank:2,enh:null},{suit:1,rank:3,enh:null},{suit:2,rank:4,enh:null},{suit:0,rank:5,enh:null},{suit:3,rank:6,enh:null},{suit:0,rank:7,enh:null},{suit:3,rank:8,enh:null}];
+eq("twotone 4-4 균형 안열림", checkUnlocks({},tt44).includes("twotone"), false);
 
 // 중복 해금 안 함
 reset(); checkUnlocks({wins:1},[]); eq("재호출 시 빈 배열", checkUnlocks({wins:1},[]), []);
