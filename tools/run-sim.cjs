@@ -12,6 +12,9 @@ function setRNG(fn){ RNG = fn || Math.random; }
 const ri = n => Math.floor(RNG() * n);
 const isRed = s => s === 1 || s === 2;
 function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); return d; }
+function highDeckSim(){ const d=[]; for(let s=0;s<4;s++) for(const r of [3,4,5,6,7,7,8,8]) d.push({suit:s,rank:r,enh:null}); return d; }
+const DECKS=[{id:"standard",build:starterDeck,dmult:1},{id:"high",build:highDeckSim,dmult:1}];   // dmult: Task 2서 high 캘리브
+let DMULT=1;   // 덱 목표 스칼라 — runFull이 설정(미지정=표준=1, no-op 기준선 가드)
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1; return a.suit===b.suit||a.rank===b.rank||run; }
 
@@ -69,7 +72,7 @@ function evalHand(cards){
 const blindBase=a=>150*Math.pow(1.5,a-1);
 const STK_T=[0,.03,.03,.04,.04,.06], STK_AC=[0,0,0,.008,.008,.014];   // 6스테이크(St0~5) per-stake 목표 가산(평면, 안테비례) — index.html 미러
 const stakeMult=a=>1+STK_T[STK]+STK_AC[STK]*(a-1);   // 난이도 사다리 목표 스칼라 — index.html 미러
-const blindTarget=(a,b)=>Math.round(blindBase(a)*stakeMult(a)*(b===0?1:b===1?1.4:1.6));
+const blindTarget=(a,b)=>Math.round(blindBase(a)*stakeMult(a)*DMULT*(b===0?1:b===1?1.4:1.6));
 function handBonus(row, ante, owned, boss){
   const hk=evalHand(row); let hb=Math.round(blindBase(ante)*(HAND_BONUS[hk]||0));
   if(owned&&owned.includes("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindBase(ante)*BR[hk]); }
@@ -185,9 +188,11 @@ function applyShop(state, strat){
 }
 
 let STK=0;   // 난이도 사다리 스테이크 — runFull이 설정, 티어 델타가 읽음(stake 0=no-op, 기준선 불변)
-function runFull(strat, acc, stake){   // acc(선택): 조건부 클리어율 누산기 / stake: 난이도 사다리(0~7)
+function runFull(strat, acc, stake, variant){   // variant: 시작덱 id(미지정=standard)
   STK = stake|0;
-  const state={deck:starterDeck(), owned:[], bonusHand:0, gold:0};
+  const v = DECKS.find(d=>d.id===variant) || DECKS[0];
+  DMULT = v.dmult;
+  const state={deck:v.build(), owned:[], bonusHand:0, gold:0};
   for(let ante=1;ante<=8;ante++){
     const anteBoss=pickBoss(ante);   // 한 번 뽑아 보스+(St6)큰블라인드 공유 = index.html S.anteBoss 미러
     for(let blind=0;blind<=2;blind++){
@@ -259,6 +264,10 @@ console.log(`\n=== 난이도 사다리: 스테이크별 클리어율 (밸런스,
 { const targets=["~9%","~6.5%","~4.3%","~3%","~1.8%","~0.9%"];
   for(let stk=0;stk<=5;stk++){ let win=0; for(let i=0;i<N;i++){ if(runFull("balance",null,stk).result==="win") win++; }
     console.log(`  St${stk}: ${(win/N*100).toFixed(1).padStart(4)}%   (목표 ${targets[stk]})`); } }
+
+// ★ 시작덱 변형 스윕 — 덱별 balance 빌드 클리어율(고랭크덱 viability·dmult 캘리브용)
+console.log(`\n=== 시작덱 변형: 덱별 클리어율 (밸런스 빌드, ${N} 런) ===`);
+for(const v of DECKS){ let win=0; for(let i=0;i<N;i++){ if(runFull("balance",null,0,v.id).result==="win") win++; } console.log(`  ${v.id.padEnd(9)} dmult=${v.dmult}: ${(win/N*100).toFixed(1)}%`); }
 }
 
 module.exports = {
