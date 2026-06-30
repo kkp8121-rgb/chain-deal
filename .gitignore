@@ -11,3 +11,4 @@ desktop.ini
 # Node (tools 확장 대비)
 node_modules/
 funqa-judge-pack.md
+funqa-baseline.json
