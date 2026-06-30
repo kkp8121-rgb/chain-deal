@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **골드 경제 단위 검증** (환전 공식·스필오버·재도전 카드 불변식): `node tools/economy-check.cjs`
 - **족보 밸런싱** (노리는 봇 vs 그리디 클리어율 비교): `node tools/strategy-sim.cjs`
 - **8장 줄 족보 빈도 측정**: `node tools/hand-frequency.cjs`
+- **재미 QA** (5종 페르소나 봇이 자동플레이 → 재미 5축(주체성·긴장·도파민·다양성·흐름) 측정 → 대중재미 분포 판정): `node tools/funqa/run-funqa.cjs [N]` · 테스트(골든+드리프트 가드): `node tools/funqa/funqa.test.cjs`. **규칙은 `run-sim.cjs`에서만 require**(6번째 복붙 방지) + 드리프트 가드. 난이도 시뮬과 직교(재미 측정 전용). 설계 `docs/superpowers/specs/2026-06-30-fun-qa-design.md`, 계획 `docs/superpowers/plans/2026-06-30-fun-qa-phase1.md`.
 
 ## 코드 아키텍처
 
