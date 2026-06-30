@@ -181,7 +181,9 @@
   <div class="banner" id="banner"></div>
   <div class="controls" style="align-items:center;gap:6px">난이도 <button onclick="stakeStep(-1)">◀</button> <b id="stakeLbl" style="min-width:150px;display:inline-block;text-align:center">St0 평지</b> <button onclick="stakeStep(1)">▶</button></div>
   <div id="stakeDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">기본 난이도</div>
-  <div class="controls"><button onclick="newGame(null,selStake)">새 게임</button> <button onclick="newGame(dailySeed(),selStake)">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button> <button onclick="openDrawer('charms')">🧿 부적</button> <button onclick="openDrawer('meta')">🪙 상점</button></div>
+  <div class="controls" style="align-items:center;gap:6px">시작덱 <button onclick="deckStep(-1)">◀</button> <b id="deckLbl" style="min-width:150px;display:inline-block;text-align:center">표준덱</b> <button onclick="deckStep(1)">▶</button></div>
+  <div id="deckDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">A~8 균형 32장</div>
+  <div class="controls"><button onclick="newGame(null,selStake,selDeck)">새 게임</button> <button onclick="newGame(dailySeed(),selStake,selDeck)">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button> <button onclick="openDrawer('charms')">🧿 부적</button> <button onclick="openDrawer('meta')">🪙 상점</button></div>
 
   <div class="help">
     <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style="color:#ff9a9a">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.
@@ -897,6 +899,9 @@ function fallbackCopy(txt,done){
 
 /* ---------- 난이도 사다리 선택 UI (v3.22) ---------- */
 let selStake=0;
+let selDeck="standard";
+function deckStep(d){ const i=DECKS.findIndex(x=>x.id===selDeck); selDeck=DECKS[(i+d+DECKS.length)%DECKS.length].id; try{beep(selDeck!=="standard"?520:420,.04);}catch(e){} renderDeckLbl(); }
+function renderDeckLbl(){ const v=DECKS.find(x=>x.id===selDeck)||DECKS[0]; const el=document.getElementById("deckLbl"); if(el) el.textContent=v.name; const dd=document.getElementById("deckDesc"); if(dd) dd.textContent=v.desc; }
 function stakeStep(d){ const mx=getMeta().maxStake; selStake=Math.max(0,Math.min(mx, selStake+d)); try{beep(selStake>0?520:420,.04);}catch(e){} renderStakeLbl(); }
 function renderStakeLbl(){ const el=document.getElementById("stakeLbl"); if(!el) return; const mx=getMeta().maxStake; if(selStake>mx) selStake=mx;
   el.innerHTML=`St${selStake} <span style="color:${selStake>0?'#ffd15c':'#cdd6f5'}">${STAKE_NAMES[selStake]}</span>`;
@@ -919,6 +924,7 @@ function openBoard(){
 
 checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
 newGame();
+selDeck=getMeta().deck||"standard"; renderDeckLbl();
 </script>
 
 <div class="drawerBackdrop" id="drawerBd" onclick="closeDrawer()"></div>
