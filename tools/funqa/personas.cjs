@@ -7,8 +7,19 @@ function scoreOf(hand, row, boss, ctx){
 }
 function argmax(v){ let bi=0; for(let i=1;i<v.length;i++) if(v[i]>v[bi]) bi=i; return bi; }
 
-// 마스터리: 즉시 점수 최대 (1-ply 그리디). 차별화는 최적 STRAT.
-function pickMasterly(hand,row,boss,ctx){ return argmax(scoreOf(hand,row,boss,ctx)); }
+// 마스터리: 2-ply 룩어헤드 — 이 수 + (남은 손패로) 다음 턴 최선의 합 최대. 진짜 최적 플레이.
+function pickMasterly(hand,row,boss,ctx){
+  const base=scoreOf(hand,row,boss,ctx);
+  let bi=0, best=-Infinity;
+  for(let h=0;h<hand.length;h++){
+    const row2=row.slice(); row2.push(hand[h]);
+    let nextBest=0;
+    for(let k=0;k<hand.length;k++){ if(k===h) continue; const g=gain(row2.slice(),hand[k],boss,ctx.owned,ctx.deckSize); if(g>nextBest) nextBest=g; }
+    const total=base[h]+nextBest;
+    if(total>best){ best=total; bi=h; }
+  }
+  return bi;
+}
 
 // 안전제일: 점수 최대지만, 이미 목표 초과 확실하면 '연결 끊지 않는' 보수적 수 선호(꾸준).
 //   ctx.score가 target의 1.1배 넘으면 굳이 큰 한방 대신 무난한 best 유지(1-ply에선 그리디와 근사 + balance STRAT).

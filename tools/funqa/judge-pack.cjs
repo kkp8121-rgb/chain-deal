@@ -43,10 +43,13 @@ function pickSamples(runs){
   const deaths=runs.filter(r=>r.result==="death");
   let loseRun=null, loseLabel="";
   if(deaths.length){
-    const cnt={}; for(const r of deaths) cnt[r.deathAnte]=(cnt[r.deathAnte]||0)+1;
-    const mode=+Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
-    loseRun=deaths.find(r=>r.deathAnte===mode);
-    loseLabel=`전형적 패배 (최빈 죽음 = 안테${mode}, 전체 ${(deaths.length/runs.length*100).toFixed(0)}% 사망)`;
+    // 조건부 죽음률(도달자 중 사망%) 최고 안테 = 진짜 벽. 최빈 deathAnte는 생존자 편향(모두 안테1 거침)이라 오도.
+    const reach={}, die={};
+    for(const r of runs){ for(let a=1;a<=r.reachedAnte;a++) reach[a]=(reach[a]||0)+1; if(r.result==="death") die[r.deathAnte]=(die[r.deathAnte]||0)+1; }
+    let wallAnte=deaths[0].deathAnte, wallRate=-1;
+    for(let a=1;a<=8;a++){ const rc=reach[a]||0; if(rc<10) continue; const rate=(die[a]||0)/rc; if(rate>wallRate){ wallRate=rate; wallAnte=a; } }
+    loseRun=deaths.find(r=>r.deathAnte===wallAnte) || deaths[0];
+    loseLabel=`전형적 패배 (최대 벽 = 안테${wallAnte}, 도달자 중 ${(wallRate*100).toFixed(0)}% 사망)`;
   }
   const nmRun=runs.reduce((b,r)=>nmCount(r)>nmCount(b)?r:b);
   return { winRun, winLabel, loseRun, loseLabel, nmRun, nmLabel:`아슬아슬 (near-miss 라운드 ${nmCount(nmRun)}회 판)` };
