@@ -23,7 +23,7 @@ catch (e) { console.log("❌ 문법 오류:", e.message); process.exit(1); }
 /* ---------- (2) 밸런스 시뮬 (index.html 규칙 복제) ---------- */
 const ri = n => Math.floor(Math.random() * n);
 const isRed = s => s === 1 || s === 2;           // ♥♦
-function starterDeck() { const d = []; for (let s = 0; s < 4; s++) for (let r = 1; r <= 8; r++) d.push({ suit: s, rank: r, enh: null }); return d; }
+function starterDeck() { const d = []; for (let s = 0; s < 4; s++) for (let r = 1; r <= 8; r++) d.push({ suit: s, rank: r, enh: null }); const ord = d.map((c, i) => [c.rank, i]).sort((a, b) => a[0] - b[0]); for (let k = 0; k < 4; k++) d[ord[k][1]].enh = 'wild'; return d; }   // 불씨덱(v3.29) 미러: 최저랭크 4장 wild
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = ri(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function connect(a, b, boss) {
@@ -79,7 +79,8 @@ function evalHand(cards){
   if(pairs>=1) return "pair";
   return "highCard";
 }
-const blindBase = ante => 150 * Math.pow(1.5, ante - 1);
+const blindBase = ante => 150 * Math.pow(1.5, ante - 1);   // 불변(charm 기준). 불씨덱 보정은 sparkComp로만
+const sparkComp = ante => 1.0 + 0.34 * (8 - ante) / 7;   // v3.29 불씨덱 front-loaded 보정 미러
 const handBonus = (row, ante) => Math.round(blindBase(ante) * (HAND_BONUS[evalHand(row)] || 0));
 
 // 그리디: 매 수 즉시 점수 최대 카드 선택 → {sc, row}
@@ -99,7 +100,7 @@ function clearRate(boss, handN, target, ante, useBonus, N = 5000) {
   return (c / N * 100).toFixed(0);
 }
 
-const blindTarget = (ante, blind) => Math.round(blindBase(ante) * (blind === 0 ? 1 : blind === 1 ? 1.4 : 1.6));
+const blindTarget = (ante, blind) => Math.round(blindBase(ante) * sparkComp(ante) * (blind === 0 ? 1 : blind === 1 ? 1.4 : 1.6));
 const BOSSES = [   // index.html과 동기화 (act/actBoss/tmult). hand=stingy만 2.
   { id: "red_curse", name: "🩸 단색의저주", tmult: 1.0, hand: 3, act: 1, actBoss: false },
   { id: "dull", name: "🗡 무딘칼날", tmult: 0.85, hand: 3, act: 1, actBoss: false },

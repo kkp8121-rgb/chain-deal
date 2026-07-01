@@ -203,11 +203,11 @@ const RANKSTR=["","A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const rankStr=r=>RANKSTR[r], suitG=s=>SUITS[s].g, isRed=s=>SUITS[s].red;
 function mkCard(s,r){ return {suit:s, rank:r, enh:null}; }
 // 시작 덱 = A~8 (32장). 풀 52장은 3택1에 카드풀이 너무 커서 체인이 안 됨 → 압축. 높은 카드는 상점 성장.
-function fullDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push(mkCard(s,r)); return d; }
+function fullDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push(mkCard(s,r)); const ord=d.map((c,i)=>[c.rank,i]).sort((a,b)=>a[0]-b[0]); for(let k=0;k<4;k++) d[ord[k][1]].enh="wild"; return d; }   // 불씨덱(v3.29): 최저랭크 4장 wild(연결밀도↑=캐주얼 도파민). sparkComp 보정과 세트 — run-sim starterDeck 미러
 function highDeck(){ const d=[]; for(let s=0;s<4;s++) for(const r of [3,4,5,6,7,7,8,8]) d.push(mkCard(s,r)); return d; }
 const DECKS=[
   {id:"standard", name:"표준덱",   desc:"A~8 균형 32장",                                   build:fullDeck, dmult:1.0},
-  {id:"high",     name:"고랭크덱", desc:"A·2 없음·7·8 2배 — 고점수·정점 빌드, 단 사치세 보스 직격", build:highDeck, dmult:1.55},
+  {id:"high",     name:"고랭크덱", desc:"A·2 없음·7·8 2배 — 고점수·정점 빌드, 단 사치세 보스 직격", build:highDeck, dmult:1.29},
 ];
 /* ---------- 시드 RNG (데일리 시드 = 결정론적 판) ---------- */
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -427,11 +427,12 @@ function newGame(seed, stake, variant){
   renderStats();
 }
 // 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
-function blindBase(ante){ return 150*Math.pow(1.5, ante-1); }   // 스테이크 무관 기준값(족보 보너스 기준 — 목표만 사다리로 오르고 보너스는 안 오르게)
+function blindBase(ante){ return 150*Math.pow(1.5, ante-1); }   // 스테이크 무관 기준값(족보 보너스 기준). 불씨덱 보정은 sparkComp로만 — charm 불변
+function sparkComp(ante){ return 1.0+0.34*(8-ante)/7; }   // v3.29 불씨덱 front-loaded 보정(target 전용): 초반 강(a1=1.34)→후반 무(a8=1.00) — flatness 보존. run-sim 미러
 const STAKE_T=[0,.03,.03,.04,.04,.06], STAKE_AC=[0,0,0,.008,.008,.014];   // 난이도 사다리 목표 가산(평면/안테비례) — ★run-sim STK_T/STK_AC 미러(드리프트 동기화)
 function stakeMult(ante){ const st=S?S.stake:0; return 1+STAKE_T[st]+STAKE_AC[st]*(ante-1); }   // st0→1(no-op)
 function blindTarget(ante,blind){
-  return Math.round(blindBase(ante)*stakeMult(ante)*(S?S.dmult:1) * (blind===0?1 : blind===1?1.4 : 1.6));   // 하향: "긴 체인=운" 의존 줄여 안정적 수읽기로 클리어 가능하게. dmult=시작덱 보정(표준 1=no-op).
+  return Math.round(blindBase(ante)*sparkComp(ante)*stakeMult(ante)*(S?S.dmult:1) * (blind===0?1 : blind===1?1.4 : 1.6));   // sparkComp=불씨덱 front-loaded 보정. dmult=시작덱 보정(표준 1=no-op).
 }
 function draw(){ if(S.deck.length===0){ S.deck=shuffle(S.discard); S.discard=[]; } return S.deck.length? S.deck.pop() : mkCard(ri(4),1+ri(8)); }  // fallback도 게임 범위(A~8). 손패 회수 수정 후엔 거의 호출 안 됨
 function startBlind(){

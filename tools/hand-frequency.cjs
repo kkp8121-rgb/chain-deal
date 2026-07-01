@@ -6,7 +6,7 @@
 //   그리디(즉시 점수 최대) 플레이 = 족보를 일부러 노리지 않는 기준선. 실제 "노리는" 플레이는 더 자주 뜸.
 
 const ri = n => Math.floor(Math.random() * n);
-function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); return d; }
+function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); const ord=d.map((c,i)=>[c.rank,i]).sort((a,b)=>a[0]-b[0]); for(let k=0;k<4;k++) d[ord[k][1]].enh='wild'; return d; }   // 불씨덱(v3.29) 미러: 최저랭크 4장 wild
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function connect(a,b){ if(a.enh==="wild"||b.enh==="wild") return true; return a.suit===b.suit||a.rank===b.rank||Math.abs(a.rank-b.rank)===1; }
 
