@@ -1,0 +1,12 @@
+{
+  "name": "chain-deal",
+  "private": true,
+  "version": "0.0.1",
+  "description": "CHAIN DEAL — build pipeline (Phase 0 Step 0 scaffold). Game ships as a single self-contained prototype/index.html with zero runtime dependencies; esbuild is a build-time-only devDependency.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

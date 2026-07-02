@@ -1,0 +1,145 @@
+  :root{ --bg:#0c1020; --panel:#161d36; --gold:#ffd15c; --rune:#9b6fd4; --line:#2a3568;
+    --cardbg:#f4f0e6; --red:#d23b3b; --black:#1c2433; }
+  *{box-sizing:border-box; touch-action:manipulation}   /* 모바일: 모든 탭의 300ms 딜레이·더블탭 줌 제거(스크롤/핀치줌은 유지) — onclick 그대로 즉시 반응 */
+  html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; -webkit-tap-highlight-color:transparent }   /* iOS 회전 시 글자 확대 방지 + 탭 회색 플래시 제거 */
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(circle at 50% 16%,#1a2348 0%,var(--bg) 70%); color:#e6ebff;
+    font-family:"Segoe UI",system-ui,sans-serif; min-height:100%; display:flex; flex-direction:column;
+    align-items:center; padding:14px; user-select:none; overflow-x:hidden;
+    /* 노치·홈인디케이터 safe-area: 기본 14px 유지하되 인셋이 더 크면 그만큼 확장 */
+    padding-top:max(14px,env(safe-area-inset-top)); padding-bottom:max(14px,env(safe-area-inset-bottom));
+    padding-left:max(14px,env(safe-area-inset-left)); padding-right:max(14px,env(safe-area-inset-right));}
+  h1{font-size:21px; letter-spacing:3px; margin:0 0 2px; color:var(--gold); text-shadow:0 0 16px rgba(255,209,92,.4)}
+  .sub{font-size:12px; color:#8a93b6; margin-bottom:10px; text-align:center}
+  .wrap{width:100%; max-width:780px}
+  .hud{display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap}
+  .chip{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:5px 11px; font-size:13px}
+  .chip b{font-size:16px; color:#fff}
+  .bar{flex:1; min-width:150px; height:18px; background:#0c1230; border:1px solid var(--line); border-radius:9px; overflow:hidden; position:relative}
+  .fill{height:100%; width:0%; background:linear-gradient(90deg,#caa23c,var(--gold)); transition:width .4s cubic-bezier(.2,.8,.2,1)}
+  .barlbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff; text-shadow:0 1px 2px #000}
+  .handbonus{text-align:center; font-size:12px; line-height:1.3; margin:5px 0 0; min-height:15px; color:#8a93b6}
+  .handbonus .hblbl{color:#9b6fd4; font-weight:700}
+  .handbonus .hbname{color:#cdd6f5; font-weight:700}
+  .handbonus .hbplus{color:var(--gold); font-weight:800}
+  .handbonus .hbdim{color:#6b7398; font-size:11px}
+  .handbonus .hbhint{color:#9b6fd4; font-size:11px; text-decoration:underline; white-space:nowrap}
+  .drawerBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; opacity:0; pointer-events:none; transition:opacity .25s}
+  .drawerBackdrop.show{opacity:1; pointer-events:auto}
+  .drawer{position:fixed; left:0; right:0; bottom:0; z-index:61; max-width:560px; margin:0 auto; background:#161a2e; border:1px solid #2a3050; border-bottom:none; border-radius:16px 16px 0 0; padding:14px max(18px,env(safe-area-inset-right)) max(26px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); transform:translateY(110%); transition:transform .28s cubic-bezier(.2,.8,.2,1); max-height:82vh; max-height:82dvh; overflow-y:auto; overscroll-behavior:contain}
+  .drawer.show{transform:translateY(0)}
+  .drawerHandle{width:40px; height:4px; background:#3a4060; border-radius:2px; margin:2px auto 12px}
+  .drawer h3{margin:0 0 4px; font-size:16px; color:#e6ebff}
+  .drawerSub{margin:0 0 12px; font-size:12px; color:#8a93b6}
+  .hrow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #232845}
+  .hrow .hname{color:#cdd6f5; font-size:14px}
+  .hrow .hdesc{color:#8a93b6; font-size:11px}
+  .hrow .hbig{color:var(--gold); font-weight:800; font-size:12px; white-space:nowrap}
+  .hrow .hsmall{color:#6b7398; font-size:11px; white-space:nowrap}
+  .drawerNote{margin:12px 0 0; font-size:12px; color:#aab3d6; line-height:1.5}
+  .drawer .closeBtn{margin-top:14px; width:100%}
+  .mcard{display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:34px; padding:0 4px; border-radius:5px; background:#f4f4f8; color:#222; font-weight:800; font-size:14px; margin:0 1px; border:1px solid #c8c8d0; vertical-align:middle}
+  .mcard.red{color:#d83a3a}
+  .seg{margin-top:14px; margin-bottom:2px; color:#9b6fd4; font-weight:700; font-size:13px}
+  .rrow{padding:9px 0; border-bottom:1px solid #232845; font-size:13px; color:#cdd6f5}
+  .rrow .rlabel{color:#8a93b6; font-size:12px; margin-bottom:5px}
+  .drawer p.rtext{margin:9px 0; font-size:13px; color:#aab3d6; line-height:1.6}
+  .tallyOverlay{position:fixed; inset:0; background:rgba(8,10,20,.72); z-index:70; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .tallyOverlay.show{opacity:1; pointer-events:auto}
+  .tallyCard{background:#161a2e; border:1px solid #2a3050; border-radius:14px; padding:20px 24px; min-width:260px; max-width:88vw; box-shadow:0 20px 60px rgba(0,0,0,.5); transform:translateY(10px) scale(.97); transition:transform .2s}
+  .tallyOverlay.show .tallyCard{transform:translateY(0) scale(1)}
+  .tallyTitle{text-align:center; color:#8a93b6; font-size:12px; letter-spacing:2px; margin-bottom:12px}
+  .tallyRow{display:flex; justify-content:space-between; align-items:center; gap:24px; padding:5px 0; color:#cdd6f5; font-size:15px}
+  .tallyRow b{font-weight:800}
+  .tallyRow.hand{color:var(--gold); font-size:14px}
+  .tallyLine{height:1px; background:#2a3050; margin:8px 0}
+  .tallyRow.final{font-size:20px}
+  .tallyRow.final b{color:#fff}
+  .tallyTarget{text-align:right; color:#8a93b6; font-size:12px; margin-top:2px}
+  .tallyResult{text-align:center; font-size:18px; font-weight:800; margin:14px 0 4px}
+  .tallyResult.pass{color:var(--gold)}
+  .tallyResult.fail{color:#ff7a7a}
+  .tallyBtn{width:100%; margin-top:10px}
+  .tallyRecord{text-align:center; color:var(--gold); font-weight:800; font-size:14px; margin-top:8px}
+  /* 정산 순차 연출(v3.18): 카운트업 중에는 결과/버튼 숨김 → 마지막에 등장 */
+  .tallyCard.revealing .tallyResult, .tallyCard.revealing #tBtn, .tallyCard.revealing #tRetry, .tallyCard.revealing #tShare, .tallyCard.revealing #tRecord{ visibility:hidden }
+  @keyframes bumpfx{ 0%{transform:scale(1)} 30%{transform:scale(1.28)} 100%{transform:scale(1)} }
+  .bump{ display:inline-block; animation:bumpfx .42s cubic-bezier(0.34,1.56,0.64,1) }
+  .stats{text-align:center; font-size:12px; color:#8a93b6; margin:6px 0 2px; cursor:pointer}
+  .stats b{color:#cdd6f5}
+  .toggle{font-size:12px; color:#cdd6f5; display:flex; align-items:center; gap:5px; cursor:pointer}
+  .toggle input{width:15px;height:15px}
+
+  .antedots{display:flex; gap:4px; justify-content:center; margin-bottom:6px}
+  .adot{width:18px;height:8px;border-radius:4px;background:#2a3568;border:1px solid var(--line)}
+  .adot.done{background:var(--gold)} .adot.cur{background:var(--rune);box-shadow:0 0 6px var(--rune)}
+
+  .blindinfo{text-align:center; font-size:13px; padding:7px 10px; border-radius:8px; margin-bottom:6px; min-height:32px;
+    background:#11193c; border:1px solid var(--line)}
+  .blindinfo.boss{background:#3a1430; border-color:#c85048; color:#ffd1cc; font-weight:700; animation:bosspulse 1.4s ease-in-out infinite}
+  @keyframes bosspulse{0%,100%{box-shadow:0 0 0 0 rgba(200,80,72,.4)}50%{box-shadow:0 0 14px 2px rgba(200,80,72,.55)}}
+  .blindinfo b{color:var(--gold)}
+
+  .table{position:relative; background:#0e1530; border:1px solid var(--line); border-radius:14px;
+    padding:20px 12px; margin:8px 0; min-height:118px; box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
+  .table.shake{animation:shake .32s}
+  @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+  .row{display:flex; gap:5px; justify-content:center; flex-wrap:nowrap}
+  /* 모바일 세로: 8칸을 한 줄로 scale-to-fit — 넓은 화면=50px 고정(데스크탑 무변), 좁은 폰=비율 유지하며 축소(wrap 방지=‘한 줄’ 정체성). board는 view-only라 탭 영향 없음 */
+  .row .pcard{flex:0 1 50px; min-width:0; width:auto; height:auto; aspect-ratio:50/72}
+
+  .pcard{width:50px; height:72px; border-radius:7px; position:relative; background:var(--cardbg);
+    border:1px solid #b8ad93; box-shadow:0 2px 6px rgba(0,0,0,.45); overflow:hidden}
+  .pcard.empty{background:transparent; border:2px dashed #2c3766; box-shadow:none}
+  .pcard .corner{position:absolute; font-weight:800; line-height:1; font-size:13px; text-align:center}
+  .pcard .tl{top:3px; left:4px} .pcard .br{bottom:3px; right:4px; transform:rotate(180deg)}
+  .pcard .center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:26px}
+  .pcard.red{color:var(--red)} .pcard.black{color:var(--black)}
+  .pcard.sealed{filter:grayscale(.7) brightness(.7)}
+  .pcard .enh{position:absolute; top:2px; right:3px; font-size:10px}
+  .pcard.place{animation:place .28s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes place{0%{transform:translateY(-26px) scale(.6); opacity:0}100%{transform:none; opacity:1}}
+  .pcard.flash{animation:flash .5s}
+  @keyframes flash{0%{box-shadow:0 0 0 0 var(--gold)}30%{box-shadow:0 0 18px 5px var(--gold); transform:translateY(-6px) scale(1.12)}100%{box-shadow:0 2px 6px rgba(0,0,0,.45)}}
+
+  .hand{display:flex; gap:12px; justify-content:center; margin-top:8px}
+  .hcard{position:relative; cursor:pointer; transition:transform .12s; border-radius:9px}
+  .hcard .pcard{width:62px; height:88px}
+  .hcard:hover{transform:translateY(-8px)}
+  /* 모바일 탭 피드백 — :hover는 터치서 안 떠서, tap-highlight 제거분을 :active로 보완(순수 CSS) */
+  .hcard:active{transform:translateY(-8px)}
+  .ocard:active{transform:translateY(-3px); border-color:var(--gold)}
+  button:active{filter:brightness(1.15)}
+  .sub:active,.stats:active,.deckinfo:active,.handbonus:active,.ctag:active{opacity:.6}
+  .hcard.willchain .pcard{box-shadow:0 0 16px #5ad15a, 0 2px 6px rgba(0,0,0,.45); border-color:#5ad15a}
+  .hcard .zap{position:absolute; top:-11px; right:-9px; background:#5ad15a; color:#06210a; font-size:11px; font-weight:900;
+    border-radius:10px; padding:1px 7px; box-shadow:0 0 10px #5ad15a; z-index:3}
+  .handlbl{text-align:center; font-size:12px; color:#8a93b6; margin-top:9px}
+
+  .pop{position:absolute; font-weight:900; pointer-events:none; z-index:30; transition:all .75s cubic-bezier(.2,.8,.2,1); white-space:nowrap}
+  .spark{position:absolute; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:35}
+  .charms{display:flex; gap:7px; justify-content:center; margin-top:7px; flex-wrap:wrap; min-height:24px}
+  .ctag{background:#241b40; border:1px solid var(--rune); border-radius:6px; padding:2px 9px; font-size:11px; color:#d9ccf5}
+  .banner{margin-top:9px; min-height:22px; text-align:center; font-size:15px; font-weight:700}
+  .controls{display:flex; gap:10px; justify-content:center; margin-top:8px; flex-wrap:wrap}
+  button{font-family:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line);
+    background:linear-gradient(180deg,#2a3568,#1c2547); color:#e6ebff; font-weight:600; padding:8px 14px; font-size:13px}
+  button:hover{filter:brightness(1.15)}
+  .help{font-size:12px; color:#8a93b6; line-height:1.6; margin-top:11px; text-align:center}
+  .help b{color:#cdd6f5}
+  .deckinfo{text-align:center;font-size:11px;color:#6f79a6;margin-top:4px}
+
+  .modal{position:fixed; inset:0; background:rgba(6,9,24,.82); display:none; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); z-index:50}
+  .modal.show{display:flex}
+  .shop{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; max-width:640px; width:100%; text-align:center}
+  .shop h2{margin:.2em 0; color:var(--gold)}
+  .offer{display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; justify-content:center}
+  .ocard{flex:1; min-width:160px; background:#1a2348; border:1px solid #4a5798; border-radius:10px; padding:13px; cursor:pointer; transition:transform .1s}
+  .ocard:hover{transform:translateY(-4px); border-color:var(--gold); box-shadow:0 0 16px rgba(255,209,92,.4)}
+  .ocard .on{color:var(--gold); font-weight:800; margin-bottom:5px} .ocard .od{font-size:12px; color:#aab3d6; line-height:1.4}
+  .ocard .ocost{margin-top:7px; color:var(--gold); font-weight:700; font-size:13px}
+  .ocard.sold{opacity:.38; pointer-events:none; border-style:dashed} .ocard.cantafford{opacity:.5; cursor:not-allowed}
+  .shopGold{text-align:center; color:var(--gold); font-size:15px; margin-bottom:10px}
+  .deckgrid{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:300px; overflow-y:auto; overscroll-behavior:contain; margin-top:12px; padding:4px}
+  .deckgrid .pcard{width:42px;height:60px;cursor:pointer}
+  .deckgrid .pcard:hover{outline:2px solid var(--gold); transform:translateY(-3px)}
