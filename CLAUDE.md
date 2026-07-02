@@ -4,30 +4,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-**CHAIN DEAL** — 트럼프 카드를 한 줄로 깔아 이웃과 연결되면 체인이 폭발하는 로그라이크 덱빌더 (발라트로식 메타 + 오리지널 "체인 연결" 코어). **게임 전체가 `prototype/index.html` 단일 파일** 에 HTML+CSS+vanilla JS로 인라인. 외부 라이브러리 0, 번들러 0, 빌드 0.
+**CHAIN DEAL** — 트럼프 카드를 한 줄로 깔아 이웃과 연결되면 체인이 폭발하는 로그라이크 덱빌더 (발라트로식 메타 + 오리지널 "체인 연결" 코어). 게임 소스 = **`src/` 모듈/데이터주도** (vanilla JS, 외부 **런타임** 라이브러리 0). `build.mjs`(esbuild = 유일 devDep, 빌드타임 전용)가 raw-concat으로 **단일 배포 파일 `prototype/index.html`** 생성(무런타임 의존 유지). ★**2026-07-02 Phase 0 리팩터로 "단일 index.html"→모듈 전환 완료** — 이제 `prototype/index.html`은 **빌드 산출물**(소스 아님). 미러 드리프트 영구 제거(규칙 정의 각 src/ 1곳).
 
 ## ⚠️ 작업 시작 전 필수
 
 - **`HANDOVER.md` 를 먼저 읽으세요.** 설계 결정의 "왜"(암묵지), 정확한 점수 공식, 파라미터, 그리고 *버려진 시도와 그 이유* 가 전부 들어 있습니다. 코드만 봐서는 알 수 없는 컨텍스트의 SSoT입니다. (`docs/PLAN.md` = 작업 체크리스트, 버전·항목 ID 추적.)
-- `docs/CHAINDEAL_GDD.md` 는 초기 자동생성 기획서로 **현재 구현과 일부 다릅니다.** 현재 상태의 정답 = HANDOVER + 실제 `index.html` 코드.
+- `docs/CHAINDEAL_GDD.md` 는 초기 자동생성 기획서로 **현재 구현과 일부 다릅니다.** 현재 상태의 정답 = HANDOVER + 실제 `src/` 코드. 상업 출시 설계 SSoT = `docs/superpowers/specs/2026-07-02-chaindeal-master-spec.md` + `docs/production-roadmap.md`.
 
 ## 명령어
 
-빌드/린트/테스트 프레임워크·`package.json` 없음. 검증은 순수 node 시뮬 스크립트(`.cjs`)로 한다.
+`package.json`(esbuild devDep) + `build.mjs` 있음. 린트/테스트 **프레임워크는 없고** 검증은 순수 node 시뮬(`.cjs`)로 한다.
 
-- **플레이/테스트**: `prototype/index.html` 을 브라우저에서 연다 (설치·빌드 불필요).
-- **밸런스 + 문법 검증**: `node tools/balance-check.cjs` — (1) 인라인 `<script>` 를 `new Function()` 으로 파싱해 **문법 체크** + (2) 그리디(잘하는 플레이) 시뮬로 블라인드별 클리어율 측정. **점수/연결/족보 규칙을 바꾸면 항상 재실행.**
+- **★빌드**: `node build.mjs` — `src/`(main.cjs + content/ + rules/ + locale)를 raw-concat + 로케일 주입해 `prototype/index.html` 생성. **규칙/부적/보스/덱/문자열을 바꾸면 항상 재빌드.** (`src/` require 줄에 후행주석 금지·같은 모듈 두 곳 require 금지 = raw-concat 제약.)
+- **플레이/테스트**: `src/` 편집 → `node build.mjs` → `prototype/index.html`(빌드 산출물) 브라우저에서 연다. ★**`prototype/index.html` 직접 편집 금지**(빌드가 덮어씀).
+- **밸런스 + 문법 검증**: `node tools/balance-check.cjs` — (1) 빌드된 인라인 `<script>` 를 `new Function()` 으로 파싱해 **문법 게이트** + (2) 그리디 시뮬로 블라인드별 클리어율(rules는 src/ require). **점수/연결/족보 규칙을 바꾸면 재빌드 후 재실행.**
 - **전체 런 시뮬** (안테 1~8 + 상점 덱빌딩 누적, 빌드 전략 5종 비교, **골드 경제 포함**): `node tools/run-sim.cjs` — 끝에 **조건부 클리어율**(도달자 중 통과%, per 블라인드·per 보스) + **난이도 사다리 스테이크별 클리어율 스윕**(St0~5, `runFull(strat,acc,stake)`)도 출력. ★사망'비중'은 생존자 편향(모두 안테1 지남)이라 초반에 쏠려 *오도* → 진짜 난이도 곡선·보스 벽은 **조건부 통과율**로 본다(평탄 85~97%=건강, 유일 벽=안테8 닻 ~69%). 스테이크 캘리브는 스윕으로(St0=기준선 8.9~9.3 불변 가드 → St5 ~0.6 단조).
 - **골드 경제 단위 검증** (환전 공식·스필오버·재도전 카드 불변식): `node tools/economy-check.cjs`
 - **족보 밸런싱** (노리는 봇 vs 그리디 클리어율 비교): `node tools/strategy-sim.cjs`
 - **8장 줄 족보 빈도 측정**: `node tools/hand-frequency.cjs`
-- **재미 QA** (5종 페르소나 봇이 자동플레이 → 재미 5축(주체성·긴장·도파민·다양성·흐름) 측정 → 대중재미 분포 판정): `node tools/funqa/run-funqa.cjs [N]` · 테스트(골든+드리프트 가드): `node tools/funqa/funqa.test.cjs`. **규칙은 `run-sim.cjs`에서만 require**(6번째 복붙 방지) + 드리프트 가드. 난이도 시뮬과 직교(재미 측정 전용). 설계 `docs/superpowers/specs/2026-06-30-fun-qa-design.md`, 계획 `docs/superpowers/plans/2026-06-30-fun-qa-phase1.md`.
+- **재미 QA** (5종 페르소나 봇이 자동플레이 → 재미 5축(주체성·긴장·도파민·다양성·흐름) 측정 → 대중재미 분포 판정): `node tools/funqa/run-funqa.cjs [N]` · 테스트(골든+드리프트 가드): `node tools/funqa/funqa.test.cjs`. **규칙은 `run-sim.cjs`(이제 src/ 어댑터)를 require**. 난이도 시뮬과 직교(재미 측정 전용). 설계 `docs/superpowers/specs/2026-06-30-fun-qa-design.md`, 계획 `docs/superpowers/plans/2026-06-30-fun-qa-phase1.md`. ★재QA SSoT = `tools/funqa/measurement-summary-2026-07-01.md`(5축·3뱅크 최저뱅크 판정·반증 레버 금지목록).
 
 ## 코드 아키텍처
 
-### 단일 파일 게임 (`prototype/index.html`)
+### 모듈 구조 (`src/`, Phase 0 이후)
 
-- **전역 상태 = `S` 객체 하나** (`ante, blind, deck, discard, row, hand, score, target, boss, owned, bonusHand, rerollMax, seed, daily …`). `newGame(seed?)` 가 생성하며, 시드 RNG(`mulberry32`)를 `S` 생성 *전* 설정해야 `shuffle`/`pickBoss` 가 데일리 시드를 쓴다.
+- **`src/main.cjs`** — 게임 오케스트레이션(전역 `S` 상태·루프·render·juice·상점·render 프리뷰). content/rules를 require.
+- **`src/content/`** — 순수 데이터: `charms.cjs`(부적 24종, ★각 부적이 `hooks` 필드로 효과 선언) · `bosses.cjs`(12종) · `decks.cjs`(2종 + 생성기) · `hands.cjs`(`HAND_BONUS`) · `tuning.cjs`(상수) · `locale/`(ko/en + `t()` 로더).
+- **`src/rules/`** — 순수 함수(전역 미접근): `connect.cjs`(connect(a,b,boss)·climbSealed) · `hands.cjs`(evalHand·hasRun5) · `blinds.cjs`(blindBase·sparkComp) · `economy.cjs`(spillover) · `scoring.cjs`(★훅 엔진 `scoreCard`/`scoreSettle` — 부적 hooks + boss/enh/cap 일괄 적용).
+- **`build.mjs`** — raw-concat + esbuild 파싱게이트 → `prototype/index.html`. **`src/index.template.html`** = 셸(빌드타임 로케일 주입).
+- **콘텐츠 추가 = 데이터 1객체**(hooks 포함) — `src/content/`에 추가하면 게임과 sim이 자동 소비(드리프트 0).
+
+- **전역 상태 = `S` 객체 하나** (`ante, blind, deck, discard, row, hand, score, target, boss, owned, bonusHand, rerollMax, seed, daily …`, `src/main.cjs`). `newGame(seed?)` 가 생성하며, 시드 RNG(`mulberry32`)를 `S` 생성 *전* 설정해야 `shuffle`/`pickBoss` 가 데일리 시드를 쓴다.
 - **★불변식 (치명적)**: 모든 카드 객체는 4개 더미(`deck`/`discard`/`hand`/`row`)에서 **항상 어딘가에 정확히 1번** 존재해야 한다. 라운드 전환·리롤·정산 시 회수 누락 금지 — 과거 `settle()` 이 손패를 회수 안 해 덱이 고갈되고 fallback이 랜덤 카드를 양산하던 치명적 버그가 있었다 (HANDOVER §3.2).
 - **`render()` 가 DOM 전체를 재구성** — 상태 변화 시에만 호출. **절대 호버에서 `render()` 를 부르지 말 것** (호버-재렌더가 클릭 씹힘 버그를 냄). 호버 효과 = CSS 클래스 토글만.
 - **연출(juice)** 은 "손맛"의 핵심: 정적 카드 + CSS 트윈/파티클(`sparkBurst`) + 흔들림(`shake`)/플래시(`flash`) + WebAudio 절차 사운드(`beep`/`boom`). 프레임 애니 0장. 건드릴 때 주의.
@@ -36,22 +43,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `placeCard(hi)` — 카드 깔기 + 체인 점수 계산. 8장 채우면 `settle()`.
 - `settle()` — 정산: 체인 점수 + 족보 보너스(가산) → 목표 비교 → 통과(`openShop`)/패배(`newGame`)/승리(`victory`). 카드 회수도 여기서. 표시는 `revealTally()`가 **순차 카운트업**(v3.18, 체인→보너스→최종, 목표돌파 순간 클라이맥스) — ⏩`#fxToggle`/클릭 스킵. ★연출은 **순수 표시**: 점수계산·카드회수는 settle서 끝, `revealTally`는 오버레이 텍스트만 rAF 갱신(`render()` 미호출 → 카드 불변식 무관, **`.cjs` 동기화 불필요**).
-- `connect(a,b)` — 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드는 무조건). 보스 규칙(`seal_suit`/`seal_run`)이 일부 봉인.
-- `evalHand(8장)` / `handBonus()` — 텍사스 서열 최고 족보 1개 판정 → `HAND_BONUS` 계수 × 안테 기본 목표 = **가산** 보너스.
+- `connect(a,b,boss)` (`src/rules/connect.cjs`, boss=id문자열|null) — 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드는 무조건). 보스 규칙(`seal_suit`/`mono`/`rust`)이 일부 봉인. main.cjs 호출부는 `bossId()`로 S.boss(객체)→id 변환 후 전달. 오름 ±1 봉인은 `climbSealed`(대칭성 보존 위해 connect 밖 체인 판정에만).
+- `evalHand(8장)`(`src/rules/hands.cjs`) / `handBonus()`(main.cjs 얇은 래퍼) — 텍사스 서열 최고 족보 1개 판정 → `HAND_BONUS` 계수 × 안테 기본 목표 = **가산** 보너스. 부적 점수효과는 `src/rules/scoring.cjs` 훅 엔진(`scoreCard`/`scoreSettle`)이 적용.
 - `startBlind()`/`advanceBlind()`/`openShop()` — 안테/블라인드/상점 진행. `pickBoss(ante)` — `actOf(ante)` 액트 풀(A1=1-3/A2=4-6/A3=7-8)에서 선택, 액트-final 안테(3·6·8)는 `actBoss` 서브셋.
 
 ### 점수 공식 / 파라미터 (정확한 정의는 HANDOVER §4)
 
-카드 = `{suit:0~3(♠♥♦♣), rank:1~8, enh:null|'wild'|'gold'|'mult'}`. 체인 = `런의 rank 합 × mult`, `mult = runLen-1 + 부적 보정`, **mult는 25 캡** (발산 방지). 정산 시 족보 보너스를 **가산**. 주요 밸런스 조정 지점: `fullDeck()`(시작 덱 A~8 32장), `blindTarget()`, `BOSSES`(12종, `act`/`actBoss`/`tmult` — 룰은 `connect()`/`placeCard`에 배선), `HAND_BONUS`, `CHARMS`(부적 24종 — 시작5+B1 5+위치맥락3+시너지10+색1(투톤 v3.27), 일부 `cost` 필드로 차등).
+카드 = `{suit:0~3(♠♥♦♣), rank:1~8, enh:null|'wild'|'gold'|'mult'}`. 체인 = `런의 rank 합 × mult`, `mult = runLen-1 + 부적 보정`, **mult는 25 캡** (발산 방지). 정산 시 족보 보너스를 **가산**. 주요 밸런스 조정 지점(전부 `src/`): `decks.cjs`(시작 덱 A~8 32장, `starterDeck`/불씨), `blindTarget()`(main.cjs, S.stake/dmult 읽음), `bosses.cjs`(12종, `act`/`actBoss`/`tmult` — 룰은 `connect`/`scoreCard`에 배선), `hands.cjs`(`HAND_BONUS`), `charms.cjs`(부적 24종 — 시작5+B1 5+위치맥락3+시너지10+색1(투톤 v3.27), `hooks`로 효과 선언, 일부 `cost`/`cluster` 필드).
 
-**골드 경제 (v3.16, 메타층)**: 상점은 **유료**(`shopPool` 각 품목 `cost`, 티어 8/5/3). 블라인드 통과 시 `S.gold += goldEarned()` = `floor(GOLD_BASE + (점수/목표−1)*GOLD_K)` (확정 `GOLD_BASE=1, GOLD_K=4` — run-sim 캘리브로 balance 8.8%≈무료 기준선 8.6%). 런 종료 `cashOut()`이 `spillover()`=`floor(남은골드*0.1)`을 `cd_meta.coins`로 반출. `cd_meta = {coins,retry,goldLv,rerollLv}` → `newGame`서 시작 골드(`goldLv*3`)·리롤(`rerollLv`)·재도전권(`retry`) 로드. 메타 상점 = `metaHTML`/`buyMeta`(`META_PRICE`). 재도전권 `useRetry`는 패배 시 덱 전량 회수 후 `startBlind()` 재시작 — ★카드 불변식 사수. 골드 파라미터 변경 시 `index.html`·`run-sim.cjs`·`economy-check.cjs` 3곳 동기화.
+**골드 경제 (v3.16, 메타층)**: 상점은 **유료**(`shopPool` 각 품목 `cost`, 티어 8/5/3). 블라인드 통과 시 `S.gold += goldEarned()` = `floor(GOLD_BASE + (점수/목표−1)*GOLD_K)` (확정 `GOLD_BASE=1, GOLD_K=4` — run-sim 캘리브로 balance 8.8%≈무료 기준선 8.6%). 런 종료 `cashOut()`이 `spillover()`=`floor(남은골드*0.1)`을 `cd_meta.coins`로 반출. `cd_meta = {coins,retry,goldLv,rerollLv}` → `newGame`서 시작 골드(`goldLv*3`)·리롤(`rerollLv`)·재도전권(`retry`) 로드. 메타 상점 = `metaHTML`/`buyMeta`(`META_PRICE`). 재도전권 `useRetry`는 패배 시 덱 전량 회수 후 `startBlind()` 재시작 — ★카드 불변식 사수. ★골드 파라미터(`goldEarned`)는 아직 game(main.cjs)이 `S.stake`를 읽어 순수 아님 → `run-sim.cjs`·`economy-check.cjs`에 **잔여 미러**(stakeMult·blindTarget·goldEarned, 후속 전역→param 전환 시 통합). 변경 시 이 3곳 동기화(잔여).
 
-### ⚠️ 규칙 중복 — sim 도구 ↔ index.html 드리프트 주의
+### 규칙 SSoT — `src/` 단일소스 (드리프트 제거됨, Phase 0 · 2026-07-02)
 
-`tools/*.cjs` 의 시뮬은 `index.html` 의 `connect()` / `placeCard`(시뮬에선 `gain()`) / `evalHand()` / `HAND_BONUS` / `BOSSES` / `blindTarget()` 로직을 **수동 복제** 한 것이다. **index.html의 점수·연결·족보·부적 규칙을 바꾸면 해당 `.cjs` 도 같이 맞춰야** 시뮬 결과가 유효하다.
+★게임과 sim이 **같은 `src/` 규칙 모듈을 호출**한다. `tools/run-sim.cjs`는 이제 **어댑터**(src/ require, `gain`=`scoreCard`·`handBonus`=`scoreSettle`), balance-check/strategy-sim/hand-frequency/unlock-check도 src/ require. **grep=1**: connect/scoreCard/CHARMS/BOSSES/evalHand/HAND_BONUS/blindBase 정의 각 src/ 1곳 → **규칙(RULES)을 바꿔도 미러 수동 동기화 불필요**(src/ 편집 → `node build.mjs` → 게임·sim 자동 반영). ★단 **난이도·골드·덱·상점 파라미터는 아직 잔여 미러**(run-sim 손-복제) — 아래 두 목록(단일소스 vs 잔여 미러) 참조.
 
-- **현재 드리프트 상태**: `run-sim.cjs` 만 부적 **24종**(+시너지 10종 v3.24: 보석세공 lapidary/prism/jewelbox·정점 highmult/magnate·카르텔 echo/loaded/climax·패리티 evenodd/paritybet — placeCard 3훅·settle 7훅 미러, `handBonus`에 boss 인자) + `fiveKind` 족보 + **골드 경제** + **난이도 사다리(STK)** + **부적 cost 차등**(`CHARM_COST` 맵·전략루프 `Object.keys(STRATS)`)까지 동기화됨. `unlock-check.cjs` 에 `evalHand`/`connect`/`hasRun5` verbatim 복사(loaded/climax 해금 cond용). **`balance-check.cjs` · `strategy-sim.cjs` · `hand-frequency.cjs` 는 구 부적(13종 이전) 기준이고 시너지 10종·`fiveKind` 미반영** — 신규 부적/족보 검증은 **`run-sim.cjs` 단독 권위**(이들로 검증 무효). ★**v3.24 희석 → v3.25 완화**: 23종이 sim balance를 9.6→3.5%로 희석(인플레 아님). **v3.25 상점 희석 완화**로 대응 — ①리롤(`rerollShop`·`REROLL_BASE` 에스컬레이팅, *주체성 도구*, ★sim 희석 fix 아님: 스태킹 경제선 선택성=손해라 sim 미모델) ②**가중 오퍼**(`weightedSample`·`CLUSTER` 맵·`CLUSTER_W`=0.15, 미투자 클러스터 부적 감량=실제 fix, balance 7.6% 회복). 동기화 지점: `REROLL_BASE`·`CLUSTER_W`·`CLUSTER`(=index CHARMS `cluster` 필드) **index↔run-sim 미러**(값 일치), `weightedSample`(index `rng()` / run-sim Math.random), economy-check 에스컬레이팅 불변식. ★`applyShop` buy-everything 사수(discerning 실험 붕괴). 상세 HANDOVER §6 v3.25. ★**v3.27 색 settle 투톤**(24종째): settle 가산 식 `index.html`↔`run-sim.cjs` **2파일 미러**(connect 무건드림), **cluster 무태그**(베이스 풀·`CLUSTER` 맵 무변경), run-sim `color` strat 추가. 희석 7.6→6.5%(수용·인플레 아님). 상세 §6 v3.27.
-- **보스 12종/액트 동기화 지점**: `BOSSES`(act/actBoss/tmult) + 신규 7룰(`connect`/`gain`)은 `index.html` ↔ `run-sim.cjs` ↔ `balance-check.cjs` **3곳**에 복제. tmult 변경 시 3곳 동시 수정(드리프트 가드: 3파일 tmult 일치 확인). 단 `balance-check`는 맨덱 단일라운드라 **부식(rust, enh 의존)·스케일 민감 보스(anchor)는 과대평가** → 실제 풀런 밸런스는 `run-sim.cjs`. ★**v3.26 내리막(seal_climb)**: seal_run 교체(12종 유지·보스 추가 금지). 오름 ±1 봉인 룰은 **connect 대칭성 보존** 위해 connect서 빼고 `placeCard`/`gain` 체인 판정에만 `climbSealed`(=`climbSealedSim`/`climbSealedBC`) 적용 — 3파일 미러(bridge 인접 판정 무영향=의도). tmult 0.72(balance 기준선 불변 캘리브).
+**★단일소스 (드리프트 없음) = grep=1 RULES**: connect/climbSealed · scoreCard/scoreSettle(부적 hooks + boss/enh/cap) · evalHand/hasRun5 · HAND_BONUS · blindBase · sparkComp · BOSSES · CHARMS. src/ 편집하면 game·tools 자동 반영(run-sim 등이 require).
+
+**★잔여 미러 (run-sim에 아직 손-복제 — 변경 시 동기화 필수)**: game이 `S`를 직접 읽거나 sim이 오케스트레이션으로 재구현해 아직 순수 rules로 추출 안 된 것 — 난이도(`stakeMult`/`blindTarget`/`STK_T`/`STK_AC`) · 골드(`goldEarned`/`GOLD_BASE`/`GOLD_K`) · 덱(`DMULT`=high 1.29) · 상점(`CLUSTER` 맵/`CLUSTER_W`=0.15/`CHARM_COST`/`REROLL_BASE`). run-sim 코드에 "★잔여 미러"·"index.html 미러" 주석으로 표시. 후속 전역→param 전환 시 통합.
+
+⚠️ **아래 v3.24~29 = 밸런스 설계 *이력*(값·계수·반증레버 = 유효).** 그 안의 "N파일 미러/3곳 동시수정" 표현 중 **위 RULES 관련은 이제 무의미**(단일소스), **잔여-미러 파라미터 관련만 유효**. 상세 = HANDOVER §6 + `.claude` 메모리 `balance-calibration`·`phase0-complete-architecture`.
+
+- **현재 드리프트 상태**: `run-sim.cjs` 만 부적 **24종**(+시너지 10종 v3.24: 보석세공 lapidary/prism/jewelbox·정점 highmult/magnate·카르텔 echo/loaded/climax·패리티 evenodd/paritybet — placeCard 3훅·settle 7훅 미러, `handBonus`에 boss 인자) + `fiveKind` 족보 + **골드 경제** + **난이도 사다리(STK)** + **부적 cost 차등**(`CHARM_COST` 맵·전략루프 `Object.keys(STRATS)`)까지 동기화됨. ★**정정(Phase 0 후)**: `unlock-check`·`balance-check`·`strategy-sim`·`hand-frequency`는 이제 connect/evalHand를 `src/rules`에서 **require**(복사 아님) → 연결·족보(`fiveKind` 포함) 단일소스 자동일치. 이들이 모델 안 하는 것은 **부적 hooks뿐** → 신규 *부적 밸런스* 검증만 `run-sim.cjs` 권위(족보/연결 검증은 이제 이 툴들도 유효). ★**v3.24 희석 → v3.25 완화**: 23종이 sim balance를 9.6→3.5%로 희석(인플레 아님). **v3.25 상점 희석 완화**로 대응 — ①리롤(`rerollShop`·`REROLL_BASE` 에스컬레이팅, *주체성 도구*, ★sim 희석 fix 아님: 스태킹 경제선 선택성=손해라 sim 미모델) ②**가중 오퍼**(`weightedSample`·`CLUSTER` 맵·`CLUSTER_W`=0.15, 미투자 클러스터 부적 감량=실제 fix, balance 7.6% 회복). 동기화 지점: `REROLL_BASE`·`CLUSTER_W`·`CLUSTER`(=index CHARMS `cluster` 필드) **index↔run-sim 미러**(값 일치), `weightedSample`(index `rng()` / run-sim Math.random), economy-check 에스컬레이팅 불변식. ★`applyShop` buy-everything 사수(discerning 실험 붕괴). 상세 HANDOVER §6 v3.25. ★**v3.27 색 settle 투톤**(24종째): settle 가산 식 `index.html`↔`run-sim.cjs` **2파일 미러**(connect 무건드림), **cluster 무태그**(베이스 풀·`CLUSTER` 맵 무변경), run-sim `color` strat 추가. 희석 7.6→6.5%(수용·인플레 아님). 상세 §6 v3.27.
+- **보스 12종/액트** (★이제 단일소스): `BOSSES`(act/actBoss/tmult) = `src/content/bosses.cjs` 1곳, 룰은 `connect`/`scoreCard`. tmult 바꿔도 tools 자동 반영(3곳 동시수정 불필요 — 옛 프레이밍). 단 `balance-check`는 맨덱 단일라운드라 **부식(rust, enh 의존)·스케일 민감 보스(anchor)는 과대평가** → 실제 풀런 밸런스는 `run-sim.cjs`. ★**v3.26 내리막(seal_climb)**: seal_run 교체(12종 유지·보스 추가 금지). 오름 ±1 봉인 룰은 **connect 대칭성 보존** 위해 connect서 빼고 `placeCard`/`gain` 체인 판정에만 `climbSealed`(=`climbSealedSim`/`climbSealedBC`) 적용 — 3파일 미러(bridge 인접 판정 무영향=의도). tmult 0.72(balance 기준선 불변 캘리브).
 - **골드 경제 동기화 지점**: `goldEarned`/가격은 `index.html` ↔ `run-sim.cjs` ↔ `economy-check.cjs` 3곳에 중복. 단 `balance-check.cjs`는 **단일 라운드(맨 덱)** 만 보므로 라운드-사이 경제인 골드와 **무관** — 골드 모델 이식 불필요(문법 체크 + 단일라운드 기준선 가드 역할만).
 - **난이도 사다리(Stakes, v3.22) 동기화 지점**: `S.stake`(0~`MAX_STAKE`=5)를 읽는 티어 델타 = `stakeMult`(`STAKE_T`/`STAKE_AC` 배열)·`goldEarned`(바닥)·`startBlind`(boss/baseHand)·tmult 가드. **`index.html` ↔ `run-sim.cjs`(STK) 미러**(STAKE_T===STK_T 등 값 일치 — 드리프트 가드). `balance-check.cjs`는 stake0만 보므로 **미러 불필요**(stake0=no-op 기준선 가드). ★`handBonus`/broker/twins는 `blindBase(ante)`(스테이크 무관) 사용 — 목표만 사다리로 오르고 족보 보너스는 불변(상쇄 버그 차단). 캘리브는 run-sim 스윕(8.9→0.6 단조, 최상위 >0). 캡·보스룰-큰블라인드 레버는 제외/보류(코드 `STK>=6`는 비활성). 설계 `docs/superpowers/specs/2026-06-25-difficulty-ladder-design.md`.
 - **시작덱 변형(v3.28) 동기화 지점**: `highDeck`(composition `[3,4,5,6,7,7,8,8]×4=32`)·`DECKS` `dmult`·`blindTarget` deckMult 팩터 = `index.html`(`S.dmult`) ↔ `run-sim.cjs`(`DMULT`) **미러**(값·식 일치). `balance-check.cjs`는 표준 덱(dmult=1)만 보므로 **미러 불필요**(no-op 가드). ★`dmult`는 `blindTarget`에만(보너스는 `blindBase` 불변=상쇄버그 차단). `S.variant`(id)≠`S.deck`(카드더미). 선택 UI·`cd_meta.deck`는 index 전용. 캘리브 dmult 1.55(고랭크 ≈ 표준 밴드, 파워크리프 차단). 설계 `docs/superpowers/specs/2026-06-30-start-deck-variants-design.md`.
@@ -67,6 +80,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 배포 (선택)
 
-- **GitHub Pages**: `main` 에 push = 자동 재빌드(1~2분 반영). 루트 `index.html` 이 `prototype/index.html` 로 리다이렉트한다. 리포는 **public** — 시크릿·민감정보 커밋 금지.
+- **GitHub Pages**: `main` 에 push = 자동 배포(1~2분 반영). Pages는 **커밋된 `prototype/index.html`(빌드 산출물)을 그대로 서빙**(CI 빌드 없음) → ★`src/` 변경 후 반드시 `node build.mjs` 하고 **빌드된 `prototype/index.html`도 함께 커밋**. 루트 `index.html` 이 `prototype/index.html` 로 리다이렉트한다. 리포는 **public** — 시크릿·민감정보 커밋 금지.
 - **`git push` 가 hang하면**: credential 프롬프트 대기 문제. gh 토큰을 인라인 helper로 우회 — `git -c credential.helper= -c credential.helper='!f(){ echo username=x-access-token; echo "password=$(gh auth token)"; }; f' push origin main` (HANDOVER §2).
-- **백엔드(익명 플레이로그·리더보드, 선택)**: 게임 → Cloudflare Worker(Origin 검증으로 비밀 은닉) → Apps Script → Google Sheet. `index.html` 의 `LOG_URL`; 읽기는 CORS 우회 위해 JSONP. 스크립트는 `tools/cloudflare-worker.js` · `tools/playlog-appsscript.gs`. Apps Script 재배포는 **"배포 관리 → 편집"** 으로 해야 URL이 유지된다.
+- **백엔드(익명 플레이로그·리더보드, 선택)**: 게임 → Cloudflare Worker(Origin 검증으로 비밀 은닉) → Apps Script → Google Sheet. `src/main.cjs` 의 `LOG_URL`; 읽기는 CORS 우회 위해 JSONP. 스크립트는 `tools/cloudflare-worker.js` · `tools/playlog-appsscript.gs`. Apps Script 재배포는 **"배포 관리 → 편집"** 으로 해야 URL이 유지된다.
