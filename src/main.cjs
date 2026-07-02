@@ -189,6 +189,20 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
   S.rerolls--; render(); beep(280,.06,"square");
 }
 
+/* ---------- 점수 훅 엔진 (Phase 0 Step 3a placeCard + 3b settle) ---------- */
+// placeCard/settle이 각각 순수 ctx를 구성해 rules/scoring.cjs에 넘긴다(엔진은 S/document 미접근).
+// ownedHooks = 보유 부적(has)만 CHARMS에서 걸러 hooks 필드만 넘김 — scoring.cjs가 content/charms.cjs를
+// 직접 require하면 build.mjs 텍스트 스플라이스가 CHARMS를 중복 선언해 파싱이 깨지므로 여기서 필터링해 전달.
+const { scoreCardBase, scoreCardMult, applyChainMul, scoreSettle } = require('./rules/scoring.cjs');
+function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
+  ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
+// settle 전용 ctx(정산 1회 구성) — blindBase(S.ante)를 1회 계산해 넘김(원본도 매 줄 같은 값을 반복 호출했을 뿐,
+// ante는 정산 중 안 바뀜). connect는 현재 보스로 바인딩(climax 전용). bridgeCount/maxAscLen/edgeVal은
+// main.cjs 원본 함수 재사용(위치-맥락 헬퍼, UNLOCKS와 공용 — 중복 구현 금지).
+function settleCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), connect:(a,b)=>connect(a,b,bossId()), blindBase:blindBase(S.ante),
+  bridgeCount, maxAscLen, edgeVal,
+  ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
+
 /* ---------- 핵심 로직 ---------- */
 function placeCard(hi){
   if(S.over||S.busy||S.settled||S.row.length>=SLOTS) return;
@@ -196,32 +210,24 @@ function placeCard(hi){
   S.row.push(card); S.hand[hi]=draw();
 
   const rust=S.boss&&S.boss.id==="rust";
+  const ctx=scoreCtx();
   let base = (S.boss&&S.boss.id==="red_curse"&&isRed(card.suit)) ? 0 : card.rank;
   if(S.boss){ if(S.boss.id==="tax"&&card.rank>=7) base=0; else if(S.boss.id==="peasant"&&card.rank<=3) base=0; }   // 사치세/보릿고개
-  if(has("greed")) base+=3;
+  base += scoreCardBase(card, ctx);   // greed/lapidary/compactor/runts (부적 훅, content/charms.cjs 선언)
   if(card.enh==="gold" && !rust) base+=5;
-  if(has("lapidary") && card.enh && !rust) base+=3;   // 강화카드 한정 +3 (greed/runts 선례, ×엔진 미경유)
-  if(has("compactor")) base+=Math.min(8, Math.max(0, 32-(S.deck.length+S.discard.length+S.hand.length+S.row.length)));  // 라이브 덱 크기(4더미 합), 시작 32→0
-  if(has("runts") && card.rank<=3) base+=4;   // A·2·3 한정 (8 초과 불가하게 +4로 묶음)
   let gained=base, runLen=1, bonus=0;
 
   const bId=bossId();
   if(left && connect(card,left,bId) && !climbSealed(card,left,bId) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효 / 내리막: 오름 ±1 봉인
-    const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
     runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1],bId) && !climbSealed(S.row[i],S.row[i-1],bId)) runLen++; else break; }
     let mult=runLen-1;
-    if(has("pyro") && isRed(card.suit)) mult+=2;
-    if(has("noir") && !isRed(card.suit)) mult+=2;   // 검정(♠♣) — 발화의 거울
-    if(has("suited") && byIcon) mult+=1;
-    if(has("runner") && byRun) mult+=1;
-    if(has("highmult") && card.rank>=7) mult+=1;   // 고카드(7·8) 연결 배율 +1 (25캡 종속)
-    if(has("echo") && card.rank===left.rank) mult+=1;   // 같은 숫자 연결 배율 +1 (left는 connect 블록서 보장)
+    mult += scoreCardMult(card, left, ctx);   // pyro/noir/suited/runner/highmult/echo (부적 훅)
     for(let i=S.row.length-runLen;i<S.row.length;i++) if(S.row[i].enh==="mult" && !rust) mult+=1;
     if(S.boss&&S.boss.id==="dull") mult=Math.max(1,mult-1);
     mult=Math.min(mult, (S.boss&&S.boss.id==="anchor")?3:25);   // 닻: 배율 3 캡
     let sum=0; for(let i=S.row.length-runLen;i<S.row.length;i++) sum+=S.row[i].rank;
     bonus=sum*mult;
-    if(has("jackpot") && runLen>=4) bonus*=2;
+    bonus=applyChainMul(bonus, runLen, ctx);   // jackpot: runLen>=4 → ×2 (부적 훅)
     if(S.boss&&S.boss.id==="toll") bonus=Math.round(bonus*0.5);   // 연결세: 보너스 반감
     gained+=bonus;
   }
@@ -248,19 +254,7 @@ function settle(){
   if(S.settled) return; S.settled=true;
   const chain=S.score;                               // 족보 보너스 전 = 체인 점수
   const hk=evalHand(S.row); let hb=handBonus(S.row); // 족보 판정·보너스 (discard 전)
-  if(has("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindBase(S.ante)*BR[hk]); }   // 낮은 족보 3티어만 더 높은 고정 분율로 덮어씀 (blindBase=스테이크 무관)
-  if(has("twins")){ const rc={}; for(const c of S.row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindBase(S.ante)*.03*Math.min(g,4)); }   // 2장+ 그룹 개수, 최대 4그룹
-  if(has("bridge"))   hb+=Math.round(blindBase(S.ante)*.03*Math.min(bridgeCount(S.row),3));                     // 다리: 양옆연결 카드 최대3
-  if(has("stair"))    hb+=Math.round(blindBase(S.ante)*.04*Math.max(0,Math.min(maxAscLen(S.row),6)-2));         // 오름계단: 3칸+부터, 최대6
-  if(has("keystone")) hb+=Math.round(blindBase(S.ante)*.18*Math.max(0,(edgeVal(S.row)-12)/12));                 // 주춧돌: 0·3·7칸, 평균(12) 초과분만 보상(고카드 배치)
-  if(has("prism")){ let w=0,g=0,m=0; for(const c of S.row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } if(w&&g&&m && !(S.boss&&S.boss.id==="rust")) hb+=Math.round(blindBase(S.ante)*.12); }   // 프리즘: enh 3종 동시(부식 무효)
-  if(has("jewelbox")){ let e=0; for(const c of S.row) if(c.enh) e++; hb+=Math.round(blindBase(S.ante)*.025*Math.min(e,6)); }   // 보석함: enh 1장당 +2.5%, 최대6
-  if(has("magnate")){ let h=0; for(const c of S.row) if(c.enh!=="wild"&&c.rank>=7) h++; hb+=Math.round(blindBase(S.ante)*.03*Math.min(h,5)); }   // 거물: 7·8 카드 1장당 +3%, 최대5
-  if(has("loaded")){ if(hk==="fourKind") hb+=Math.round(blindBase(S.ante)*.10); else if(hk==="fiveKind") hb+=Math.round(blindBase(S.ante)*.30); }   // 사기패: 불법패 보상(hk 재사용)
-  if(has("climax") && ["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)){ const b=bossId(); let L=1,cur=1; for(let i=1;i<S.row.length;i++){ if(connect(S.row[i],S.row[i-1],b)){ cur++; if(cur>L)L=cur; } else cur=1; } hb+=Math.round(blindBase(S.ante)*.03*Math.max(0,Math.min(L,8)-5)); }   // 절정: 풀하우스+ & 6연결부터(L-5)
-  if(has("evenodd")){ let ev=0,od=0; for(const c of S.row) if(c.enh!=="wild")(c.rank%2?od++:ev++); hb+=Math.round(blindBase(S.ante)*.04*Math.max(0,Math.max(ev,od)-5)); }   // 홀짝 정렬: 6장+부터 초과분당 +4%
-  if(has("paritybet")){ const nw=S.row.filter(c=>c.enh!=="wild"); if(S.row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1))) hb+=Math.round(blindBase(S.ante)*.30); }   // 패리티 도박: 전원 동일 패리티 +30%(스파이스)
-  if(has("twotone")){ let h=0,d=0,s=0,c=0; for(const x of S.row){ if(x.enh==="wild")continue; if(x.suit===1)h++; else if(x.suit===2)d++; else if(x.suit===0)s++; else c++; } const red=h+d,black=s+c,dom=Math.max(red,black); const bothSuits=red>=black?(h>0&&d>0):(s>0&&c>0); if(bothSuits) hb+=Math.round(blindBase(S.ante)*0.04*Math.max(0,Math.min(dom,8)-4)); }   // 투톤: 두 무늬 섞은 단색 치우침(순수 플러시 제외)
+  hb = scoreSettle(hb, hk, S.row, settleCtx());       // broker(override)/twins/bridge/stair/keystone/prism/jewelbox/magnate/loaded/climax/evenodd/paritybet/twotone (부적 훅, content/charms.cjs 선언)
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
   S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)
