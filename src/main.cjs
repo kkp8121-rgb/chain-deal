@@ -45,7 +45,7 @@ function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8)
 // 계수: 흔한 족보(투페어33%·풀하우스29%·스트레이트24%)는 소액 / 희소(플러시5%·포카드2.5%·스트플0.8%)는 큰 가산.
 // 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
 const { HAND_BONUS } = require('./content/hands.cjs');
-const HAND_KO={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
+const HAND_LABEL={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
 function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
 function evalHand(cards){
   const rc={}, bs={};
@@ -286,7 +286,7 @@ function settle(){
   // 정산 표 채우기
   document.getElementById("tChain").textContent=chain.toLocaleString();
   const hr=document.getElementById("tHandRow");
-  if(hb>0){ hr.style.display="flex"; document.getElementById("tHand").textContent=`🎴 ${HAND_KO[hk]}`; document.getElementById("tBonus").textContent=`+${hb.toLocaleString()}`; }
+  if(hb>0){ hr.style.display="flex"; document.getElementById("tHand").textContent=`🎴 ${HAND_LABEL[hk]}`; document.getElementById("tBonus").textContent=`+${hb.toLocaleString()}`; }
   else hr.style.display="none";
   document.getElementById("tFinal").textContent=S.score.toLocaleString();
   document.getElementById("tTarget").textContent=`${t('ui.target')} ${S.target.toLocaleString()}`;
@@ -295,13 +295,13 @@ function settle(){
     S.gold += goldEarned(S.score, S.target);                 // 통과 시 초과율 환전
     document.getElementById("hGold").textContent=S.gold;
     res.textContent = wasBoss ? `${S.anteBoss.icon} ${t('ui.tally.bossDefeated')}` : "✦ "+t('ui.tally.pass'); res.className="tallyResult pass";
-    logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
+    logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_LABEL[hk]});
     if(wasBoss && S.ante>=ANTES){ btn.textContent="🏆 "+t('ui.tally.victory'); _tallyNext=victory; }
     else { btn.textContent=t('ui.tally.nextShop'); _tallyNext=openShop; }
   } else {
     S.over=true;
     res.textContent="💀 "+t('ui.tally.fail'); res.className="tallyResult fail";
-    logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
+    logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_LABEL[hk]});
     btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); newGame(); };
   }
   // 최고 기록 / 통계 갱신 (리텐션)
@@ -473,8 +473,8 @@ function render(){
   const hint=` <span class="hbhint">👆 ${t('ui.handTable')}</span>`;
   if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.empty')}</span>`+hint; }
   else { const hk=evalHand(S.row), hb=handBonus(S.row);
-    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">${t('ui.handBonus.label')}</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">${t('ui.handBonus.addedToChain')}</span>`+hint;
-    else hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.currentPrefix')} ${HAND_KO[hk]}, ${t('ui.handBonus.none')}</span>`+hint; }
+    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">${t('ui.handBonus.label')}</span> <span class="hbname">${HAND_LABEL[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">${t('ui.handBonus.addedToChain')}</span>`+hint;
+    else hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.currentPrefix')} ${HAND_LABEL[hk]}, ${t('ui.handBonus.none')}</span>`+hint; }
 
   const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
   for(let i=0;i<SLOTS;i++){

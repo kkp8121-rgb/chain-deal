@@ -1,54 +1,53 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="{{ui.htmlLang}}">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>CHAIN DEAL v3 — 안테 · 보스</title>
+<title>{{ui.title}}</title>
 <style>
 /*__BUILD_INJECT_CSS__*/
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>CHAIN DEAL <span style="font-size:13px;color:#8a93b6">v3 · 안테·보스</span></h1>
-  <div class="sub" onclick="openDrawer('rules')" style="cursor:pointer">같은 무늬·같은 숫자·연속 숫자면 체인 폭발 — <b style="color:#cdd6f5">안테 8을 정복하라</b> <span style="color:#9b6fd4;font-size:11px;text-decoration:underline;white-space:nowrap">👆 상세 룰</span></div>
+  <h1>CHAIN DEAL <span style="font-size:13px;color:#8a93b6">{{ui.h1Sub}}</span></h1>
+  <div class="sub" onclick="openDrawer('rules')" style="cursor:pointer">{{ui.subHtml}}</div>
 
   <div class="stats" id="stats" onclick="openDrawer('stats')"></div>
   <div class="antedots" id="antedots"></div>
   <div class="hud">
-    <div class="chip">안테 <b id="hAnte">1</b>/8</div>
+    <div class="chip">{{ui.ante}} <b id="hAnte">1</b>/8</div>
     <div class="chip" id="stakeChip" style="display:none;color:var(--gold)">⚔ St<b id="hStake">0</b></div>
     <div class="chip" id="goldChip">💰 <b id="hGold">0</b></div>
     <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
-    <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ 체인 예고</label>
-    <label class="toggle"><input type="checkbox" id="fxToggle"> ⏩ 빠른 연출</label>
+    <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ {{ui.toggle.preview}}</label>
+    <label class="toggle"><input type="checkbox" id="fxToggle"> ⏩ {{ui.toggle.fastFx}}</label>
   </div>
   <div class="blindinfo" id="blindinfo"></div>
   <div class="handbonus" id="handbonus" onclick="openDrawer('hands')" style="cursor:pointer"></div>
 
   <div class="table" id="table"><div class="row" id="row"></div></div>
 
-  <div class="handlbl">↓ 손패에서 한 장을 골라 클릭</div>
+  <div class="handlbl">{{ui.hand.pickPrompt}}</div>
   <div class="hand" id="hand"></div>
-  <div class="controls" id="rerollBox" style="margin-top:6px; display:none"><button id="btnReroll" onclick="rerollHand()">🔄 손패 리롤 <span id="rrc"></span></button></div>
+  <div class="controls" id="rerollBox" style="margin-top:6px; display:none"><button id="btnReroll" onclick="rerollHand()">🔄 {{ui.reroll.btn}} <span id="rrc"></span></button></div>
   <div class="deckinfo" id="deckinfo" onclick="openDrawer('deck')" style="cursor:pointer"></div>
 
   <div class="charms" id="charms"></div>
   <div class="banner" id="banner"></div>
-  <div class="controls" style="align-items:center;gap:6px">난이도 <button onclick="stakeStep(-1)">◀</button> <b id="stakeLbl" style="min-width:150px;display:inline-block;text-align:center">St0 평지</b> <button onclick="stakeStep(1)">▶</button></div>
-  <div id="stakeDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">기본 난이도</div>
-  <div class="controls" style="align-items:center;gap:6px">시작덱 <button onclick="deckStep(-1)">◀</button> <b id="deckLbl" style="min-width:150px;display:inline-block;text-align:center">표준덱</b> <button onclick="deckStep(1)">▶</button></div>
-  <div id="deckDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">A~8 균형 32장</div>
-  <div class="controls"><button onclick="newGame(null,selStake,selDeck)">새 게임</button> <button onclick="newGame(dailySeed(),selStake,selDeck)">🗓 데일리</button> <button onclick="openBoard()">🏆 리더보드</button> <button onclick="openDrawer('charms')">🧿 부적</button> <button onclick="openDrawer('meta')">🪙 상점</button></div>
+  <div class="controls" style="align-items:center;gap:6px">{{ui.stakeSectionLabel}} <button onclick="stakeStep(-1)">◀</button> <b id="stakeLbl" style="min-width:150px;display:inline-block;text-align:center">{{ui.stakeLblDefault}}</b> <button onclick="stakeStep(1)">▶</button></div>
+  <div id="stakeDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">{{ui.stake.desc.0}}</div>
+  <div class="controls" style="align-items:center;gap:6px">{{ui.deckSectionLabel}} <button onclick="deckStep(-1)">◀</button> <b id="deckLbl" style="min-width:150px;display:inline-block;text-align:center">{{deck.standard.name}}</b> <button onclick="deckStep(1)">▶</button></div>
+  <div id="deckDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">{{deck.standard.desc}}</div>
+  <div class="controls"><button onclick="newGame(null,selStake,selDeck)">{{ui.btn.newGame}}</button> <button onclick="newGame(dailySeed(),selStake,selDeck)">🗓 {{ui.daily}}</button> <button onclick="openBoard()">🏆 {{ui.board.title}}</button> <button onclick="openDrawer('charms')">🧿 {{ui.btn.charms}}</button> <button onclick="openDrawer('meta')">🪙 {{ui.btn.shop}}</button></div>
 
   <div class="help">
-    <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style="color:#ff9a9a">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.
-    <b style="color:#ff9a9a">보스</b>는 매번 특수 규칙으로 당신 전략을 방해합니다. <b>안테 8 보스를 잡으면 런 클리어 = 승리.</b>
+{{ui.help.html}}
   </div>
 </div>
 
 <div class="modal" id="shop">
-  <div class="shop"><h2 id="shopTitle">통과! 강화 선택</h2><div id="shopBody"></div></div>
+  <div class="shop"><h2 id="shopTitle">{{ui.shop.titleDefault}}</h2><div id="shopBody"></div></div>
 </div>
 
 <script>
@@ -59,29 +58,29 @@
 <div class="drawer" id="drawer">
   <div class="drawerHandle"></div>
   <div id="drawerBody"></div>
-  <button class="closeBtn" onclick="closeDrawer()">닫기</button>
+  <button class="closeBtn" onclick="closeDrawer()">{{ui.drawer.close}}</button>
 </div>
 
 <div class="tallyOverlay" id="tally" onclick="if(this.querySelector('.tallyCard').classList.contains('revealing')) skipReveal();">
   <div class="tallyCard">
-    <div class="tallyTitle">— 정산 —</div>
-    <div class="tallyRow"><span>체인 점수</span><b id="tChain">0</b></div>
+    <div class="tallyTitle">{{ui.tally.settleTitle}}</div>
+    <div class="tallyRow"><span>{{ui.tally.chainScore}}</span><b id="tChain">0</b></div>
     <div class="tallyRow hand" id="tHandRow"><span id="tHand">🎴</span><b id="tBonus">+0</b></div>
     <div class="tallyRow hand" id="tUnlockRow" style="display:none"><span id="tUnlock"></span></div>
     <div class="tallyLine"></div>
-    <div class="tallyRow final"><span>최종</span><b id="tFinal">0</b></div>
-    <div class="tallyTarget" id="tTarget">목표 0</div>
+    <div class="tallyRow final"><span>{{ui.tally.final}}</span><b id="tFinal">0</b></div>
+    <div class="tallyTarget" id="tTarget">{{ui.target}} 0</div>
     <div class="tallyResult" id="tResult"></div>
-    <div class="tallyRecord" id="tRecord" style="display:none">🎉 신기록!</div>
-    <button class="tallyBtn" id="tRetry" style="display:none;background:#7a4dd1" onclick="useRetry()">🎟 재도전권 사용</button>
-    <button class="tallyBtn" id="tShare" style="display:none;background:#2d7d46" onclick="shareResult(this)">📋 결과 공유</button>
-    <button class="tallyBtn" id="tBtn" onclick="tallyNext()">다음</button>
+    <div class="tallyRecord" id="tRecord" style="display:none">🎉 {{ui.tally.newRecord}}</div>
+    <button class="tallyBtn" id="tRetry" style="display:none;background:#7a4dd1" onclick="useRetry()">🎟 {{ui.tally.retryBtnDefault}}</button>
+    <button class="tallyBtn" id="tShare" style="display:none;background:#2d7d46" onclick="shareResult(this)">📋 {{ui.tally.shareBtn}}</button>
+    <button class="tallyBtn" id="tBtn" onclick="tallyNext()">{{ui.tally.next}}</button>
   </div>
 </div>
 
 <section id="comments" style="max-width:720px;margin:34px auto 60px;padding:0 16px;font-family:system-ui,-apple-system,sans-serif">
-  <h3 style="color:#cdd6f5;font-size:18px;margin:0 0 4px">💬 피드백 · 댓글</h3>
-  <p style="color:#8a93b6;font-size:13px;margin:0 0 14px">버그·재미·밸런스 의견 환영합니다. (GitHub 로그인 필요)</p>
+  <h3 style="color:#cdd6f5;font-size:18px;margin:0 0 4px">💬 {{ui.comments.title}}</h3>
+  <p style="color:#8a93b6;font-size:13px;margin:0 0 14px">{{ui.comments.desc}}</p>
   <script src="https://giscus.app/client.js"
     data-repo="kkp8121-rgb/chain-deal"
     data-repo-id="R_kgDOS9K_Gw"

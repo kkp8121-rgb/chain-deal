@@ -21,7 +21,10 @@
 import { build } from "esbuild";
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import path from "path";
+
+const require = createRequire(import.meta.url);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, "src");
@@ -89,7 +92,23 @@ async function main() {
   // an extra blank line before </style>/</script> on top of the original prototype/index.html.
   const js = resolveRequires(path.join(SRC, "main.cjs")).replace(/\n$/, "");
   const css = readFileSync(path.join(SRC, "styles.css"), "utf8").replace(/\n$/, "");
-  const template = readFileSync(path.join(SRC, "index.template.html"), "utf8");
+  const rawTemplate = readFileSync(path.join(SRC, "index.template.html"), "utf8");
+
+  // Step 1b i18n key-out (shell strings — CLAUDE.md/HANDOVER) — `{{ui.key}}` markers in the template
+  // are resolved at BUILD time against the default locale (ko.cjs), same as main.cjs's t() calls being
+  // eager/dormant-ko today (see src/content/locale/i18n.cjs). This substitution runs before the
+  // CSS/JS injection below so it only ever touches the static shell markup, never the (much larger,
+  // coincidentally-bracey) injected JS/CSS text.
+  const { KO } = require(path.join(SRC, "content", "locale", "ko.cjs"));
+  const template = rawTemplate.replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, (whole, key) => {
+    if (!Object.prototype.hasOwnProperty.call(KO, key)) {
+      throw new Error(`build.mjs: i18n marker '{{${key}}}' has no matching key in src/content/locale/ko.cjs`);
+    }
+    return KO[key];
+  });
+  if (template.includes("{{")) {
+    throw new Error("build.mjs: an unresolved i18n marker remains — check src/index.template.html");
+  }
 
   let html = template.replace("/*__BUILD_INJECT_CSS__*/", () => css);
   html = html.replace("/*__BUILD_INJECT_JS__*/", () => js);

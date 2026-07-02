@@ -447,6 +447,32 @@ const KO={
   "ui.rules.p4": "안테 1~8, 각 안테 = <b>작은 → 큰 → 보스</b> 블라인드. 보스는 특수 규칙으로 방해한다. <b>안테 8 보스 격파 = 승리!</b> 목표 미달 = 처음부터 다시.",
   "ui.rules.seg3": "+ 족보 보너스",
   "ui.rules.p5": "8장으로 포커 족보가 되면 정산 때 <b style=\"color:var(--gold)\">추가 점수</b>. (족보 보너스 문구를 누르면 족보표가 열려요)",
+  "ui.htmlLang": "ko",
+  "ui.title": "CHAIN DEAL v3 — 안테 · 보스",
+  "ui.h1Sub": "v3 · 안테·보스",
+  "ui.subHtml": "같은 무늬·같은 숫자·연속 숫자면 체인 폭발 — <b style=\"color:#cdd6f5\">안테 8을 정복하라</b> <span style=\"color:#9b6fd4;font-size:11px;text-decoration:underline;white-space:nowrap\">👆 상세 룰</span>",
+  "ui.toggle.preview": "체인 예고",
+  "ui.toggle.fastFx": "빠른 연출",
+  "ui.hand.pickPrompt": "↓ 손패에서 한 장을 골라 클릭",
+  "ui.reroll.btn": "손패 리롤",
+  "ui.stakeSectionLabel": "난이도",
+  "ui.stakeLblDefault": "St0 평지",
+  "ui.deckSectionLabel": "시작덱",
+  "ui.btn.newGame": "새 게임",
+  "ui.btn.charms": "부적",
+  "ui.btn.shop": "상점",
+  "ui.help.html": "    <b>런 구조</b> — 안테 1~8, 각 안테 = 작은 → 큰 → <b style=\"color:#ff9a9a\">보스</b> 블라인드. 블라인드 목표 점수를 넘기면 통과 + 덱빌딩 상점.\n    <b style=\"color:#ff9a9a\">보스</b>는 매번 특수 규칙으로 당신 전략을 방해합니다. <b>안테 8 보스를 잡으면 런 클리어 = 승리.</b>",
+  "ui.shop.titleDefault": "통과! 강화 선택",
+  "ui.drawer.close": "닫기",
+  "ui.tally.settleTitle": "— 정산 —",
+  "ui.tally.chainScore": "체인 점수",
+  "ui.tally.final": "최종",
+  "ui.tally.newRecord": "신기록!",
+  "ui.tally.retryBtnDefault": "재도전권 사용",
+  "ui.tally.shareBtn": "결과 공유",
+  "ui.tally.next": "다음",
+  "ui.comments.title": "피드백 · 댓글",
+  "ui.comments.desc": "버그·재미·밸런스 의견 환영합니다. (GitHub 로그인 필요)",
 };
 const EN={
   "charm.greed.name": "Greed",
@@ -691,6 +717,32 @@ const EN={
   "ui.rules.p4": "Ante 1~8, each ante = <b>Small → Big → Boss</b> blind. Bosses disrupt you with special rules. <b>Defeat the Ante 8 boss = victory!</b> Missing the target sends you back to the start.",
   "ui.rules.seg3": "+ Hand Bonus",
   "ui.rules.p5": "If your 8 cards form a poker hand, you get <b style=\"color:var(--gold)\">extra score</b> at settle. (Tap the hand-bonus text to open the hand table)",
+  "ui.htmlLang": "en",
+  "ui.title": "CHAIN DEAL v3 — Ante · Boss",
+  "ui.h1Sub": "v3 · Ante·Boss",
+  "ui.subHtml": "Same suit·same rank·consecutive rank chains explode — <b style=\"color:#cdd6f5\">conquer Ante 8</b> <span style=\"color:#9b6fd4;font-size:11px;text-decoration:underline;white-space:nowrap\">👆 detailed rules</span>",
+  "ui.toggle.preview": "Chain Preview",
+  "ui.toggle.fastFx": "Fast FX",
+  "ui.hand.pickPrompt": "↓ Pick one card from your hand",
+  "ui.reroll.btn": "Hand Reroll",
+  "ui.stakeSectionLabel": "Difficulty",
+  "ui.stakeLblDefault": "St0 Flatland",
+  "ui.deckSectionLabel": "Starting Deck",
+  "ui.btn.newGame": "New Game",
+  "ui.btn.charms": "Charms",
+  "ui.btn.shop": "Shop",
+  "ui.help.html": "    <b>Run Structure</b> — Ante 1~8, each ante = Small → Big → <b style=\"color:#ff9a9a\">Boss</b> blind. Beat the blind's target score to clear + get a deckbuilding shop.\n    <b style=\"color:#ff9a9a\">Boss</b>es disrupt your strategy with a special rule every time. <b>Defeat the Ante 8 boss = run cleared.</b>",
+  "ui.shop.titleDefault": "Cleared! Choose an Upgrade",
+  "ui.drawer.close": "Close",
+  "ui.tally.settleTitle": "— Settle —",
+  "ui.tally.chainScore": "Chain Score",
+  "ui.tally.final": "Final",
+  "ui.tally.newRecord": "New Record!",
+  "ui.tally.retryBtnDefault": "Use Retry Token",
+  "ui.tally.shareBtn": "Share Result",
+  "ui.tally.next": "Next",
+  "ui.comments.title": "Feedback · Comments",
+  "ui.comments.desc": "Bugs, fun, balance feedback welcome. (GitHub login required)",
 };
 const LOCALES = { ko: KO, en: EN };
 let CUR_LOCALE = "ko";
@@ -762,7 +814,7 @@ function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8)
 // 계수: 흔한 족보(투페어33%·풀하우스29%·스트레이트24%)는 소액 / 희소(플러시5%·포카드2.5%·스트플0.8%)는 큰 가산.
 // 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
 const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75,fiveKind:.95};
-const HAND_KO={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
+const HAND_LABEL={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
 function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
 function evalHand(cards){
   const rc={}, bs={};
@@ -1036,7 +1088,7 @@ function settle(){
   // 정산 표 채우기
   document.getElementById("tChain").textContent=chain.toLocaleString();
   const hr=document.getElementById("tHandRow");
-  if(hb>0){ hr.style.display="flex"; document.getElementById("tHand").textContent=`🎴 ${HAND_KO[hk]}`; document.getElementById("tBonus").textContent=`+${hb.toLocaleString()}`; }
+  if(hb>0){ hr.style.display="flex"; document.getElementById("tHand").textContent=`🎴 ${HAND_LABEL[hk]}`; document.getElementById("tBonus").textContent=`+${hb.toLocaleString()}`; }
   else hr.style.display="none";
   document.getElementById("tFinal").textContent=S.score.toLocaleString();
   document.getElementById("tTarget").textContent=`${t('ui.target')} ${S.target.toLocaleString()}`;
@@ -1045,13 +1097,13 @@ function settle(){
     S.gold += goldEarned(S.score, S.target);                 // 통과 시 초과율 환전
     document.getElementById("hGold").textContent=S.gold;
     res.textContent = wasBoss ? `${S.anteBoss.icon} ${t('ui.tally.bossDefeated')}` : "✦ "+t('ui.tally.pass'); res.className="tallyResult pass";
-    logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
+    logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_LABEL[hk]});
     if(wasBoss && S.ante>=ANTES){ btn.textContent="🏆 "+t('ui.tally.victory'); _tallyNext=victory; }
     else { btn.textContent=t('ui.tally.nextShop'); _tallyNext=openShop; }
   } else {
     S.over=true;
     res.textContent="💀 "+t('ui.tally.fail'); res.className="tallyResult fail";
-    logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
+    logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_LABEL[hk]});
     btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); newGame(); };
   }
   // 최고 기록 / 통계 갱신 (리텐션)
@@ -1223,8 +1275,8 @@ function render(){
   const hint=` <span class="hbhint">👆 ${t('ui.handTable')}</span>`;
   if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.empty')}</span>`+hint; }
   else { const hk=evalHand(S.row), hb=handBonus(S.row);
-    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">${t('ui.handBonus.label')}</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">${t('ui.handBonus.addedToChain')}</span>`+hint;
-    else hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.currentPrefix')} ${HAND_KO[hk]}, ${t('ui.handBonus.none')}</span>`+hint; }
+    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">${t('ui.handBonus.label')}</span> <span class="hbname">${HAND_LABEL[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">${t('ui.handBonus.addedToChain')}</span>`+hint;
+    else hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.currentPrefix')} ${HAND_LABEL[hk]}, ${t('ui.handBonus.none')}</span>`+hint; }
 
   const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
   for(let i=0;i<SLOTS;i++){
