@@ -1,27 +1,16 @@
 // CHAIN DEAL 부적 해금 조건 검증  ·  실행: node tools/unlock-check.cjs
 // ⚠️ index.html 의 STARTER_CHARMS / UNLOCKS / checkUnlocks 로직을 "복제"한 것.
 //    index.html 에서 조건을 바꾸면 이 파일도 같이 맞출 것. (repo의 tools/*.cjs 복제 관례)
+// ★Phase 0 Step 4b: connect/evalHand는 더 이상 여기서 재정의하지 않고 src/rules/ 를 require한다
+//   (grep=1 대상 — 이 파일의 사본은 run-sim.cjs L14·L52~L64와 byte-identical이었으므로 교체는 무변경).
 
 // ----- index.html 복제 (해금 코어) -----
 let STORE = {};                                  // 가짜 localStorage
 const STARTER_CHARMS = ["greed","pyro","suited","runner","jackpot"];
 function maxRankCount(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let m=0; for(const k in rc) if(rc[k]>m) m=rc[k]; return m; }
 function pairGroups(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return g; }
-// ↓ run-sim.cjs L14·L52~L64 verbatim 복사 (loaded/climax 해금 cond용 — evalHand/connect 필요). run-sim 변경 시 동기화.
-function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1; return a.suit===b.suit||a.rank===b.rank||run; }
-function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ok=0;break;} if(ok) return true; } return false; }
-function evalHand(cards){
-  const rc={},bs={}; for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
-  const cnt=Object.values(rc).sort((a,b)=>b-a), mr=cnt[0]||0;
-  const pairs=cnt.filter(x=>x>=2).length, trips=cnt.filter(x=>x>=3).length;
-  const mx=Math.max(...Object.values(bs).map(a=>a.length));
-  const fl=mx>=5, st=hasRun5(Object.keys(rc).map(Number));
-  let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
-  const full=trips>=1&&(pairs>=2||trips>=2);
-  if(mr>=5) return"fiveKind"; if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
-  if(fl) return"flush"; if(st) return"straight"; if(mr>=3) return"trips";
-  if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
-}
+const { connect } = require("../src/rules/connect.cjs");   // loaded/climax 해금 cond용
+const { evalHand } = require("../src/rules/hands.cjs");
 const UNLOCKS = {
   noir:     {cond:(st,row)=> (st.bestAnte||0)>=4,               hint:"안테 4 도달"},
   compactor:{cond:(st,row)=> (st.wins||0)>=1,                   hint:"런 1회 클리어"},

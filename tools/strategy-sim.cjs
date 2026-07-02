@@ -9,11 +9,17 @@
 //   - 노리는 봇이 그리디와 '비슷하거나 약간 높은' 클리어율 = 유효한 대안 전략(이상적)
 //   - 너무 높으면 = 계수 과함(밸런스 붕괴) / 너무 낮으면 = 노릴 가치 없음(계수 부족)
 
+// ★Phase 0 Step 4b: connect는 더 이상 여기서 재정의하지 않고 src/rules/connect.cjs 를 require한다
+//   (grep=1 대상). 이 파일은 boss 인자가 항상 null로만 호출돼(아래 compare() 호출부 전부 null 고정) 원래
+//   local connect의 rust/mono 미지원과 src connect의 완전판이 이 파일 안에서는 관측적으로 동일 — 무변경.
+//   evalHand/hasRun5도 src/rules/hands.cjs를 require(drop-in, 반환은 문자열로 동일). flushBuildDeck()가
+//   특정 랭크를 5장까지 중복시켜(랭크봇이 노리는 패턴) fiveKind 분기가 실제로 도달 가능해짐 — HAND_BONUS에
+//   이미 fiveKind 계수(.95)가 있어 해당 표본이 교정된 값으로 채점된다(숫자 변화는 정상, CLAUDE.md 참조).
+const { connect } = require("../src/rules/connect.cjs");
 const ri = n => Math.floor(Math.random() * n);
 const isRed = s => s === 1 || s === 2;
 function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); return d; }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function connect(a,b,boss){ if(a.enh==="wild"||b.enh==="wild") return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; const run=Math.abs(a.rank-b.rank)===1; return a.suit===b.suit||a.rank===b.rank||run; }
 function gain(row, card, boss){
   row.push(card);
   let base=(boss==="red_curse"&&isRed(card.suit))?0:card.rank, g=base, rl=1;
@@ -27,22 +33,10 @@ function gain(row, card, boss){
   return g;
 }
 
-/* 족보 — 밸런싱 실험용 상향 계수(희소족보 ↑, 흔한족보 유지). 확정 시 index.html/balance-check 동기화 */
-const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75};
-function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ok=0;break;} if(ok) return true; } return false; }
-function evalHand(cards){
-  const rc={},bs={}; for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
-  const cnt=Object.values(rc).sort((a,b)=>b-a), mr=cnt[0]||0;
-  const pairs=cnt.filter(x=>x>=2).length, trips=cnt.filter(x=>x>=3).length;
-  const mxSuit=Math.max(...Object.values(bs).map(a=>a.length));
-  const flush=mxSuit>=5, straight=hasRun5(Object.keys(rc).map(Number));
-  let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
-  const full=trips>=1&&(pairs>=2||trips>=2);
-  if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
-  if(flush) return"flush"; if(straight) return"straight"; if(mr>=3) return"trips";
-  if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
-}
-const blindBase = ante => 150*Math.pow(1.5,ante-1);
+/* 족보 — 밸런싱 실험용 상향 계수(희소족보 ↑, 흔한족보 유지). content/hands.cjs와 동일 9키(+fiveKind). */
+const { HAND_BONUS } = require("../src/content/hands.cjs");
+const { evalHand, hasRun5 } = require("../src/rules/hands.cjs");
+const { blindBase } = require("../src/rules/blinds.cjs");
 const blindTarget = (ante,blind) => Math.round(blindBase(ante)*(blind===0?1:blind===1?1.4:1.6));
 const handBonus = (row,ante) => Math.round(blindBase(ante)*(HAND_BONUS[evalHand(row)]||0));
 

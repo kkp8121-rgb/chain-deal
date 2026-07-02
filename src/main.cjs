@@ -42,7 +42,9 @@ const { HAND_BONUS } = require('./content/hands.cjs');
 const HAND_LABEL={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
 // hasRun5는 evalHand 내부에서만 쓰여 미구조분해(hands.cjs가 export는 함)
 const { evalHand } = require('./rules/hands.cjs');
-function handBonus(row){ return Math.round(blindBase(S.ante)*(HAND_BONUS[evalHand(row)]||0)); }   // ★blindBase(스테이크 무관) — 사다리서 목표만 오르고 족보 보너스 쿠션은 안 오르게
+// ★Phase 0 Step 4a: 실제 계산(blindBase×HAND_BONUS[hk])은 순수함수 scoreHandBase(rules/scoring.cjs)로 이전됨 —
+// 여기선 S.ante를 읽어 ctx를 구성해 넘기는 얇은 래퍼만 유지(render 미리보기·settle 양쪽에서 그대로 재사용).
+function handBonus(row){ return scoreHandBase(evalHand(row), {blindBase:blindBase(S.ante), HAND_BONUS}); }   // ★blindBase(스테이크 무관) — 사다리서 목표만 오르고 족보 보너스 쿠션은 안 오르게
 
 /* ---------- 익명 플레이로그 (Google Sheets + Apps Script) ---------- */
 // LOG_URL 을 Apps Script 웹앱 URL로 채우면 전송 시작(비우면 no-op). 익명 ID(localStorage)만 보냄 — 개인정보 X.
@@ -189,12 +191,15 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
   S.rerolls--; render(); beep(280,.06,"square");
 }
 
-/* ---------- 점수 훅 엔진 (Phase 0 Step 3a placeCard + 3b settle) ---------- */
+/* ---------- 점수 엔진 (Phase 0 Step 3a placeCard훅 + 3b settle훅 + 4a scoreCard/scoreHandBase 전체경로 추출) ---------- */
 // placeCard/settle이 각각 순수 ctx를 구성해 rules/scoring.cjs에 넘긴다(엔진은 S/document 미접근).
 // ownedHooks = 보유 부적(has)만 CHARMS에서 걸러 hooks 필드만 넘김 — scoring.cjs가 content/charms.cjs를
 // 직접 require하면 build.mjs 텍스트 스플라이스가 CHARMS를 중복 선언해 파싱이 깨지므로 여기서 필터링해 전달.
-const { scoreCardBase, scoreCardMult, applyChainMul, scoreSettle } = require('./rules/scoring.cjs');
+// ★Step 4a: connect/climbSealed 연결판정·chain rank합·boss base/mult/cap 효과·enh(gold/mult-enh)까지
+// scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
+const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
+  connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
 // settle 전용 ctx(정산 1회 구성) — blindBase(S.ante)를 1회 계산해 넘김(원본도 매 줄 같은 값을 반복 호출했을 뿐,
 // ante는 정산 중 안 바뀜). connect는 현재 보스로 바인딩(climax 전용). bridgeCount/maxAscLen/edgeVal은
@@ -209,28 +214,7 @@ function placeCard(hi){
   const card=S.hand[hi]; const left=S.row[S.row.length-1];
   S.row.push(card); S.hand[hi]=draw();
 
-  const rust=S.boss&&S.boss.id==="rust";
-  const ctx=scoreCtx();
-  let base = (S.boss&&S.boss.id==="red_curse"&&isRed(card.suit)) ? 0 : card.rank;
-  if(S.boss){ if(S.boss.id==="tax"&&card.rank>=7) base=0; else if(S.boss.id==="peasant"&&card.rank<=3) base=0; }   // 사치세/보릿고개
-  base += scoreCardBase(card, ctx);   // greed/lapidary/compactor/runts (부적 훅, content/charms.cjs 선언)
-  if(card.enh==="gold" && !rust) base+=5;
-  let gained=base, runLen=1, bonus=0;
-
-  const bId=bossId();
-  if(left && connect(card,left,bId) && !climbSealed(card,left,bId) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효 / 내리막: 오름 ±1 봉인
-    runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1],bId) && !climbSealed(S.row[i],S.row[i-1],bId)) runLen++; else break; }
-    let mult=runLen-1;
-    mult += scoreCardMult(card, left, ctx);   // pyro/noir/suited/runner/highmult/echo (부적 훅)
-    for(let i=S.row.length-runLen;i<S.row.length;i++) if(S.row[i].enh==="mult" && !rust) mult+=1;
-    if(S.boss&&S.boss.id==="dull") mult=Math.max(1,mult-1);
-    mult=Math.min(mult, (S.boss&&S.boss.id==="anchor")?3:25);   // 닻: 배율 3 캡
-    let sum=0; for(let i=S.row.length-runLen;i<S.row.length;i++) sum+=S.row[i].rank;
-    bonus=sum*mult;
-    bonus=applyChainMul(bonus, runLen, ctx);   // jackpot: runLen>=4 → ×2 (부적 훅)
-    if(S.boss&&S.boss.id==="toll") bonus=Math.round(bonus*0.5);   // 연결세: 보너스 반감
-    gained+=bonus;
-  }
+  const { gained, base, runLen, bonus } = scoreCard(S.row, card, left, scoreCtx());   // 전체 per-card 점수 경로(rules/scoring.cjs, Step 4a)
   S.score+=gained; render();
   juicePlace(S.row.length-1, base, runLen, bonus, gained);
   if(S.row.length>=SLOTS){ S.busy=true; setTimeout(settle,700); }

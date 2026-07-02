@@ -5,10 +5,18 @@
 //   - 스트레이트가 얼마나 드문지(체인 ±1과 겹치지만 조합 난이도가 달라 별도 보상 가치 검증)
 //   그리디(즉시 점수 최대) 플레이 = 족보를 일부러 노리지 않는 기준선. 실제 "노리는" 플레이는 더 자주 뜸.
 
+// ★Phase 0 Step 4b: connect는 더 이상 여기서 재정의하지 않고 src/rules/connect.cjs 를 require한다
+//   (grep=1 대상). boss 인자를 항상 안 넘기므로(undefined) src connect의 보스분기는 전부 미적용 —
+//   기존 2-인자 로컬 connect와 관측적으로 동일(무변경). evalHand도 src/rules/hands.cjs를 require —
+//   기존 로컬 evalHand는 와일드를 랭크 카운트에 포함시키는(다른 evalHand 사본들과 다른) 의도 불명 분기라
+//   드리프트였다. 정본(wild 제외 + fiveKind)으로 교체 = game-정확한 교정(빈도 수치 변화는 정상).
+//   존재통계(hasStraight/hasFlush)는 측정 전용(게임규칙 아님)이라 handStats()로 얇게 로컬 유지 — 단
+//   game과 일치하도록 wild 제외.
+const { connect } = require("../src/rules/connect.cjs");
+const { evalHand, hasRun5 } = require("../src/rules/hands.cjs");
 const ri = n => Math.floor(Math.random() * n);
 function starterDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push({suit:s,rank:r,enh:null}); const ord=d.map((c,i)=>[c.rank,i]).sort((a,b)=>a[0]-b[0]); for(let k=0;k<4;k++) d[ord[k][1]].enh='wild'; return d; }   // 불씨덱(v3.29) 미러: 최저랭크 4장 wild
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function connect(a,b){ if(a.enh==="wild"||b.enh==="wild") return true; return a.suit===b.suit||a.rank===b.rank||Math.abs(a.rank-b.rank)===1; }
 
 // index.html placeCard 점수 규칙(보스/부적 없는 맨 덱)
 function gain(row, card){
@@ -36,40 +44,20 @@ function playRow(handN){
   return row;
 }
 
-// 5연속(서로 다른 랭크) 존재? (A=1 ~ 8, 윈도우 [1-5][2-6][3-7][4-8])
-function hasRun5(ranks){ const s=new Set(ranks); for(let lo=1;lo<=4;lo++){ let ok=true; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=false; break; } if(ok) return true; } return false; }
-
-// 8장 → {best 족보, hasStraight, hasFlush}
-function evalHand(cards){
+// 존재통계(측정 전용, 게임규칙 아님) — game과 일치하도록 wild 제외
+function handStats(cards){
   const rc={}, bySuit={};
-  for(const c of cards){ rc[c.rank]=(rc[c.rank]||0)+1; (bySuit[c.suit]=bySuit[c.suit]||[]).push(c.rank); }
-  const counts=Object.values(rc).sort((a,b)=>b-a);
-  const maxRank=counts[0];
-  const pairs=counts.filter(x=>x>=2).length;   // 트리플도 포함
-  const trips=counts.filter(x=>x>=3).length;
-  const maxSuit=Math.max(...Object.values(bySuit).map(a=>a.length));
-  const flush=maxSuit>=5;
+  for(const c of cards){ if(c.enh!=="wild"){ rc[c.rank]=(rc[c.rank]||0)+1; (bySuit[c.suit]=bySuit[c.suit]||[]).push(c.rank); } }
+  const flush=Math.max(0,...Object.values(bySuit).map(a=>a.length))>=5;
   const straight=hasRun5(Object.keys(rc).map(Number));
-  let sflush=false; for(const s in bySuit){ if(bySuit[s].length>=5 && hasRun5(bySuit[s])){ sflush=true; break; } }
-  const full = trips>=1 && (pairs>=2 || trips>=2);
-  let best;
-  if(sflush) best="straightFlush";
-  else if(maxRank>=4) best="fourKind";
-  else if(full) best="fullHouse";
-  else if(flush) best="flush";
-  else if(straight) best="straight";
-  else if(maxRank>=3) best="trips";
-  else if(pairs>=2) best="twoPair";
-  else if(pairs>=1) best="pair";
-  else best="highCard";
-  return { best, hasStraight:straight, hasFlush:flush };
+  return { best: evalHand(cards), hasStraight:straight, hasFlush:flush };
 }
 
 const N = 50000;
 const order = ["highCard","pair","twoPair","trips","straight","flush","fullHouse","fourKind","straightFlush"];
 const label = { highCard:"하이카드", pair:"페어", twoPair:"투페어", trips:"트리플", straight:"스트레이트", flush:"플러시", fullHouse:"풀하우스", fourKind:"포카드", straightFlush:"스트레이트플러시" };
 const freq = {}; let stExist=0, flExist=0;
-for(let i=0;i<N;i++){ const e=evalHand(playRow(3)); freq[e.best]=(freq[e.best]||0)+1; if(e.hasStraight) stExist++; if(e.hasFlush) flExist++; }
+for(let i=0;i<N;i++){ const e=handStats(playRow(3)); freq[e.best]=(freq[e.best]||0)+1; if(e.hasStraight) stExist++; if(e.hasFlush) flExist++; }
 
 console.log(`=== 8장 줄 '최고 족보' 분포 (그리디 ${N}판, 손패3, 맨덱) ===`);
 for(const k of order){ const pct=((freq[k]||0)/N*100); console.log(`  ${label[k].padEnd(9)} ${pct.toFixed(2).padStart(6)}%`); }

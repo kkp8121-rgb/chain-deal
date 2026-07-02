@@ -6,6 +6,18 @@
 //
 // ⚠️ index.html 규칙 복제. 근사: 영구덱은 매 라운드 전체 셔플(draw/discard 순서는 단순화),
 //    상점 thin은 랜덤 제거(실제론 약한 카드). 덱 '구성' 효과는 잡지만 draw 순서 정밀도는 낮음.
+//
+// ★Phase 0 Step 4b(어댑터화): connect/climbSealed·evalHand·HAND_BONUS·blindBase/sparkComp·BOSSES·
+//   CHARMS(hooks 포함)는 더 이상 여기서 재정의하지 않고 src/ 를 require한다. gain()/handBonus()는
+//   src/rules/scoring.cjs 의 scoreCard/scoreHandBase/scoreSettle 을 호출하는 얇은 어댑터(ctx를 sim
+//   상태로 구성해 넘김) — game(main.cjs)과 완전히 같은 엔진을 호출하므로 이 두 함수의 규칙 드리프트는
+//   구조적으로 불가능해졌다(로드맵 §2 "How it kills drift"). 아래 오케스트레이션(상점/전략/런 진행)은
+//   게임 규칙이 아니라 sim 전용 로직이라 그대로 유지.
+//
+// ★잔여 미러(문서화, 이번 grep=1 대상 밖 — connect/scoreCard/CHARMS만 대상): stakeMult/blindTarget/
+//   goldEarned은 game(main.cjs)에서 S(전역 상태)를 직접 읽어 아직 순수함수로 추출되지 않았다(Step 5+
+//   engine 분리 이후 통합 예정). bridgeCount/maxAscLen/edgeVal(위치-맥락 헬퍼)도 아직 main.cjs 전용이라
+//   scoreSettle ctx가 요구하는 형태로 여기 로컬 재구현해 둔다(주석 표시).
 
 let RNG = Math.random;                         // funqa가 setRNG로 시드 주입 (기본=비시드, 기존 동작 보존)
 function setRNG(fn){ RNG = fn || Math.random; }
@@ -16,87 +28,74 @@ function highDeckSim(){ const d=[]; for(let s=0;s<4;s++) for(const r of [3,4,5,6
 const DECKS=[{id:"standard",build:starterDeck,dmult:1},{id:"high",build:highDeckSim,dmult:1.29}];   // v3.29 불씨덱: sparkComp(front-loaded) 흡수분만큼 high dmult 1.55→1.29 재캘리브(표준≈high 목표)
 let DMULT=1;   // 덱 목표 스칼라 — runFull이 설정(미지정=표준=1, no-op 기준선 가드)
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function connect(a,b,boss){ if(boss!=="rust"&&(a.enh==="wild"||b.enh==="wild")) return true; if(boss==="seal_suit"&&(a.suit===0||b.suit===0)) return false; if(boss==="mono") return a.suit===b.suit; const run=Math.abs(a.rank-b.rank)===1; return a.suit===b.suit||a.rank===b.rank||run; }
 
-// index.html placeCard 점수 규칙 (부적 owned 반영)
-function climbSealedSim(right,left,boss){ return boss==="seal_climb" && right.enh!=="wild" && left.enh!=="wild" && right.suit!==left.suit && right.rank-left.rank===1; }   // 내리막: 오름 +1 체인 봉인
+// ---------- src/ requires (Phase 0 Step 4b — 규칙은 여기서만 재수출, 자체 재정의 금지) ----------
+const path = require('path');
+const SRC = path.join(__dirname, '..', 'src');
+// content/*.cjs(bosses/charms)는 t()를 별도 require 없이 참조한다(build.mjs 텍스트 스플라이스 관례 —
+// src/content/locale/i18n.cjs 헤더 주석 참조). 여기선 진짜 번들이 아니라 순수 Node require라 이중인라인
+// 걱정은 없지만(require는 캐싱됨), t()가 스코프에 없으면 ReferenceError가 난다 — 실제 i18n을 전역에 걸어
+// 해결(플레이스홀더 키가 아니라 진짜 한국어 name/desc를 얻는다, 값 사용처는 없지만 정확성 우선).
+if (typeof global.t !== "function") {
+  global.t = require(path.join(SRC, "content", "locale", "i18n.cjs")).t;
+}
+const { connect, climbSealed } = require(path.join(SRC, "rules", "connect.cjs"));
+const { evalHand } = require(path.join(SRC, "rules", "hands.cjs"));
+const { HAND_BONUS } = require(path.join(SRC, "content", "hands.cjs"));
+const { blindBase, sparkComp } = require(path.join(SRC, "rules", "blinds.cjs"));
+const { BOSSES } = require(path.join(SRC, "content", "bosses.cjs"));
+const { CHARMS } = require(path.join(SRC, "content", "charms.cjs"));   // 부적 hooks 포함 — gain/handBonus 어댑터가 소비
+const { scoreCard, scoreHandBase, scoreSettle } = require(path.join(SRC, "rules", "scoring.cjs"));
+
+// ---------- 위치-맥락 헬퍼 (잔여 미러: main.cjs 원본과 동일 로직 — Step 5 engine 분리 전까지 로컬 유지) ----------
+// bridge/stair/keystone 부적 훅(content/charms.cjs)이 ctx.bridgeCount/maxAscLen/edgeVal(row)를 호출한다.
+function bridgeCountSim(row, boss){ let n=0; for(let i=1;i<=6 && i+1<row.length;i++){ if(connect(row[i],row[i-1],boss) && connect(row[i],row[i+1],boss)) n++; } return n; }   // 양옆 모두 연결되는 내부 카드(다리)
+function maxAscLenSim(row){ let mx=1,cur=1; for(let i=1;i<row.length;i++){ if(row[i].enh!=="wild" && row[i-1].enh!=="wild" && row[i].rank>row[i-1].rank){ cur++; if(cur>mx) mx=cur; } else cur=1; } return mx; }   // 최장 오름차순 연속
+function edgeValSim(row){ const r=c=>c&&c.enh!=="wild"?c.rank:0; return r(row[0])+r(row[3])+r(row[7]); }   // 0·3·7 칸 숫자 합(와일드=0)
+
+// ---------- gain = scoreCard 어댑터 (per-card 점수) ----------
+// row: 카드가 아직 안 담긴 줄(원본 gain과 동일하게 이 함수가 push한다) / card: 배치할 카드 / boss: id문자열|null
+// owned: 보유 부적 id 배열 / deckSize: 영구덱 카드수(compactor liveDeckCount 대용 — sim은 discard/hand를 안 나눠 추적하므로 근사)
+function scoreCtxSim(boss, owned, deckSize){
+  return {
+    has: id => owned.includes(id),
+    boss: id => boss === id,
+    isRed,
+    liveDeckCount: deckSize || 32,
+    connect: (a,b) => connect(a,b,boss),
+    climbSealed: (a,b) => climbSealed(a,b,boss),
+    ownedHooks: CHARMS.filter(c => c.hooks && owned.includes(c.id)).map(c => c.hooks),
+  };
+}
 function gain(row, card, boss, owned, deckSize){
+  const left = row[row.length-1];
   row.push(card);
-  const rust=boss==="rust";
-  let base=(boss==="red_curse"&&isRed(card.suit))?0:card.rank;
-  if(boss==="tax"&&card.rank>=7) base=0; else if(boss==="peasant"&&card.rank<=3) base=0;   // 사치세/보릿고개
-  if(owned.includes("greed")) base+=3;
-  if(card.enh==="gold" && !rust) base+=5;
-  if(owned.includes("lapidary")&&card.enh&&!rust) base+=3;
-  if(owned.includes("compactor")) base+=Math.min(8, Math.max(0, 32-(deckSize||32)));
-  if(owned.includes("runts")&&card.rank<=3) base+=4;
-  let g=base, rl=1;
-  const left=row[row.length-2];
-  if(left&&connect(card,left,boss) && !climbSealedSim(card,left,boss) && !(boss==="frost"&&row.length<=2)){   // 냉각: 줄 첫 2장 무연결 / 내리막: 오름 ±1 봉인
-    const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
-    for(let i=row.length-1;i>0;i--){ if(connect(row[i],row[i-1],boss) && !climbSealedSim(row[i],row[i-1],boss)) rl++; else break; }
-    let mult=rl-1;
-    if(owned.includes("pyro")&&isRed(card.suit)) mult+=2;
-    if(owned.includes("noir")&&!isRed(card.suit)) mult+=2;
-    if(owned.includes("suited")&&byIcon) mult+=1;
-    if(owned.includes("runner")&&byRun) mult+=1;
-    if(owned.includes("highmult")&&card.rank>=7) mult+=1;
-    if(owned.includes("echo")&&card.rank===left.rank) mult+=1;
-    for(let i=row.length-rl;i<row.length;i++) if(row[i].enh==="mult" && !rust) mult+=1;
-    if(boss==="dull") mult=Math.max(1,mult-1);
-    mult=Math.min(mult, boss==="anchor"?3:25);   // 닻: 배율 3 캡 (캡 레버는 밸런스빌드에 무효라 사다리서 제외)
-    let sum=0; for(let i=row.length-rl;i<row.length;i++) sum+=row[i].rank;
-    let bonus=sum*mult;
-    if(owned.includes("jackpot")&&rl>=4) bonus*=2;
-    if(boss==="toll") bonus=Math.round(bonus*0.5);   // 연결세: 보너스 반감
-    g+=bonus;
-  }
-  return g;
+  const { gained } = scoreCard(row, card, left, scoreCtxSim(boss, owned, deckSize));
+  return gained;
 }
 
-// 족보 (index.html 동일)
-const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75,fiveKind:.95};
-function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ok=0;break;} if(ok) return true; } return false; }
-function evalHand(cards){
-  const rc={},bs={}; for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
-  const cnt=Object.values(rc).sort((a,b)=>b-a), mr=cnt[0]||0;
-  const pairs=cnt.filter(x=>x>=2).length, trips=cnt.filter(x=>x>=3).length;
-  const mx=Math.max(...Object.values(bs).map(a=>a.length));
-  const fl=mx>=5, st=hasRun5(Object.keys(rc).map(Number));
-  let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
-  const full=trips>=1&&(pairs>=2||trips>=2);
-  if(mr>=5) return"fiveKind"; if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
-  if(fl) return"flush"; if(st) return"straight"; if(mr>=3) return"trips";
-  if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
-}
-const blindBase=a=>150*Math.pow(1.5,a-1);   // 기준값 불변(charm 리밸런스 없음). 불씨덱 보정은 sparkComp(blindTarget)로만
 const STK_T=[0,.03,.03,.04,.04,.06], STK_AC=[0,0,0,.008,.008,.014];   // 6스테이크(St0~5) per-stake 목표 가산(평면, 안테비례) — index.html 미러
-const stakeMult=a=>1+STK_T[STK]+STK_AC[STK]*(a-1);   // 난이도 사다리 목표 스칼라 — index.html 미러
-const sparkComp=a=>1.0+0.34*(8-a)/7;   // v3.29 불씨덱 front-loaded 보정(target 전용): 초반 강(a1=1.34)→후반 무(a8=1.00). spark가 초반을 쉽게 하니 초반에 더 과세, thin-headroom 후반(a8)은 baseline 목표 → flatness 보존+St0~9%. charm(blindBase)엔 미적용. index 미러
-const blindTarget=(a,b)=>Math.round(blindBase(a)*sparkComp(a)*stakeMult(a)*DMULT*(b===0?1:b===1?1.4:1.6));
+const stakeMult=a=>1+STK_T[STK]+STK_AC[STK]*(a-1);   // ★잔여 미러(game이 S.stake를 직접 읽어 아직 순수화 안 됨) — 난이도 사다리 목표 스칼라
+const blindTarget=(a,b)=>Math.round(blindBase(a)*sparkComp(a)*stakeMult(a)*DMULT*(b===0?1:b===1?1.4:1.6));   // ★잔여 미러(game은 S.ante/S.stake 직접 읽음)
+
+// ---------- handBonus = scoreHandBase + scoreSettle 어댑터 (정산 시점 족보 보너스) ----------
 function handBonus(row, ante, owned, boss){
-  const hk=evalHand(row); let hb=Math.round(blindBase(ante)*(HAND_BONUS[hk]||0));
-  if(owned&&owned.includes("broker")){ const BR={pair:.05,twoPair:.08,trips:.12}; if(BR[hk]) hb=Math.round(blindBase(ante)*BR[hk]); }
-  if(owned&&owned.includes("twins")){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; hb+=Math.round(blindBase(ante)*.03*Math.min(g,4)); }
-  // 위치-맥락 부적 (index.html settle 미러)
-  if(owned&&owned.includes("bridge")){ let n=0; for(let i=1;i<=6&&i+1<row.length;i++){ if(connect(row[i],row[i-1],boss)&&connect(row[i],row[i+1],boss)) n++; } hb+=Math.round(blindBase(ante)*.03*Math.min(n,3)); }
-  if(owned&&owned.includes("stair")){ let mx=1,cur=1; for(let i=1;i<row.length;i++){ if(row[i].enh!=="wild"&&row[i-1].enh!=="wild"&&row[i].rank>row[i-1].rank){cur++;if(cur>mx)mx=cur;}else cur=1;} hb+=Math.round(blindBase(ante)*.04*Math.max(0,Math.min(mx,6)-2)); }
-  if(owned&&owned.includes("keystone")){ const rv=c=>c&&c.enh!=="wild"?c.rank:0; hb+=Math.round(blindBase(ante)*.18*Math.max(0,((rv(row[0])+rv(row[3])+rv(row[7]))-12)/12)); }
-  if(owned&&owned.includes("prism")){ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } if(w&&g&&m&&boss!=="rust") hb+=Math.round(blindBase(ante)*.12); }
-  if(owned&&owned.includes("jewelbox")){ let e=0; for(const c of row) if(c.enh) e++; hb+=Math.round(blindBase(ante)*.025*Math.min(e,6)); }
-  if(owned&&owned.includes("magnate")){ let h=0; for(const c of row) if(c.enh!=="wild"&&c.rank>=7) h++; hb+=Math.round(blindBase(ante)*.03*Math.min(h,5)); }
-  if(owned&&owned.includes("loaded")){ if(hk==="fourKind") hb+=Math.round(blindBase(ante)*.10); else if(hk==="fiveKind") hb+=Math.round(blindBase(ante)*.30); }
-  if(owned&&owned.includes("climax") && ["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)){ let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1],boss)){ cur++; if(cur>L)L=cur; } else cur=1; } hb+=Math.round(blindBase(ante)*.03*Math.max(0,Math.min(L,8)-5)); }
-  if(owned&&owned.includes("evenodd")){ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); hb+=Math.round(blindBase(ante)*.04*Math.max(0,Math.max(ev,od)-5)); }
-  if(owned&&owned.includes("paritybet")){ const nw=row.filter(c=>c.enh!=="wild"); if(row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1))) hb+=Math.round(blindBase(ante)*.30); }
-  if(owned&&owned.includes("twotone")){ let h=0,d=0,s=0,c=0; for(const x of row){ if(x.enh==="wild")continue; if(x.suit===1)h++; else if(x.suit===2)d++; else if(x.suit===0)s++; else c++; } const red=h+d,black=s+c,dom=Math.max(red,black); const bothSuits=red>=black?(h>0&&d>0):(s>0&&c>0); if(bothSuits) hb+=Math.round(blindBase(ante)*0.04*Math.max(0,Math.min(dom,8)-4)); }   // 투톤: 두 무늬 섞은 단색 치우침(순수 플러시 제외)
-  return hb;
+  const hk = evalHand(row);
+  const bb = blindBase(ante);
+  const hb0 = scoreHandBase(hk, { blindBase: bb, HAND_BONUS });
+  const ctx = {
+    has: id => !!(owned && owned.includes(id)),
+    boss: id => boss === id,
+    connect: (a,b) => connect(a,b,boss),
+    blindBase: bb,
+    bridgeCount: r => bridgeCountSim(r, boss),
+    maxAscLen: maxAscLenSim,
+    edgeVal: edgeValSim,
+    ownedHooks: owned ? CHARMS.filter(c => c.hooks && owned.includes(c.id)).map(c => c.hooks) : [],
+  };
+  return scoreSettle(hb0, hk, row, ctx);
 }
-const BOSSES=[
-  {id:"red_curse",tmult:1.0,act:1,actBoss:false},{id:"dull",tmult:.85,act:1,actBoss:false},{id:"peasant",tmult:.82,act:1,actBoss:false},{id:"tax",tmult:.8,act:1,actBoss:true},
-  {id:"seal_climb",tmult:.72,act:2,actBoss:false},{id:"stingy",tmult:.58,act:2,actBoss:false},{id:"toll",tmult:.54,act:2,actBoss:false},{id:"rust",tmult:.6,act:2,actBoss:true},
-  {id:"seal_suit",tmult:.47,act:3,actBoss:false},{id:"frost",tmult:.48,act:3,actBoss:false},{id:"mono",tmult:.4,act:3,actBoss:false},{id:"anchor",tmult:.44,act:3,actBoss:true},
-];
+
 const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
 function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8); let pool=BOSSES.filter(b=>b.act===a&&b.actBoss===fin); if(!pool.length) pool=BOSSES.filter(b=>b.act===a); return pool[ri(pool.length)]; }
 const BOSS_KO={red_curse:"단색저주",dull:"무딘칼날",peasant:"보릿고개",tax:"👑사치세",seal_climb:"내리막",stingy:"인색한손",toll:"연결세",rust:"👑부식",seal_suit:"무늬봉인",frost:"냉각",mono:"단일강요",anchor:"👑닻"};
@@ -123,10 +122,10 @@ function playRound(deck, owned, boss, handN, ante, pick){
 }
 
 // 상점: 3택1 (전략 우선순위로 선택)
-const CHARMS=["greed","pyro","suited","runner","jackpot","noir","broker","twins","compactor","runts","bridge","stair","keystone","lapidary","prism","jewelbox","highmult","magnate","echo","loaded","climax","evenodd","paritybet","twotone"];
+const CHARM_IDS=CHARMS.map(c=>c.id);   // 오케스트레이션(상점 풀)은 id 문자열만 필요 — CHARMS(hooks 포함) 자체는 gain/handBonus만 소비
 function shopPool(state){
   const pool=[];
-  CHARMS.filter(c=>!state.owned.includes(c)).forEach(c=>pool.push({type:"charm",id:c}));
+  CHARM_IDS.filter(c=>!state.owned.includes(c)).forEach(c=>pool.push({type:"charm",id:c}));
   pool.push({type:"thin"},{type:"copy"},{type:"enh",enh:"wild"},{type:"enh",enh:"mult"},{type:"enh",enh:"gold"},{type:"add"},{type:"hand"},{type:"reroll"});
   return pool;
 }
