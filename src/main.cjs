@@ -15,17 +15,11 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rng()*(i+
 const ri=n=>Math.floor(rng()*n);
 
 // 연결: 같은 무늬 OR 같은 숫자 OR ±1 연속 (와일드 무조건). 보스 규칙이 일부를 봉인.
-function connect(a,b){
-  const boss=S&&S.boss;
-  if(!(boss&&boss.id==="rust") && (a.enh==="wild"||b.enh==="wild")) return true;  // 부식: 와일드 무력화
-  if(boss&&boss.id==="seal_suit"){ if(a.suit===0||b.suit===0) return false; }   // ♠ 봉인
-  const suitOk=a.suit===b.suit, rankOk=a.rank===b.rank;
-  if(boss&&boss.id==="mono") return suitOk;                                      // 단일강요: 같은 무늬만
-  const runOk=Math.abs(a.rank-b.rank)===1;                                       // ±1 (방향 봉인은 placeCard climbSealed에서)
-  return suitOk||rankOk||runOk;
-}
+// ★Phase 0 Step 2: connect/climbSealed는 순수함수로 src/rules/connect.cjs 로 이동(boss=id문자열|null, 전역 S 미접근).
+// 호출부는 전부 bossId()로 S.boss(객체)→id 변환해 넘긴다(placeCard/render 프리뷰/bridgeCount/climax 해금 — 누락 시 조용한 버그).
+const { connect, climbSealed } = require('./rules/connect.cjs');
 function cardSealed(c){ return S&&S.boss&&S.boss.id==="seal_suit"&&c.suit===0; }
-function climbSealed(right,left){ return S.boss && S.boss.id==="seal_climb" && right.enh!=="wild" && left.enh!=="wild" && right.suit!==left.suit && right.rank-left.rank===1; }   // 내리막: 오름 +1(다른무늬·비와일드) 체인 봉인
+function bossId(){ return (S&&S.boss) ? S.boss.id : null; }
 
 /* ---------- 보스 블라인드 ---------- */
 // tmult = 보스마다 룰 가혹도가 달라 목표치를 보정 (점수 깎는 보스일수록 목표↓ → 균형)
@@ -46,20 +40,8 @@ function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8)
 // 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
 const { HAND_BONUS } = require('./content/hands.cjs');
 const HAND_LABEL={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
-function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
-function evalHand(cards){
-  const rc={}, bs={};
-  for(const c of cards){ if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; (bs[c.suit]=bs[c.suit]||[]).push(c.rank); }
-  const cnt=Object.values(rc).sort((a,b)=>b-a), mr=cnt[0]||0;
-  const pairs=cnt.filter(x=>x>=2).length, trips=cnt.filter(x=>x>=3).length;
-  const mxSuit=Math.max(...Object.values(bs).map(a=>a.length));
-  const flush=mxSuit>=5, straight=hasRun5(Object.keys(rc).map(Number));
-  let sf=false; for(const s in bs){ if(bs[s].length>=5&&hasRun5(bs[s])){ sf=true; break; } }
-  const full=trips>=1&&(pairs>=2||trips>=2);
-  if(mr>=5) return"fiveKind"; if(sf) return"straightFlush"; if(mr>=4) return"fourKind"; if(full) return"fullHouse";
-  if(flush) return"flush"; if(straight) return"straight"; if(mr>=3) return"trips";
-  if(pairs>=2) return"twoPair"; if(pairs>=1) return"pair"; return"highCard";
-}
+// hasRun5는 evalHand 내부에서만 쓰여 미구조분해(hands.cjs가 export는 함)
+const { evalHand } = require('./rules/hands.cjs');
 function handBonus(row){ return Math.round(blindBase(S.ante)*(HAND_BONUS[evalHand(row)]||0)); }   // ★blindBase(스테이크 무관) — 사다리서 목표만 오르고 족보 보너스 쿠션은 안 오르게
 
 /* ---------- 익명 플레이로그 (Google Sheets + Apps Script) ---------- */
@@ -91,7 +73,7 @@ const BLINDNAME=[t('ui.blind.small'),t('ui.blind.big'),t('ui.blind.boss')];
 const { SLOTS, ANTES, MAX_STAKE, GOLD_BASE, GOLD_K, START_GOLD_PER_LV, REROLL_BASE, CLUSTER_W, META_PRICE, STAKE_T, STAKE_AC } = require('./content/tuning.cjs');
 const STAKE_NAMES=[t('ui.stake.name.0'),t('ui.stake.name.1'),t('ui.stake.name.2'),t('ui.stake.name.3'),t('ui.stake.name.4'),t('ui.stake.name.5')], STAKE_DESC=[t('ui.stake.desc.0'),t('ui.stake.desc.1'),t('ui.stake.desc.2'),t('ui.stake.desc.3'),t('ui.stake.desc.4'),t('ui.stake.desc.5')];   // 각 티어 시그니처 규칙(누적)
 function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
-function spillover(gold){ return Math.floor(gold*0.1); }
+const { spillover } = require('./rules/economy.cjs');
 let S=null;
 const { CHARMS } = require('./content/charms.cjs');
 const has=id=>S.owned.includes(id);
@@ -102,7 +84,7 @@ const STARTER_CHARMS=["greed","pyro","suited","runner","jackpot"];
 function maxRankCount(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let m=0; for(const k in rc) if(rc[k]>m) m=rc[k]; return m; }
 function pairGroups(row){ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return g; }
 // 위치-맥락 부적 메트릭 (정산·해금 공용, ★run-sim handBonus 미러 — 드리프트 주의)
-function bridgeCount(row){ let n=0; for(let i=1;i<=6 && i+1<row.length;i++){ if(connect(row[i],row[i-1]) && connect(row[i],row[i+1])) n++; } return n; }   // 양옆 모두 연결되는 내부 카드(다리). connect가 S.boss 읽어 보스 봉인에 적응
+function bridgeCount(row){ const b=bossId(); let n=0; for(let i=1;i<=6 && i+1<row.length;i++){ if(connect(row[i],row[i-1],b) && connect(row[i],row[i+1],b)) n++; } return n; }   // 양옆 모두 연결되는 내부 카드(다리). bossId()로 보스 봉인에 적응
 function maxAscLen(row){ let mx=1,cur=1; for(let i=1;i<row.length;i++){ if(row[i].enh!=="wild"&&row[i-1].enh!=="wild"&&row[i].rank>row[i-1].rank){ cur++; if(cur>mx)mx=cur; } else cur=1; } return mx; }   // 최장 오름차순 연속(엄격>, 와일드서 끊김)
 function edgeVal(row){ const r=c=>c&&c.enh!=="wild"?c.rank:0; return r(row[0])+r(row[3])+r(row[7]); }   // 0·3·7 칸 숫자 합(와일드=0)
 // 각 잠금 부적의 해금 조건 cond(stats,row)→bool + 컬렉션 힌트. 전부 settle 시점 판정(런중 추적 0).
@@ -122,7 +104,7 @@ const UNLOCKS={
   magnate:  {cond:(st,row)=> row.filter(c=>c.rank>=7).length>=5, hint:t('unlock.magnate.hint')},
   echo:   {cond:(st,row)=> maxRankCount(row)>=4, hint:t('unlock.echo.hint')},
   loaded: {cond:(st,row)=> evalHand(row)==="fiveKind", hint:t('unlock.loaded.hint')},
-  climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:t('unlock.climax.hint')},
+  climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; const b=bossId(); let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1],b)){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:t('unlock.climax.hint')},
   evenodd:   {cond:(st,row)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.max(ev,od)>=6; }, hint:t('unlock.evenodd.hint')},
   paritybet: {cond:(st,row)=>{ const nw=row.filter(c=>c.enh!=="wild"); return row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1)); }, hint:t('unlock.paritybet.hint')},
   twotone:  {cond:(st,row)=>{ let r=0,b=0; for(const c of row) if(c.enh!=="wild"){ if(c.suit===1||c.suit===2)r++; else b++; } return Math.max(r,b)>=6; }, hint:t('unlock.twotone.hint')},
@@ -180,8 +162,7 @@ function newGame(seed, stake, variant){
   renderStats();
 }
 // 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
-function blindBase(ante){ return 150*Math.pow(1.5, ante-1); }   // 스테이크 무관 기준값(족보 보너스 기준). 불씨덱 보정은 sparkComp로만 — charm 불변
-function sparkComp(ante){ return 1.0+0.34*(8-ante)/7; }   // v3.29 불씨덱 front-loaded 보정(target 전용): 초반 강(a1=1.34)→후반 무(a8=1.00) — flatness 보존. run-sim 미러
+const { blindBase, sparkComp } = require('./rules/blinds.cjs');
 function stakeMult(ante){ const st=S?S.stake:0; return 1+STAKE_T[st]+STAKE_AC[st]*(ante-1); }   // st0→1(no-op)
 function blindTarget(ante,blind){
   return Math.round(blindBase(ante)*sparkComp(ante)*stakeMult(ante)*(S?S.dmult:1) * (blind===0?1 : blind===1?1.4 : 1.6));   // sparkComp=불씨덱 front-loaded 보정. dmult=시작덱 보정(표준 1=no-op).
@@ -224,9 +205,10 @@ function placeCard(hi){
   if(has("runts") && card.rank<=3) base+=4;   // A·2·3 한정 (8 초과 불가하게 +4로 묶음)
   let gained=base, runLen=1, bonus=0;
 
-  if(left && connect(card,left) && !climbSealed(card,left) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효 / 내리막: 오름 ±1 봉인
+  const bId=bossId();
+  if(left && connect(card,left,bId) && !climbSealed(card,left,bId) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효 / 내리막: 오름 ±1 봉인
     const byIcon=card.suit===left.suit, byRun=Math.abs(card.rank-left.rank)===1;
-    runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1]) && !climbSealed(S.row[i],S.row[i-1])) runLen++; else break; }
+    runLen=1; for(let i=S.row.length-1;i>0;i--){ if(connect(S.row[i],S.row[i-1],bId) && !climbSealed(S.row[i],S.row[i-1],bId)) runLen++; else break; }
     let mult=runLen-1;
     if(has("pyro") && isRed(card.suit)) mult+=2;
     if(has("noir") && !isRed(card.suit)) mult+=2;   // 검정(♠♣) — 발화의 거울
@@ -275,7 +257,7 @@ function settle(){
   if(has("jewelbox")){ let e=0; for(const c of S.row) if(c.enh) e++; hb+=Math.round(blindBase(S.ante)*.025*Math.min(e,6)); }   // 보석함: enh 1장당 +2.5%, 최대6
   if(has("magnate")){ let h=0; for(const c of S.row) if(c.enh!=="wild"&&c.rank>=7) h++; hb+=Math.round(blindBase(S.ante)*.03*Math.min(h,5)); }   // 거물: 7·8 카드 1장당 +3%, 최대5
   if(has("loaded")){ if(hk==="fourKind") hb+=Math.round(blindBase(S.ante)*.10); else if(hk==="fiveKind") hb+=Math.round(blindBase(S.ante)*.30); }   // 사기패: 불법패 보상(hk 재사용)
-  if(has("climax") && ["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)){ let L=1,cur=1; for(let i=1;i<S.row.length;i++){ if(connect(S.row[i],S.row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } hb+=Math.round(blindBase(S.ante)*.03*Math.max(0,Math.min(L,8)-5)); }   // 절정: 풀하우스+ & 6연결부터(L-5)
+  if(has("climax") && ["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)){ const b=bossId(); let L=1,cur=1; for(let i=1;i<S.row.length;i++){ if(connect(S.row[i],S.row[i-1],b)){ cur++; if(cur>L)L=cur; } else cur=1; } hb+=Math.round(blindBase(S.ante)*.03*Math.max(0,Math.min(L,8)-5)); }   // 절정: 풀하우스+ & 6연결부터(L-5)
   if(has("evenodd")){ let ev=0,od=0; for(const c of S.row) if(c.enh!=="wild")(c.rank%2?od++:ev++); hb+=Math.round(blindBase(S.ante)*.04*Math.max(0,Math.max(ev,od)-5)); }   // 홀짝 정렬: 6장+부터 초과분당 +4%
   if(has("paritybet")){ const nw=S.row.filter(c=>c.enh!=="wild"); if(S.row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1))) hb+=Math.round(blindBase(S.ante)*.30); }   // 패리티 도박: 전원 동일 패리티 +30%(스파이스)
   if(has("twotone")){ let h=0,d=0,s=0,c=0; for(const x of S.row){ if(x.enh==="wild")continue; if(x.suit===1)h++; else if(x.suit===2)d++; else if(x.suit===0)s++; else c++; } const red=h+d,black=s+c,dom=Math.max(red,black); const bothSuits=red>=black?(h>0&&d>0):(s>0&&c>0); if(bothSuits) hb+=Math.round(blindBase(S.ante)*0.04*Math.max(0,Math.min(dom,8)-4)); }   // 투톤: 두 무늬 섞은 단색 치우침(순수 플러시 제외)
@@ -482,11 +464,11 @@ function render(){
     else { const e=document.createElement("div"); e.className="pcard empty"; row.appendChild(e); }
   }
   const hand=document.getElementById("hand"); hand.innerHTML="";
-  const last=S.row[S.row.length-1];
+  const last=S.row[S.row.length-1], bIdRow=bossId();
   S.hand.forEach((c,i)=>{
     const w=document.createElement("div"); w.className="hcard"; let zap="";
-    if(S.showPreview && last && connect(c,last) && !climbSealed(c,last) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=1)){   // 내리막/냉각: 봉인·줄첫2장 예고 미러(placeCard 동기화)
-      let er=1; for(let j=S.row.length-1;j>0;j--){ if(connect(S.row[j],S.row[j-1]) && !climbSealed(S.row[j],S.row[j-1])) er++; else break; }
+    if(S.showPreview && last && connect(c,last,bIdRow) && !climbSealed(c,last,bIdRow) && !(S.boss&&S.boss.id==="frost"&&S.row.length<=1)){   // 내리막/냉각: 봉인·줄첫2장 예고 미러(placeCard 동기화)
+      let er=1; for(let j=S.row.length-1;j>0;j--){ if(connect(S.row[j],S.row[j-1],bIdRow) && !climbSealed(S.row[j],S.row[j-1],bIdRow)) er++; else break; }
       w.classList.add("willchain"); zap=`<div class="zap">⚡×${er+1}</div>`;
     }
     w.appendChild(cardEl(c)); w.insertAdjacentHTML("beforeend",zap);

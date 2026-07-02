@@ -1,10 +1,11 @@
-// build.mjs — Phase 0 Step 0 (Scaffold) + Step 1a (content extraction) build pipeline.
+// build.mjs — Phase 0 Step 0 (Scaffold) + Step 1a (content extraction) + Step 2 (pure rules extraction) build pipeline.
 // Assembles prototype/index.html from src/index.template.html + src/styles.css + src/main.cjs
-// (with src/content/*.cjs requires resolved — see resolveRequires below).
+// (with src/content/*.cjs and src/rules/*.cjs requires resolved — see resolveRequires below).
 // esbuild is a build-time-only devDependency — the shipped prototype/index.html has zero runtime deps.
 //
-// ★ src/main.cjs's only require()s are local `./content/*.cjs` data modules (Step 1a). There is still
-// nothing to bundle in the esbuild sense (no npm deps, no cross-package resolution) — this pipeline
+// ★ src/main.cjs's only require()s are local `./content/*.cjs` data modules (Step 1a) and `./rules/*.cjs`
+// pure-rule modules (Step 2). There is still nothing to bundle in the esbuild sense (no npm deps, no
+// cross-package resolution) — this pipeline
 // resolves those local requires itself via plain text splicing (resolveRequires) and uses esbuild purely
 // as a SYNTAX-VALIDATION GATE (fails the build on a parse error), inlining the raw, untransformed source
 // text into the template. Two esbuild behaviors make running its *output* through unsuitable for this step:
@@ -29,6 +30,7 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, "src");
 const CONTENT_DIR = path.join(SRC, "content");
+const RULES_DIR = path.join(SRC, "rules");
 const OUT = path.join(__dirname, "prototype", "index.html");
 
 // Matches a whole-line local require, e.g.:  const { CHARMS } = require('./content/charms.cjs');
@@ -79,10 +81,12 @@ function listCjsFilesRecursive(dir) {
 
 async function main() {
   // Syntax-validation gate — output is discarded, see header comment. Covers main.cjs AND every
-  // src/content/**/*.cjs data module (each must independently parse; a broken content file fails the build).
+  // src/content/**/*.cjs data module + src/rules/**/*.cjs pure-rule module (each must independently
+  // parse; a broken content/rules file fails the build).
   const contentFiles = listCjsFilesRecursive(CONTENT_DIR);
+  const rulesFiles = listCjsFilesRecursive(RULES_DIR);
   await Promise.all(
-    [path.join(SRC, "main.cjs"), ...contentFiles].map((entry) =>
+    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles].map((entry) =>
       build({ entryPoints: [entry], bundle: false, write: false, logLevel: "silent" })
     )
   );
