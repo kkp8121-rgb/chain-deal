@@ -1,12 +1,13 @@
-// build.mjs — Phase 0 Step 0 (Scaffold) build pipeline.
-// Assembles prototype/index.html from src/index.template.html + src/styles.css + src/main.cjs.
+// build.mjs — Phase 0 Step 0 (Scaffold) + Step 1a (content extraction) build pipeline.
+// Assembles prototype/index.html from src/index.template.html + src/styles.css + src/main.cjs
+// (with src/content/*.cjs requires resolved — see resolveRequires below).
 // esbuild is a build-time-only devDependency — the shipped prototype/index.html has zero runtime deps.
 //
-// ★ src/main.cjs has no require()/import yet — there is nothing to bundle (that arrives in later Phase 0
-// steps once content/rules/engine modules exist). Step 0's job is a verbatim code move, so this pipeline
-// uses esbuild as a SYNTAX-VALIDATION GATE only (fails the build on a parse error) and inlines the raw,
-// untransformed src/main.cjs + src/styles.css text into the template. Two esbuild behaviors make running
-// its *output* through unsuitable for this step:
+// ★ src/main.cjs's only require()s are local `./content/*.cjs` data modules (Step 1a). There is still
+// nothing to bundle in the esbuild sense (no npm deps, no cross-package resolution) — this pipeline
+// resolves those local requires itself via plain text splicing (resolveRequires) and uses esbuild purely
+// as a SYNTAX-VALIDATION GATE (fails the build on a parse error), inlining the raw, untransformed source
+// text into the template. Two esbuild behaviors make running its *output* through unsuitable for this step:
 //   1. esbuild's printer unconditionally strips regular // and /* */ comments (even with minify:false;
 //      legalComments only preserves license/copyright-style comments) — this file's comments carry load-
 //      bearing design rationale (CLAUDE.md/HANDOVER references, drift-sync notes) that must survive intact.
@@ -18,27 +19,75 @@
 // change constraint for this step. Once later Phase-0 steps introduce real cross-file require()s, the
 // bundle output (with charset:'utf8') becomes the right choice — revisit this file then.
 import { build } from "esbuild";
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, "src");
+const CONTENT_DIR = path.join(SRC, "content");
 const OUT = path.join(__dirname, "prototype", "index.html");
 
+// Matches a whole-line local require, e.g.:  const { CHARMS } = require('./content/charms.cjs');
+// (single- or double-quoted, only relative `./`/`../` paths — no bare/npm specifiers here.)
+const REQUIRE_LINE_RE = /^\s*const\s*\{[^}]*\}\s*=\s*require\((['"])(\.\.?\/[^'"]+)\1\)\s*;\s*$/;
+const EXPORTS_LINE_RE = /^\s*module\.exports\s*=\s*\{[^}]*\}\s*;\s*$/;
+
+// Resolves every local `require('./content/xxx.cjs')` line in a file by inlining the required module's
+// body (verbatim, minus its own require/module.exports lines) in place — recursively, so a required
+// module may itself require further content modules. Detects missing files and circular requires.
+function resolveRequires(filePath, stack = []) {
+  if (stack.includes(filePath)) {
+    const chain = [...stack, filePath].map((p) => path.relative(__dirname, p)).join(" -> ");
+    throw new Error(`build.mjs: circular require detected: ${chain}`);
+  }
+  const raw = readFileSync(filePath, "utf8");
+  const dir = path.dirname(filePath);
+  const lines = raw.replace(/\n$/, "").split("\n");
+  const out = [];
+  for (const line of lines) {
+    const m = line.match(REQUIRE_LINE_RE);
+    if (m) {
+      const reqPath = path.join(dir, m[2]);
+      if (!existsSync(reqPath)) {
+        throw new Error(`build.mjs: required module not found: '${m[2]}' (from ${path.relative(__dirname, filePath)})`);
+      }
+      out.push(resolveRequires(reqPath, [...stack, filePath]));
+      continue;
+    }
+    if (EXPORTS_LINE_RE.test(line)) continue; // module.exports is Node-only, browser has no `module`
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+// Recursively lists every .cjs file under dir (src/content now nests src/content/locale/ — Step 1b i18n
+// key-out — so this can't stay a flat readdirSync or ko.cjs/en.cjs/i18n.cjs would silently skip the gate).
+function listCjsFilesRecursive(dir) {
+  if (!existsSync(dir)) return [];
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listCjsFilesRecursive(full));
+    else if (entry.name.endsWith(".cjs")) out.push(full);
+  }
+  return out;
+}
+
 async function main() {
-  // Syntax-validation gate only — output is discarded, see header comment.
-  await build({
-    entryPoints: [path.join(SRC, "main.cjs")],
-    bundle: false,
-    write: false,
-    logLevel: "silent",
-  });
+  // Syntax-validation gate — output is discarded, see header comment. Covers main.cjs AND every
+  // src/content/**/*.cjs data module (each must independently parse; a broken content file fails the build).
+  const contentFiles = listCjsFilesRecursive(CONTENT_DIR);
+  await Promise.all(
+    [path.join(SRC, "main.cjs"), ...contentFiles].map((entry) =>
+      build({ entryPoints: [entry], bundle: false, write: false, logLevel: "silent" })
+    )
+  );
 
   // Trim exactly one trailing newline — src/*.{cjs,css} end with a newline (standard for text files) and
   // the template already puts a newline after each marker, so without this trim every build would grow
   // an extra blank line before </style>/</script> on top of the original prototype/index.html.
-  const js = readFileSync(path.join(SRC, "main.cjs"), "utf8").replace(/\n$/, "");
+  const js = resolveRequires(path.join(SRC, "main.cjs")).replace(/\n$/, "");
   const css = readFileSync(path.join(SRC, "styles.css"), "utf8").replace(/\n$/, "");
   const template = readFileSync(path.join(SRC, "index.template.html"), "utf8");
 

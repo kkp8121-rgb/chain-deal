@@ -1,0 +1,28 @@
+// t()는 main.cjs 최상단의 i18n require에서 공유(재require 금지 — src/content/locale/i18n.cjs 헤더 주석 참조)
+const CHARMS=[
+  {id:"greed",  name:t('charm.greed.name'),   desc:t('charm.greed.desc')},
+  {id:"pyro",   name:t('charm.pyro.name'),   desc:t('charm.pyro.desc')},
+  {id:"suited", name:t('charm.suited.name'),desc:t('charm.suited.desc')},
+  {id:"runner", name:t('charm.runner.name'),   desc:t('charm.runner.desc')},
+  {id:"jackpot",name:t('charm.jackpot.name'),   desc:t('charm.jackpot.desc')},
+  {id:"noir",     name:t('charm.noir.name'),   desc:t('charm.noir.desc')},
+  {id:"broker",   name:t('charm.broker.name'), desc:t('charm.broker.desc')},
+  {id:"twins",    name:t('charm.twins.name'), desc:t('charm.twins.desc')},
+  {id:"compactor",name:t('charm.compactor.name'), desc:t('charm.compactor.desc')},
+  {id:"runts",    name:t('charm.runts.name'), desc:t('charm.runts.desc')},
+  {id:"bridge",   name:t('charm.bridge.name'),   desc:t('charm.bridge.desc')},
+  {id:"stair",    name:t('charm.stair.name'),desc:t('charm.stair.desc')},
+  {id:"keystone", name:t('charm.keystone.name'), desc:t('charm.keystone.desc')},
+  {id:"lapidary", name:t('charm.lapidary.name'), desc:t('charm.lapidary.desc'), cost:5, cluster:"gem"},
+  {id:"prism",    name:t('charm.prism.name'),    desc:t('charm.prism.desc'), cost:5, cluster:"gem"},
+  {id:"jewelbox", name:t('charm.jewelbox.name'), desc:t('charm.jewelbox.desc'), cluster:"gem"},
+  {id:"highmult", name:t('charm.highmult.name'), desc:t('charm.highmult.desc'), cost:5, cluster:"apex"},
+  {id:"magnate",  name:t('charm.magnate.name'),  desc:t('charm.magnate.desc'), cluster:"apex"},
+  {id:"echo",   name:t('charm.echo.name'),   desc:t('charm.echo.desc'), cost:3, cluster:"cartel"},
+  {id:"loaded", name:t('charm.loaded.name'), desc:t('charm.loaded.desc'), cluster:"cartel"},
+  {id:"climax", name:t('charm.climax.name'),   desc:t('charm.climax.desc'), cluster:"cartel"},
+  {id:"evenodd",   name:t('charm.evenodd.name'), desc:t('charm.evenodd.desc'), cluster:"parity"},
+  {id:"paritybet", name:t('charm.paritybet.name'), desc:t('charm.paritybet.desc'), cluster:"parity"},
+  {id:"twotone",  name:t('charm.twotone.name'), desc:t('charm.twotone.desc')},
+];
+module.exports = { CHARMS };

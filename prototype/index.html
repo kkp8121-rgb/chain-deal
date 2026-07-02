@@ -197,6 +197,505 @@
 
 <script>
 "use strict";
+/* ---------- i18n (Step 1b) — 반드시 첫 require: 아래 모든 content 파일이 t()를 재require 없이 공유 ---------- */
+// 얇은 로케일 룩업. 기본 로케일 = ko (기존 렌더와 byte-identical).
+// ★단일 require 지점: main.cjs만 이 파일을 require한다. content/*.cjs(charms/bosses/decks)는
+//   t()를 별도 require 없이 그대로 참조한다 — build.mjs의 resolveRequires가 전부 평면(flat)
+//   concat이라(모듈 스코프 없음) content 파일이 다시 require('../locale/i18n.cjs')를 하면
+//   이 파일이 두 번 인라인되어 `const KO=...` 중복 선언 SyntaxError가 난다. t는 main.cjs 최상단의
+//   이 require 한 줄로만 스코프에 들어오고, 그 뒤에 inline되는 모든 content 파일이 공유한다.
+const KO={
+  "charm.greed.name": "탐욕",
+  "charm.greed.desc": "모든 카드 기본 점수 +3",
+  "charm.pyro.name": "발화",
+  "charm.pyro.desc": "빨강(♥♦) 카드로 연결 시 배율 +2",
+  "charm.suited.name": "플러시광",
+  "charm.suited.desc": "같은 무늬로 연결되면 배율 +1",
+  "charm.runner.name": "러너",
+  "charm.runner.desc": "연속 숫자(±1)로 연결되면 배율 +1",
+  "charm.jackpot.name": "잭팟",
+  "charm.jackpot.desc": "체인 길이 4 이상이면 보너스 ×2",
+  "charm.noir.name": "흑심",
+  "charm.noir.desc": "검정(♠♣) 카드로 연결 시 배율 +2 (발화의 거울 · 2색 빌드)",
+  "charm.broker.name": "중개상",
+  "charm.broker.desc": "정산 시 페어·투페어·트리플 족보 보너스 대폭 상승 (페어도 점수)",
+  "charm.twins.name": "쌍둥이",
+  "charm.twins.desc": "겹치는 숫자 그룹(2장↑)마다 정산 보너스 +3% (최대 4그룹)",
+  "charm.compactor.name": "정련가",
+  "charm.compactor.desc": "덱이 작을수록 모든 카드 기본 점수↑ (1장 압축당 +1, 최대 +8)",
+  "charm.runts.name": "잔챙이",
+  "charm.runts.desc": "A·2·3 저랭크 카드 기본 점수 +4",
+  "charm.bridge.name": "다리",
+  "charm.bridge.desc": "양옆 모두와 연결되는 카드(징검다리)마다 정산 보너스 +3% (최대 3장)",
+  "charm.stair.name": "오름계단",
+  "charm.stair.desc": "줄이 왼→오 오름차순인 구간이 길수록 정산 보너스 (3칸+부터)",
+  "charm.keystone.name": "주춧돌",
+  "charm.keystone.desc": "양 끝(맨 왼·맨 오)과 한가운데 칸 카드의 숫자가 클수록 정산 보너스 (자리값)",
+  "charm.lapidary.name": "세공사",
+  "charm.lapidary.desc": "강화 카드(★●◆)를 깔면 기본 점수 +3 (부식 보스 중엔 무효)",
+  "charm.prism.name": "프리즘",
+  "charm.prism.desc": "줄에 와일드·황금·배율석이 모두 있으면 정산 보너스 +12% (부식 보스 중엔 무효)",
+  "charm.jewelbox.name": "보석함",
+  "charm.jewelbox.desc": "정산 시 줄에 깔린 강화 카드(★●◆) 1장마다 보너스 +2.5% (최대 6장)",
+  "charm.highmult.name": "위세",
+  "charm.highmult.desc": "7·8 고카드로 연결하면 배율 +1",
+  "charm.magnate.name": "거물",
+  "charm.magnate.desc": "정산 시 줄의 7·8 고카드 1장마다 보너스 +3% (최대 5장)",
+  "charm.echo.name": "메아리",
+  "charm.echo.desc": "같은 숫자로 연결하면 배율 +1",
+  "charm.loaded.name": "사기패",
+  "charm.loaded.desc": "정산 시 포카드면 보너스 +10%, 파이브카드(같은숫자 5장)면 +30%",
+  "charm.climax.name": "절정",
+  "charm.climax.desc": "풀하우스 이상 족보를 만든 라운드, 줄의 최장 연결이 6칸부터 길수록 정산 보너스 추가 (최대 8연결)",
+  "charm.evenodd.name": "홀짝 정렬",
+  "charm.evenodd.desc": "정산 시 줄이 짝수 또는 홀수 한쪽으로 6장부터 치우칠수록 보너스 (초과분마다 +4%)",
+  "charm.paritybet.name": "패리티 도박",
+  "charm.paritybet.desc": "줄 전체가 짝수만 또는 홀수만이면 정산 보너스 +30% (와일드는 자유)",
+  "charm.twotone.name": "투톤",
+  "charm.twotone.desc": "정산 시 한 색(♥♦/♠♣)으로 치우치고 그 색 두 무늬가 다 있으면 치우친 만큼 보너스 (순수 플러시는 제외)",
+  "boss.red_curse.name": "단색의 저주",
+  "boss.red_curse.desc": "빨강(♥♦) 카드 기본 점수 0",
+  "boss.dull.name": "무딘 칼날",
+  "boss.dull.desc": "체인 배율 -1",
+  "boss.peasant.name": "보릿고개",
+  "boss.peasant.desc": "A·2·3 카드 기본 점수 0",
+  "boss.tax.name": "사치세",
+  "boss.tax.desc": "7·8 카드 기본 점수 0",
+  "boss.seal_climb.name": "내리막",
+  "boss.seal_climb.desc": "오르막(↑) ±1 연결 무효 — 내림·같은무늬·같은숫자만",
+  "boss.stingy.name": "인색한 손",
+  "boss.stingy.desc": "손패가 1장 줄어듦",
+  "boss.toll.name": "연결세",
+  "boss.toll.desc": "체인 보너스 절반",
+  "boss.rust.name": "부식",
+  "boss.rust.desc": "enh(★◆●) 효과 전부 무효",
+  "boss.seal_suit.name": "봉인된 무늬",
+  "boss.seal_suit.desc": "♠ 카드는 연결 불가",
+  "boss.frost.name": "냉각",
+  "boss.frost.desc": "줄 첫 2장 연결 무효",
+  "boss.mono.name": "단일강요",
+  "boss.mono.desc": "같은 숫자·연속 무효(같은 무늬만)",
+  "boss.anchor.name": "닻",
+  "boss.anchor.desc": "체인 배율 최대 3",
+  "deck.standard.name": "표준덱",
+  "deck.standard.desc": "A~8 균형 32장",
+  "deck.high.name": "고랭크덱",
+  "deck.high.desc": "A·2 없음·7·8 2배 — 고점수·정점 빌드, 단 사치세 보스 직격",
+  "hand.highCard": "하이카드",
+  "hand.pair": "페어",
+  "hand.twoPair": "투페어",
+  "hand.trips": "트리플",
+  "hand.straight": "스트레이트",
+  "hand.flush": "플러시",
+  "hand.fullHouse": "풀하우스",
+  "hand.fourKind": "포카드",
+  "hand.straightFlush": "스트레이트 플러시",
+  "hand.fiveKind": "🃏 파이브 카드",
+  "unlock.noir.hint": "안테 4 도달",
+  "unlock.compactor.hint": "런 1회 클리어",
+  "unlock.broker.hint": "한 줄에 같은 숫자 3장",
+  "unlock.twins.hint": "한 줄에 같은 숫자 2장 그룹 2개",
+  "unlock.runts.hint": "한 줄에 A·2·3 저랭크 4장",
+  "unlock.bridge.hint": "한 줄에 양옆 연결 카드 3장",
+  "unlock.stair.hint": "한 줄에 5칸 연속 오름차순",
+  "unlock.keystone.hint": "0·3·7번 칸에 7+ 배치",
+  "unlock.lapidary.hint": "한 줄에 강화 카드 3장",
+  "unlock.jewelbox.hint": "한 줄에 강화 카드 3장",
+  "unlock.prism.hint": "한 줄에 와일드·황금·배율석 동시",
+  "unlock.highmult.hint": "한 줄에 8 카드 3장",
+  "unlock.magnate.hint": "한 줄에 7·8 카드 5장",
+  "unlock.echo.hint": "한 줄에 같은 숫자 4장",
+  "unlock.loaded.hint": "파이브 카드(같은숫자 5장) 완성",
+  "unlock.climax.hint": "8칸 전부 연결 + 풀하우스↑ 동시",
+  "unlock.evenodd.hint": "한 줄에 같은 홀짝 6장",
+  "unlock.paritybet.hint": "줄 전체 짝수만 또는 홀수만",
+  "unlock.twotone.hint": "한 줄에 같은 색(♥♦/♠♣) 6장",
+  "ui.daily": "데일리",
+  "ui.best": "최고",
+  "ui.ante": "안테",
+  "ui.playsSuffix": "판",
+  "ui.winsSuffix": "승",
+  "ui.bestScore": "최고점",
+  "ui.stats.title": "내 기록",
+  "ui.stats.bestReach": "최고 도달",
+  "ui.stats.bestScoreRound": "최고 점수 (한 라운드)",
+  "ui.stats.playsWins": "플레이 / 승리",
+  "ui.stats.winRate": "승률",
+  "ui.stats.note": "안테 8 보스를 격파하면 <b style=\"color:var(--gold)\">승리</b>! 기록을 갱신해보세요.",
+  "ui.blind.small": "작은 블라인드",
+  "ui.blind.big": "큰 블라인드",
+  "ui.blind.boss": "보스 블라인드",
+  "ui.stake.name.0": "평지",
+  "ui.stake.name.1": "백금",
+  "ui.stake.name.2": "인색",
+  "ui.stake.name.3": "강철",
+  "ui.stake.name.4": "서리",
+  "ui.stake.name.5": "심연",
+  "ui.stake.desc.0": "기본 난이도",
+  "ui.stake.desc.1": "목표 +3%",
+  "ui.stake.desc.2": "+ 통과 골드 없음",
+  "ui.stake.desc.3": "+ 후반 안테 가속",
+  "ui.stake.desc.4": "+ 보스전 손패 2장",
+  "ui.stake.desc.5": "+ 목표 추가 가속",
+  "ui.stake.nextUnlock": "클리어 시 다음 해금",
+  "ui.stake.maxDifficulty": "최고 난이도",
+  "ui.charms.title": "부적 컬렉션",
+  "ui.charms.sub": "플레이로 해금되는 부적 — 잠긴 건 조건을 채우면 열립니다.",
+  "ui.charms.unlocked": "해금",
+  "ui.charms.lockedCond": "해금 조건:",
+  "ui.charms.private": "비공개",
+  "ui.charms.lockedTag": "잠김",
+  "ui.meta.title": "아웃게임 상점",
+  "ui.meta.sub": "런에서 남기고 안 쓴 골드의 1/10이 메타 코인으로 쌓입니다. 비싼 강스킬을 살지, 비축해서 메타에 투자할지.",
+  "ui.meta.coins": "보유 코인",
+  "ui.meta.retryTitle": "재도전권",
+  "ui.meta.retryDesc": "블라인드 실패 시 그 라운드 재시도 (보유 {n}/3)",
+  "ui.meta.max": "최대",
+  "ui.meta.goldTitle": "시작 골드",
+  "ui.meta.goldDesc": "런 시작 골드 +{g} (Lv{lv}/3)",
+  "ui.meta.rerollTitle": "시작 리롤",
+  "ui.meta.rerollDesc": "런 시작 손패 리롤 +{r} (Lv{lv}/2)",
+  "ui.meta.note": "영구 부스트(골드·리롤)는 다음 런부터 적용됩니다.",
+  "ui.banner.actEnterSuffix": "진입",
+  "ui.boss.actBoss": "액트 보스",
+  "ui.boss.bossSuffix": "보스",
+  "ui.boss.label": "보스:",
+  "ui.nextBoss": "다음 보스:",
+  "ui.target": "목표",
+  "ui.tally.bossDefeated": "보스 격파!",
+  "ui.tally.pass": "통과!",
+  "ui.tally.nextShop": "다음 → 상점",
+  "ui.tally.fail": "패배 — 목표 미달",
+  "ui.tally.newGame": "새 게임 (런 다시)",
+  "ui.tally.victory": "승리!",
+  "ui.tally.newUnlock": "새 부적 해금:",
+  "ui.tally.useRetry": "재도전권 사용 (재시도) · 보유",
+  "ui.victory.unlockPrefix": "난이도",
+  "ui.victory.unlockSuffix": "해금!",
+  "ui.victory.banner": "🏆 런 클리어! 안테 8 정복! 🏆",
+  "ui.shop.thin.name": "덱 압축 ✂",
+  "ui.shop.thin.desc": "덱에서 카드 1장 영구 제거 (체인 확률↑)",
+  "ui.shop.copy.name": "카드 복제 ⧉",
+  "ui.shop.copy.desc": "덱 카드 1장을 복사해 추가 (같은 숫자·무늬 빌드 / 🃏파이브 카드)",
+  "ui.shop.enhWild.name": "와일드 부여 ★",
+  "ui.shop.enhWild.desc": "덱 카드 1장을 '와일드'로 (무엇과도 연결)",
+  "ui.shop.enhMult.name": "배율석 부여 ◆",
+  "ui.shop.enhMult.desc": "덱 카드 1장에 '체인 배율 +1'",
+  "ui.shop.enhGold.name": "황금 부여 ●",
+  "ui.shop.enhGold.desc": "덱 카드 1장에 '기본 점수 +5'",
+  "ui.shop.add.name": "카드 추가 +",
+  "ui.shop.add.desc": "고른 무늬의 강한 카드(7~8) 추가",
+  "ui.shop.hand.name": "손패 확장 +1",
+  "ui.shop.hand.desc": "매 블라인드 손패 1장 증가 (영구 성장)",
+  "ui.shop.reroll.name": "리롤 +1",
+  "ui.shop.reroll.desc": "블라인드마다 손패 리롤 횟수 +1 (영구)",
+  "ui.shop.cleared": "통과!",
+  "ui.shop.deckLabel": "덱",
+  "ui.count.jang": "장",
+  "ui.gold": "골드",
+  "ui.shop.purchased": "구매함",
+  "ui.shop.rerollOffers": "오퍼 새로고침",
+  "ui.shop.leave": "상점 나가기",
+  "ui.shop.have": "보유",
+  "ui.pick.remove": "제거할",
+  "ui.pick.copy": "복제할",
+  "ui.pick.enh": "효과를 줄",
+  "ui.pick.cardSuffix": "카드를 고르세요",
+  "ui.pick.suit": "추가할 무늬 (강한 카드 7~8 랜덤)",
+  "ui.deckinfo.deck": "덱",
+  "ui.deckinfo.discard": "버림",
+  "ui.deckinfo.viewDeck": "🃏 덱 보기",
+  "ui.handTable": "족보표",
+  "ui.handBonus.label": "족보 보너스",
+  "ui.handBonus.empty": "같은 무늬·숫자를 모으면 정산 때 +추가",
+  "ui.handBonus.addedToChain": "(체인에 추가)",
+  "ui.handBonus.currentPrefix": "현재",
+  "ui.handBonus.none": "보너스 없음",
+  "ui.deck.title": "현재 덱",
+  "ui.deck.sub": "덱 + 버림 + 손패 + 줄 전체. 빌드 확인·이상 감시용. (★와일드 ◆배율 ●황금)",
+  "ui.deck.dupPrefix": "같은 숫자 3장+:",
+  "ui.deck.dupSuffix": "(포카드·풀하우스 빌드)",
+  "ui.deck.noDup": "같은 숫자 3장 이상 없음 — 정상 분포",
+  "ui.share.daily": "데일리",
+  "ui.share.free": "프리런",
+  "ui.share.cleared": "클리어!",
+  "ui.share.copied": "복사됨!",
+  "ui.anon": "익명",
+  "ui.nickPrompt": "리더보드 닉네임 (최대 12자):",
+  "ui.board.loadFail": "불러오기 실패 — Apps Script 재배포(doGet) 확인",
+  "ui.board.empty": "아직 기록 없음 — 첫 주자가 되세요!",
+  "ui.board.title": "리더보드",
+  "ui.board.nick": "닉:",
+  "ui.board.change": "변경",
+  "ui.board.todayDaily": "오늘 데일리",
+  "ui.board.loading": "불러오는 중…",
+  "ui.board.allTimeBest": "전체 최고점",
+  "ui.drawer.hands": "\n  <h3>🎴 포커 족보 — 보너스 점수</h3>\n  <p class=\"drawerSub\">체인이 <b>메인 점수</b>! 족보는 정산 때 더해지는 <b style=\"color:var(--gold)\">추가 보너스</b>입니다. (보너스 큰 순)</p>\n  <div class=\"hrow\"><span><b class=\"hname\">🃏 파이브 카드</b><br><span class=\"hdesc\">같은 숫자 5장 — 트럼프 룰 파괴! '카드 복제'로 완성</span></span><span class=\"hbig\">보너스 폭발</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">스트레이트 플러시</b><br><span class=\"hdesc\">같은 무늬 + 연속 숫자 5장</span></span><span class=\"hbig\">보너스 최대</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">포카드</b><br><span class=\"hdesc\">같은 숫자 4장</span></span><span class=\"hbig\">보너스 큼</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">플러시</b><br><span class=\"hdesc\">같은 무늬 5장</span></span><span class=\"hbig\">보너스 큼</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">풀하우스</b><br><span class=\"hdesc\">같은 숫자 3장 + 2장</span></span><span class=\"hsmall\">보너스 작음</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">트리플</b><br><span class=\"hdesc\">같은 숫자 3장</span></span><span class=\"hsmall\">보너스 작음</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">스트레이트</b><br><span class=\"hdesc\">연속 숫자 5장 (예: 4·5·6·7·8)</span></span><span class=\"hsmall\">보너스 작음</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">투페어</b><br><span class=\"hdesc\">같은 숫자 2장 × 2</span></span><span class=\"hsmall\">보너스 작음</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">페어</b><br><span class=\"hdesc\">같은 숫자 2장</span></span><span class=\"hsmall\">보너스 없음</span></div>\n  <p class=\"drawerNote\">💡 흔한 족보(투페어·풀하우스 등)는 8장이라 자주 떠서 보너스가 작아요. <b style=\"color:var(--gold)\">플러시·포카드</b>를 노리면 큰 보너스!</p>",
+  "ui.rules.h3": "룰",
+  "ui.rules.p1": "손패 <b>3장 중 하나</b>를 골라 줄에 깐다. 바로 <b>왼쪽 카드와 '통하면' 체인</b>이 터진다!",
+  "ui.rules.seg1": "연결되는 3가지",
+  "ui.rules.rule1.label": "① 같은 무늬",
+  "ui.rules.rule1.text": "→ 둘 다 ♠ (무늬 일치)",
+  "ui.rules.rule2.label": "② 같은 숫자",
+  "ui.rules.rule2.text": "→ 둘 다 7 (숫자 일치)",
+  "ui.rules.rule3.label": "③ 연속 숫자 (±1)",
+  "ui.rules.rule3.text": "→ 4 다음 5 (연속)",
+  "ui.rules.p2a": "체인이 <b>길게 이어질수록 배율이 폭발</b> → 점수 ↑. 예:",
+  "ui.rules.p2b": "처럼 길게!",
+  "ui.rules.p3": "8장을 다 깔아 <b>목표 점수</b>를 넘기면 통과.",
+  "ui.rules.seg2": "진행 / 승리",
+  "ui.rules.p4": "안테 1~8, 각 안테 = <b>작은 → 큰 → 보스</b> 블라인드. 보스는 특수 규칙으로 방해한다. <b>안테 8 보스 격파 = 승리!</b> 목표 미달 = 처음부터 다시.",
+  "ui.rules.seg3": "+ 족보 보너스",
+  "ui.rules.p5": "8장으로 포커 족보가 되면 정산 때 <b style=\"color:var(--gold)\">추가 점수</b>. (족보 보너스 문구를 누르면 족보표가 열려요)",
+};
+const EN={
+  "charm.greed.name": "Greed",
+  "charm.greed.desc": "+3 base score to every card",
+  "charm.pyro.name": "Ignite",
+  "charm.pyro.desc": "+2 mult when chaining with a red (♥♦) card",
+  "charm.suited.name": "Flush Fanatic",
+  "charm.suited.desc": "+1 mult when chaining by matching suit",
+  "charm.runner.name": "Runner",
+  "charm.runner.desc": "+1 mult when chaining by consecutive rank (±1)",
+  "charm.jackpot.name": "Jackpot",
+  "charm.jackpot.desc": "×2 bonus if chain length is 4+",
+  "charm.noir.name": "Noir",
+  "charm.noir.desc": "+2 mult when chaining with a black (♠♣) card (mirror of Ignite · two-color build)",
+  "charm.broker.name": "Broker",
+  "charm.broker.desc": "Greatly boosts Pair/Two Pair/Trips hand bonus at settle (Pair now scores too)",
+  "charm.twins.name": "Twins",
+  "charm.twins.desc": "+3% settle bonus per matching-rank group of 2+ (max 4 groups)",
+  "charm.compactor.name": "Compactor",
+  "charm.compactor.desc": "The smaller the deck, the higher every card's base score (+1 per trimmed card, max +8)",
+  "charm.runts.name": "Runts",
+  "charm.runts.desc": "+4 base score to low-rank A/2/3 cards",
+  "charm.bridge.name": "Bridge",
+  "charm.bridge.desc": "+3% settle bonus per stepping-stone card connected on both sides (max 3 cards)",
+  "charm.stair.name": "Staircase",
+  "charm.stair.desc": "Settle bonus grows with the longest left→right ascending run (from 3 cells+)",
+  "charm.keystone.name": "Keystone",
+  "charm.keystone.desc": "Settle bonus rises with higher ranks at both ends and the middle cell (position value)",
+  "charm.lapidary.name": "Lapidary",
+  "charm.lapidary.desc": "+3 base score when playing an enhanced card (★●◆) (voided during the Rust boss)",
+  "charm.prism.name": "Prism",
+  "charm.prism.desc": "+12% settle bonus if the row has Wild, Gold, and Mult all present (voided during the Rust boss)",
+  "charm.jewelbox.name": "Jewel Box",
+  "charm.jewelbox.desc": "+2.5% settle bonus per enhanced card (★●◆) on the row (max 6 cards)",
+  "charm.highmult.name": "Prestige",
+  "charm.highmult.desc": "+1 mult when chaining with a high card (7/8)",
+  "charm.magnate.name": "Magnate",
+  "charm.magnate.desc": "+3% settle bonus per 7/8 high card on the row (max 5 cards)",
+  "charm.echo.name": "Echo",
+  "charm.echo.desc": "+1 mult when chaining by matching rank",
+  "charm.loaded.name": "Loaded Hand",
+  "charm.loaded.desc": "+10% settle bonus for Four of a Kind, +30% for Five of a Kind (5 same-rank cards)",
+  "charm.climax.name": "Climax",
+  "charm.climax.desc": "On a Full House+ round, extra settle bonus grows with the longest chain from 6 cells (max 8-chain)",
+  "charm.evenodd.name": "Parity Sort",
+  "charm.evenodd.desc": "Settle bonus grows the more the row skews even or odd from 6 cards (+4% per card over)",
+  "charm.paritybet.name": "Parity Bet",
+  "charm.paritybet.desc": "+30% settle bonus if the whole row is all-even or all-odd (Wilds are free)",
+  "charm.twotone.name": "Two-Tone",
+  "charm.twotone.desc": "Settle bonus scales with skew toward one color (♥♦/♠♣) when both its suits are present (excludes a pure flush)",
+  "boss.red_curse.name": "Monochrome Curse",
+  "boss.red_curse.desc": "Red (♥♦) cards have 0 base score",
+  "boss.dull.name": "Dull Blade",
+  "boss.dull.desc": "-1 chain mult",
+  "boss.peasant.name": "Lean Season",
+  "boss.peasant.desc": "A/2/3 cards have 0 base score",
+  "boss.tax.name": "Luxury Tax",
+  "boss.tax.desc": "7/8 cards have 0 base score",
+  "boss.seal_climb.name": "Downhill",
+  "boss.seal_climb.desc": "Ascending (↑) ±1 chains are voided — only descending, same suit, or same rank",
+  "boss.stingy.name": "Stingy Hand",
+  "boss.stingy.desc": "Hand size reduced by 1",
+  "boss.toll.name": "Toll",
+  "boss.toll.desc": "Chain bonus halved",
+  "boss.rust.name": "Rust",
+  "boss.rust.desc": "All enhancement (★◆●) effects voided",
+  "boss.seal_suit.name": "Sealed Suit",
+  "boss.seal_suit.desc": "♠ cards cannot chain",
+  "boss.frost.name": "Frost",
+  "boss.frost.desc": "The first 2 cards of the row can't chain",
+  "boss.mono.name": "Mono Mandate",
+  "boss.mono.desc": "Same-rank/consecutive chains voided (suit-only)",
+  "boss.anchor.name": "Anchor",
+  "boss.anchor.desc": "Chain mult capped at 3",
+  "deck.standard.name": "Standard Deck",
+  "deck.standard.desc": "A balanced 32-card A~8 deck",
+  "deck.high.name": "High-Rank Deck",
+  "deck.high.desc": "No A/2, double 7/8 — high-score apex build, but hit hard by the Luxury Tax boss",
+  "hand.highCard": "High Card",
+  "hand.pair": "Pair",
+  "hand.twoPair": "Two Pair",
+  "hand.trips": "Trips",
+  "hand.straight": "Straight",
+  "hand.flush": "Flush",
+  "hand.fullHouse": "Full House",
+  "hand.fourKind": "Four of a Kind",
+  "hand.straightFlush": "Straight Flush",
+  "hand.fiveKind": "🃏 Five of a Kind",
+  "unlock.noir.hint": "Reach Ante 4",
+  "unlock.compactor.hint": "Clear 1 run",
+  "unlock.broker.hint": "3 same-rank cards in one row",
+  "unlock.twins.hint": "2 matching-pair groups in one row",
+  "unlock.runts.hint": "4 low-rank A/2/3 cards in one row",
+  "unlock.bridge.hint": "3 both-sides-connected cards in one row",
+  "unlock.stair.hint": "5-cell ascending run in one row",
+  "unlock.keystone.hint": "Place 7+ ranks in cells 0/3/7",
+  "unlock.lapidary.hint": "3 enhanced cards in one row",
+  "unlock.jewelbox.hint": "3 enhanced cards in one row",
+  "unlock.prism.hint": "Wild, Gold, and Mult all in one row",
+  "unlock.highmult.hint": "3 rank-8 cards in one row",
+  "unlock.magnate.hint": "5 rank-7/8 cards in one row",
+  "unlock.echo.hint": "4 same-rank cards in one row",
+  "unlock.loaded.hint": "Complete a Five of a Kind (5 same-rank cards)",
+  "unlock.climax.hint": "All 8 cells chained + Full House or better",
+  "unlock.evenodd.hint": "6 same-parity cards in one row",
+  "unlock.paritybet.hint": "Whole row all-even or all-odd",
+  "unlock.twotone.hint": "6 same-color (♥♦/♠♣) cards in one row",
+  "ui.daily": "Daily",
+  "ui.best": "Best",
+  "ui.ante": "Ante",
+  "ui.playsSuffix": "games",
+  "ui.winsSuffix": "wins",
+  "ui.bestScore": "Best Score",
+  "ui.stats.title": "My Record",
+  "ui.stats.bestReach": "Best Reach",
+  "ui.stats.bestScoreRound": "Best Score (single round)",
+  "ui.stats.playsWins": "Games / Wins",
+  "ui.stats.winRate": "Win Rate",
+  "ui.stats.note": "Defeat the Ante 8 boss for <b style=\"color:var(--gold)\">victory</b>! Go beat your record.",
+  "ui.blind.small": "Small Blind",
+  "ui.blind.big": "Big Blind",
+  "ui.blind.boss": "Boss Blind",
+  "ui.stake.name.0": "Flatland",
+  "ui.stake.name.1": "Platinum",
+  "ui.stake.name.2": "Stingy",
+  "ui.stake.name.3": "Steel",
+  "ui.stake.name.4": "Frost",
+  "ui.stake.name.5": "Abyss",
+  "ui.stake.desc.0": "Base difficulty",
+  "ui.stake.desc.1": "Target +3%",
+  "ui.stake.desc.2": "+ no clear-gold floor",
+  "ui.stake.desc.3": "+ late-ante acceleration",
+  "ui.stake.desc.4": "+ 2-card hand vs bosses",
+  "ui.stake.desc.5": "+ extra target acceleration",
+  "ui.stake.nextUnlock": "Clear to unlock next",
+  "ui.stake.maxDifficulty": "Max difficulty",
+  "ui.charms.title": "Charm Collection",
+  "ui.charms.sub": "Charms unlock through play — locked ones open once you meet their condition.",
+  "ui.charms.unlocked": "Unlocked",
+  "ui.charms.lockedCond": "Unlock condition:",
+  "ui.charms.private": "Hidden",
+  "ui.charms.lockedTag": "Locked",
+  "ui.meta.title": "Meta Shop",
+  "ui.meta.sub": "1/10 of the gold you leave unspent in a run converts to meta coins. Splurge in-run, or stockpile for meta investment?",
+  "ui.meta.coins": "Coins Held",
+  "ui.meta.retryTitle": "Retry Token",
+  "ui.meta.retryDesc": "Retry that blind on failure (have {n}/3)",
+  "ui.meta.max": "Max",
+  "ui.meta.goldTitle": "Starting Gold",
+  "ui.meta.goldDesc": "+{g} starting gold per run (Lv{lv}/3)",
+  "ui.meta.rerollTitle": "Starting Rerolls",
+  "ui.meta.rerollDesc": "+{r} starting hand rerolls per run (Lv{lv}/2)",
+  "ui.meta.note": "Permanent boosts (gold/reroll) apply starting next run.",
+  "ui.banner.actEnterSuffix": "Enter",
+  "ui.boss.actBoss": "Act Boss",
+  "ui.boss.bossSuffix": "Boss",
+  "ui.boss.label": "Boss:",
+  "ui.nextBoss": "Next boss:",
+  "ui.target": "Target",
+  "ui.tally.bossDefeated": "Boss defeated!",
+  "ui.tally.pass": "Cleared!",
+  "ui.tally.nextShop": "Next → Shop",
+  "ui.tally.fail": "Defeat — target not reached",
+  "ui.tally.newGame": "New Game (restart run)",
+  "ui.tally.victory": "Victory!",
+  "ui.tally.newUnlock": "New charm unlocked:",
+  "ui.tally.useRetry": "Use Retry Token (retry) · have",
+  "ui.victory.unlockPrefix": "Difficulty",
+  "ui.victory.unlockSuffix": "unlocked!",
+  "ui.victory.banner": "🏆 Run cleared! Ante 8 conquered! 🏆",
+  "ui.shop.thin.name": "Deck Thin ✂",
+  "ui.shop.thin.desc": "Permanently remove 1 card from the deck (chain odds↑)",
+  "ui.shop.copy.name": "Card Copy ⧉",
+  "ui.shop.copy.desc": "Copy 1 deck card and add it (same-rank/suit builds / 🃏Five of a Kind)",
+  "ui.shop.enhWild.name": "Grant Wild ★",
+  "ui.shop.enhWild.desc": "Make 1 deck card 'Wild' (chains with anything)",
+  "ui.shop.enhMult.name": "Grant Mult Stone ◆",
+  "ui.shop.enhMult.desc": "Give 1 deck card 'chain mult +1'",
+  "ui.shop.enhGold.name": "Grant Gold ●",
+  "ui.shop.enhGold.desc": "Give 1 deck card 'base score +5'",
+  "ui.shop.add.name": "Add Card +",
+  "ui.shop.add.desc": "Add a strong card (7~8) of the chosen suit",
+  "ui.shop.hand.name": "Hand Size +1",
+  "ui.shop.hand.desc": "+1 hand card every blind (permanent growth)",
+  "ui.shop.reroll.name": "Reroll +1",
+  "ui.shop.reroll.desc": "+1 hand reroll per blind (permanent)",
+  "ui.shop.cleared": "Cleared!",
+  "ui.shop.deckLabel": "Deck",
+  "ui.count.jang": " cards",
+  "ui.gold": "Gold",
+  "ui.shop.purchased": "Bought",
+  "ui.shop.rerollOffers": "Refresh Offers",
+  "ui.shop.leave": "Leave Shop",
+  "ui.shop.have": "held",
+  "ui.pick.remove": "to remove",
+  "ui.pick.copy": "to copy",
+  "ui.pick.enh": "to enhance",
+  "ui.pick.cardSuffix": "— pick a card",
+  "ui.pick.suit": "Suit to add (random strong card 7~8)",
+  "ui.deckinfo.deck": "Deck",
+  "ui.deckinfo.discard": "Discard",
+  "ui.deckinfo.viewDeck": "🃏 View Deck",
+  "ui.handTable": "Hand Table",
+  "ui.handBonus.label": "Hand Bonus",
+  "ui.handBonus.empty": "Gather matching suits/ranks for a settle-time bonus",
+  "ui.handBonus.addedToChain": "(added to chain)",
+  "ui.handBonus.currentPrefix": "currently",
+  "ui.handBonus.none": "no bonus",
+  "ui.deck.title": "Current Deck",
+  "ui.deck.sub": "Deck + discard + hand + row, all together. For checking your build. (★Wild ◆Mult ●Gold)",
+  "ui.deck.dupPrefix": "3+ same rank:",
+  "ui.deck.dupSuffix": "(Four of a Kind / Full House build)",
+  "ui.deck.noDup": "No rank has 3+ copies — normal spread",
+  "ui.share.daily": "Daily",
+  "ui.share.free": "Free Run",
+  "ui.share.cleared": "cleared!",
+  "ui.share.copied": "Copied!",
+  "ui.anon": "Anonymous",
+  "ui.nickPrompt": "Leaderboard nickname (max 12 chars):",
+  "ui.board.loadFail": "Load failed — check Apps Script redeploy (doGet)",
+  "ui.board.empty": "No records yet — be the first!",
+  "ui.board.title": "Leaderboard",
+  "ui.board.nick": "Nick:",
+  "ui.board.change": "change",
+  "ui.board.todayDaily": "Today's Daily",
+  "ui.board.loading": "Loading…",
+  "ui.board.allTimeBest": "All-Time Best",
+  "ui.drawer.hands": "\n  <h3>🎴 Poker Hands — Bonus Score</h3>\n  <p class=\"drawerSub\">Chain is the <b>main score</b>! Hands are an <b style=\"color:var(--gold)\">extra bonus</b> added at settle. (biggest bonus first)</p>\n  <div class=\"hrow\"><span><b class=\"hname\">🃏 Five of a Kind</b><br><span class=\"hdesc\">5 same-rank cards — breaks the deck's own rules! Finish it with 'Card Copy'</span></span><span class=\"hbig\">Bonus explosion</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Straight Flush</b><br><span class=\"hdesc\">Same suit + 5 consecutive ranks</span></span><span class=\"hbig\">Max bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Four of a Kind</b><br><span class=\"hdesc\">4 same-rank cards</span></span><span class=\"hbig\">Big bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Flush</b><br><span class=\"hdesc\">5 cards of the same suit</span></span><span class=\"hbig\">Big bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Full House</b><br><span class=\"hdesc\">3 same-rank + 2 same-rank</span></span><span class=\"hsmall\">Small bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Trips</b><br><span class=\"hdesc\">3 same-rank cards</span></span><span class=\"hsmall\">Small bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Straight</b><br><span class=\"hdesc\">5 consecutive ranks (e.g. 4·5·6·7·8)</span></span><span class=\"hsmall\">Small bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Two Pair</b><br><span class=\"hdesc\">2 same-rank × 2</span></span><span class=\"hsmall\">Small bonus</span></div>\n  <div class=\"hrow\"><span><b class=\"hname\">Pair</b><br><span class=\"hdesc\">2 same-rank cards</span></span><span class=\"hsmall\">No bonus</span></div>\n  <p class=\"drawerNote\">💡 Common hands (Two Pair, Full House, etc.) show up often with 8 cards, so their bonus is small. Go for a <b style=\"color:var(--gold)\">Flush or Four of a Kind</b> for a big bonus!</p>",
+  "ui.rules.h3": "Rules",
+  "ui.rules.p1": "Pick <b>one of your 3 hand cards</b> and play it on the row. If it 'connects' with the <b>card to its left</b>, a chain fires!",
+  "ui.rules.seg1": "3 ways to connect",
+  "ui.rules.rule1.label": "① Same suit",
+  "ui.rules.rule1.text": "→ both ♠ (suit match)",
+  "ui.rules.rule2.label": "② Same rank",
+  "ui.rules.rule2.text": "→ both 7 (rank match)",
+  "ui.rules.rule3.label": "③ Consecutive rank (±1)",
+  "ui.rules.rule3.text": "→ 4 then 5 (consecutive)",
+  "ui.rules.p2a": "The <b>longer the chain, the bigger the mult explosion</b> → score ↑. e.g.:",
+  "ui.rules.p2b": "— go long like this!",
+  "ui.rules.p3": "Play all 8 cards and beat the <b>target score</b> to clear.",
+  "ui.rules.seg2": "Progress / Victory",
+  "ui.rules.p4": "Ante 1~8, each ante = <b>Small → Big → Boss</b> blind. Bosses disrupt you with special rules. <b>Defeat the Ante 8 boss = victory!</b> Missing the target sends you back to the start.",
+  "ui.rules.seg3": "+ Hand Bonus",
+  "ui.rules.p5": "If your 8 cards form a poker hand, you get <b style=\"color:var(--gold)\">extra score</b> at settle. (Tap the hand-bonus text to open the hand table)",
+};
+const LOCALES = { ko: KO, en: EN };
+let CUR_LOCALE = "ko";
+function setLocale(loc){ if(LOCALES[loc]) CUR_LOCALE = loc; }
+function t(key){ const tbl=LOCALES[CUR_LOCALE]||LOCALES.ko; const v=tbl[key]; if(v!=null) return v; const kv=LOCALES.ko[key]; return kv!=null ? kv : key; }
 /* ---------- 트럼프 카드 ---------- */
 const SUITS=[{k:0,g:"♠",red:false},{k:1,g:"♥",red:true},{k:2,g:"♦",red:true},{k:3,g:"♣",red:false}];
 const RANKSTR=["","A","2","3","4","5","6","7","8","9","10","J","Q","K"];
@@ -205,9 +704,10 @@ function mkCard(s,r){ return {suit:s, rank:r, enh:null}; }
 // 시작 덱 = A~8 (32장). 풀 52장은 3택1에 카드풀이 너무 커서 체인이 안 됨 → 압축. 높은 카드는 상점 성장.
 function fullDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push(mkCard(s,r)); const ord=d.map((c,i)=>[c.rank,i]).sort((a,b)=>a[0]-b[0]); for(let k=0;k<4;k++) d[ord[k][1]].enh="wild"; return d; }   // 불씨덱(v3.29): 최저랭크 4장 wild(연결밀도↑=캐주얼 도파민). sparkComp 보정과 세트 — run-sim starterDeck 미러
 function highDeck(){ const d=[]; for(let s=0;s<4;s++) for(const r of [3,4,5,6,7,7,8,8]) d.push(mkCard(s,r)); return d; }
+// t()는 main.cjs 최상단의 i18n require에서 공유(재require 금지 — src/content/locale/i18n.cjs 헤더 주석 참조)
 const DECKS=[
-  {id:"standard", name:"표준덱",   desc:"A~8 균형 32장",                                   build:fullDeck, dmult:1.0},
-  {id:"high",     name:"고랭크덱", desc:"A·2 없음·7·8 2배 — 고점수·정점 빌드, 단 사치세 보스 직격", build:highDeck, dmult:1.29},
+  {id:"standard", name:t('deck.standard.name'),   desc:t('deck.standard.desc'),                                   build:fullDeck, dmult:1.0},
+  {id:"high",     name:t('deck.high.name'), desc:t('deck.high.desc'), build:highDeck, dmult:1.29},
 ];
 /* ---------- 시드 RNG (데일리 시드 = 결정론적 판) ---------- */
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -236,19 +736,20 @@ function climbSealed(right,left){ return S.boss && S.boss.id==="seal_climb" && r
 //   인색한손(손패3→2=수읽기 선택지 삭제)·봉인무늬·스트레이트봉인을 안테2부터(플레이테스트 합의).
 //   안테1 풀 = 단색의저주·무딘칼날 (둘 다 손패3 유지, 점수만 깎는 순한 보스 = 워밍업).
 // 액트 티어 풀: A1(순함) < A2(중간) < A3(가혹). 각 액트 = 일반 3 + 액트보스 1(actBoss). 액트-final 안테(3·6·8)에 액트보스.
+// t()는 main.cjs 최상단의 i18n require에서 공유(재require 금지 — src/content/locale/i18n.cjs 헤더 주석 참조)
 const BOSSES=[
-  {id:"red_curse",icon:"🩸", name:"단색의 저주",     desc:"빨강(♥♦) 카드 기본 점수 0", tmult:1.0,  act:1, actBoss:false},
-  {id:"dull",     icon:"🗡", name:"무딘 칼날",       desc:"체인 배율 -1",              tmult:0.85, act:1, actBoss:false},
-  {id:"peasant",  icon:"🥖", name:"보릿고개",        desc:"A·2·3 카드 기본 점수 0",    tmult:0.82, act:1, actBoss:false},
-  {id:"tax",      icon:"👑", name:"사치세",          desc:"7·8 카드 기본 점수 0",      tmult:0.8,  act:1, actBoss:true},
-  {id:"seal_climb",icon:"⤵", name:"내리막",           desc:"오르막(↑) ±1 연결 무효 — 내림·같은무늬·같은숫자만", tmult:0.72, act:2, actBoss:false},
-  {id:"stingy",   icon:"✋", name:"인색한 손",       desc:"손패가 1장 줄어듦",         tmult:0.58, act:2, actBoss:false},
-  {id:"toll",     icon:"💸", name:"연결세",          desc:"체인 보너스 절반",          tmult:0.54, act:2, actBoss:false},
-  {id:"rust",     icon:"🦠", name:"부식",            desc:"enh(★◆●) 효과 전부 무효",   tmult:0.6,  act:2, actBoss:true},
-  {id:"seal_suit",icon:"🔒", name:"봉인된 무늬",     desc:"♠ 카드는 연결 불가",        tmult:0.47, act:3, actBoss:false},
-  {id:"frost",    icon:"❄",  name:"냉각",            desc:"줄 첫 2장 연결 무효",       tmult:0.48, act:3, actBoss:false},
-  {id:"mono",     icon:"🎭", name:"단일강요",        desc:"같은 숫자·연속 무효(같은 무늬만)", tmult:0.4,  act:3, actBoss:false},
-  {id:"anchor",   icon:"⚓", name:"닻",              desc:"체인 배율 최대 3",          tmult:0.44, act:3, actBoss:true},
+  {id:"red_curse",icon:"🩸", name:t('boss.red_curse.name'),     desc:t('boss.red_curse.desc'), tmult:1.0,  act:1, actBoss:false},
+  {id:"dull",     icon:"🗡", name:t('boss.dull.name'),       desc:t('boss.dull.desc'),              tmult:0.85, act:1, actBoss:false},
+  {id:"peasant",  icon:"🥖", name:t('boss.peasant.name'),        desc:t('boss.peasant.desc'),    tmult:0.82, act:1, actBoss:false},
+  {id:"tax",      icon:"👑", name:t('boss.tax.name'),          desc:t('boss.tax.desc'),      tmult:0.8,  act:1, actBoss:true},
+  {id:"seal_climb",icon:"⤵", name:t('boss.seal_climb.name'),           desc:t('boss.seal_climb.desc'), tmult:0.72, act:2, actBoss:false},
+  {id:"stingy",   icon:"✋", name:t('boss.stingy.name'),       desc:t('boss.stingy.desc'),         tmult:0.58, act:2, actBoss:false},
+  {id:"toll",     icon:"💸", name:t('boss.toll.name'),          desc:t('boss.toll.desc'),          tmult:0.54, act:2, actBoss:false},
+  {id:"rust",     icon:"🦠", name:t('boss.rust.name'),            desc:t('boss.rust.desc'),   tmult:0.6,  act:2, actBoss:true},
+  {id:"seal_suit",icon:"🔒", name:t('boss.seal_suit.name'),     desc:t('boss.seal_suit.desc'),        tmult:0.47, act:3, actBoss:false},
+  {id:"frost",    icon:"❄",  name:t('boss.frost.name'),            desc:t('boss.frost.desc'),       tmult:0.48, act:3, actBoss:false},
+  {id:"mono",     icon:"🎭", name:t('boss.mono.name'),        desc:t('boss.mono.desc'), tmult:0.4,  act:3, actBoss:false},
+  {id:"anchor",   icon:"⚓", name:t('boss.anchor.name'),              desc:t('boss.anchor.desc'),          tmult:0.44, act:3, actBoss:true},
 ];
 const actOf=ante=> ante<=3?1 : ante<=6?2 : 3;
 function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8);
@@ -261,7 +762,7 @@ function pickBoss(ante){ const a=actOf(ante), fin=(ante===3||ante===6||ante===8)
 // 계수: 흔한 족보(투페어33%·풀하우스29%·스트레이트24%)는 소액 / 희소(플러시5%·포카드2.5%·스트플0.8%)는 큰 가산.
 // 보너스 = round(blindTarget(ante,0) * 계수). 밸런싱 단계에서 노리는봇 시뮬로 정밀 조정 예정.
 const HAND_BONUS={highCard:0,pair:0,twoPair:.02,trips:.05,straight:.03,flush:.30,fullHouse:.08,fourKind:.50,straightFlush:.75,fiveKind:.95};
-const HAND_KO={highCard:"하이카드",pair:"페어",twoPair:"투페어",trips:"트리플",straight:"스트레이트",flush:"플러시",fullHouse:"풀하우스",fourKind:"포카드",straightFlush:"스트레이트 플러시",fiveKind:"🃏 파이브 카드"};
+const HAND_KO={highCard:t('hand.highCard'),pair:t('hand.pair'),twoPair:t('hand.twoPair'),trips:t('hand.trips'),straight:t('hand.straight'),flush:t('hand.flush'),fullHouse:t('hand.fullHouse'),fourKind:t('hand.fourKind'),straightFlush:t('hand.straightFlush'),fiveKind:t('hand.fiveKind')};
 function hasRun5(r){ const s=new Set(r); for(let lo=1;lo<=4;lo++){ let ok=1; for(let k=0;k<5;k++) if(!s.has(lo+k)){ ok=0; break; } if(ok) return true; } return false; }
 function evalHand(cards){
   const rc={}, bs={};
@@ -292,54 +793,56 @@ const META_DEFAULT={coins:0,retry:0,goldLv:0,rerollLv:0,maxStake:0,deck:"standar
 function getMeta(){ try{ const m=JSON.parse(localStorage.getItem("cd_meta")); if(m&&typeof m==="object") return Object.assign({},META_DEFAULT,m); }catch(e){} return {...META_DEFAULT}; }
 function saveMeta(m){ try{ localStorage.setItem("cd_meta",JSON.stringify(m)); }catch(e){} }
 function renderStats(){ const s=getStats(), el=document.getElementById("stats"); if(!el) return;
-  const daily = (S&&S.daily) ? `<span style="color:var(--gold)">🗓 데일리 #${S.seed}</span> · ` : "";
-  el.innerHTML=`${daily}🏆 최고 <b>${s.bestAnte?`안테 ${s.bestAnte}`:"—"}</b> · ${s.plays||0}판 <b>${s.wins||0}승</b> · 최고점 <b>${(s.bestScore||0).toLocaleString()}</b> <span style="color:#9b6fd4">›</span>`; }
+  const daily = (S&&S.daily) ? `<span style="color:var(--gold)">🗓 ${t('ui.daily')} #${S.seed}</span> · ` : "";
+  el.innerHTML=`${daily}🏆 ${t('ui.best')} <b>${s.bestAnte?`${t('ui.ante')} ${s.bestAnte}`:"—"}</b> · ${s.plays||0}${t('ui.playsSuffix')} <b>${s.wins||0}${t('ui.winsSuffix')}</b> · ${t('ui.bestScore')} <b>${(s.bestScore||0).toLocaleString()}</b> <span style="color:#9b6fd4">›</span>`; }
 function statsHTML(){ const s=getStats(), wr=s.plays?Math.round((s.wins||0)/s.plays*100):0;
-  return `<h3>🏆 내 기록</h3>
-  <div class="hrow"><span>최고 도달</span><b class="hname">${s.bestAnte?`안테 ${s.bestAnte}`:"—"}</b></div>
-  <div class="hrow"><span>최고 점수 (한 라운드)</span><b class="hname">${(s.bestScore||0).toLocaleString()}</b></div>
-  <div class="hrow"><span>플레이 / 승리</span><b class="hname">${s.plays||0}판 / ${s.wins||0}승</b></div>
-  <div class="hrow"><span>승률</span><b class="hname">${wr}%</b></div>
-  <p class="drawerNote">💡 안테 8 보스를 격파하면 <b style="color:var(--gold)">승리</b>! 기록을 갱신해보세요.</p>`; }
-const BLINDNAME=["작은 블라인드","큰 블라인드","보스 블라인드"];
+  return `<h3>🏆 ${t('ui.stats.title')}</h3>
+  <div class="hrow"><span>${t('ui.stats.bestReach')}</span><b class="hname">${s.bestAnte?`${t('ui.ante')} ${s.bestAnte}`:"—"}</b></div>
+  <div class="hrow"><span>${t('ui.stats.bestScoreRound')}</span><b class="hname">${(s.bestScore||0).toLocaleString()}</b></div>
+  <div class="hrow"><span>${t('ui.stats.playsWins')}</span><b class="hname">${s.plays||0}${t('ui.playsSuffix')} / ${s.wins||0}${t('ui.winsSuffix')}</b></div>
+  <div class="hrow"><span>${t('ui.stats.winRate')}</span><b class="hname">${wr}%</b></div>
+  <p class="drawerNote">💡 ${t('ui.stats.note')}</p>`; }
+const BLINDNAME=[t('ui.blind.small'),t('ui.blind.big'),t('ui.blind.boss')];
 
 /* ---------- 상태 ---------- */
 const SLOTS=8, ANTES=8, MAX_STAKE=5;   // 난이도 사다리: 0(평지)~5. run-sim STK_T/STK_AC와 길이 일치
-const STAKE_NAMES=["평지","백금","인색","강철","서리","심연"], STAKE_DESC=["기본 난이도","목표 +3%","+ 통과 골드 없음","+ 후반 안테 가속","+ 보스전 손패 2장","+ 목표 추가 가속"];   // 각 티어 시그니처 규칙(누적)
 /* ---------- 골드 경제 파라미터 (캘리브 대상 · run-sim.cjs와 동기화 필수) ---------- */
 const GOLD_BASE=1, GOLD_K=4;           // 통과 환전: floor(BASE + 초과율*K) · run-sim 캘리브(balance 8.9%≈기준선 8.6%)
 const START_GOLD_PER_LV=3;             // 시작 골드 = goldLv * 3
 const REROLL_BASE=2;                   // 상점 리롤 기본 cost (에스컬레이팅: +S.shopRerolls) · run-sim·economy-check 동기화
 const CLUSTER_W=0.15;                   // 미투자 클러스터 부적 오퍼 가중(희석 완화 — 투자 시 1.0) · run-sim 동기화 (캘리브: balance 7.3% 회복)
 const META_PRICE={ retry:3, gold:[5,8,12], reroll:[6,10] };
+const STAKE_T=[0,.03,.03,.04,.04,.06], STAKE_AC=[0,0,0,.008,.008,.014];   // 난이도 사다리 목표 가산(평면/안테비례) — ★run-sim STK_T/STK_AC 미러(드리프트 동기화)
+const STAKE_NAMES=[t('ui.stake.name.0'),t('ui.stake.name.1'),t('ui.stake.name.2'),t('ui.stake.name.3'),t('ui.stake.name.4'),t('ui.stake.name.5')], STAKE_DESC=[t('ui.stake.desc.0'),t('ui.stake.desc.1'),t('ui.stake.desc.2'),t('ui.stake.desc.3'),t('ui.stake.desc.4'),t('ui.stake.desc.5')];   // 각 티어 시그니처 규칙(누적)
 function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
 function spillover(gold){ return Math.floor(gold*0.1); }
 let S=null;
+// t()는 main.cjs 최상단의 i18n require에서 공유(재require 금지 — src/content/locale/i18n.cjs 헤더 주석 참조)
 const CHARMS=[
-  {id:"greed",  name:"탐욕",   desc:"모든 카드 기본 점수 +3"},
-  {id:"pyro",   name:"발화",   desc:"빨강(♥♦) 카드로 연결 시 배율 +2"},
-  {id:"suited", name:"플러시광",desc:"같은 무늬로 연결되면 배율 +1"},
-  {id:"runner", name:"러너",   desc:"연속 숫자(±1)로 연결되면 배율 +1"},
-  {id:"jackpot",name:"잭팟",   desc:"체인 길이 4 이상이면 보너스 ×2"},
-  {id:"noir",     name:"흑심",   desc:"검정(♠♣) 카드로 연결 시 배율 +2 (발화의 거울 · 2색 빌드)"},
-  {id:"broker",   name:"중개상", desc:"정산 시 페어·투페어·트리플 족보 보너스 대폭 상승 (페어도 점수)"},
-  {id:"twins",    name:"쌍둥이", desc:"겹치는 숫자 그룹(2장↑)마다 정산 보너스 +3% (최대 4그룹)"},
-  {id:"compactor",name:"정련가", desc:"덱이 작을수록 모든 카드 기본 점수↑ (1장 압축당 +1, 최대 +8)"},
-  {id:"runts",    name:"잔챙이", desc:"A·2·3 저랭크 카드 기본 점수 +4"},
-  {id:"bridge",   name:"다리",   desc:"양옆 모두와 연결되는 카드(징검다리)마다 정산 보너스 +3% (최대 3장)"},
-  {id:"stair",    name:"오름계단",desc:"줄이 왼→오 오름차순인 구간이 길수록 정산 보너스 (3칸+부터)"},
-  {id:"keystone", name:"주춧돌", desc:"양 끝(맨 왼·맨 오)과 한가운데 칸 카드의 숫자가 클수록 정산 보너스 (자리값)"},
-  {id:"lapidary", name:"세공사", desc:"강화 카드(★●◆)를 깔면 기본 점수 +3 (부식 보스 중엔 무효)", cost:5, cluster:"gem"},
-  {id:"prism",    name:"프리즘", desc:"줄에 와일드·황금·배율석이 모두 있으면 정산 보너스 +12% (부식 보스 중엔 무효)", cost:5, cluster:"gem"},
-  {id:"jewelbox", name:"보석함", desc:"정산 시 줄에 깔린 강화 카드(★●◆) 1장마다 보너스 +2.5% (최대 6장)", cluster:"gem"},
-  {id:"highmult", name:"위세", desc:"7·8 고카드로 연결하면 배율 +1", cost:5, cluster:"apex"},
-  {id:"magnate",  name:"거물", desc:"정산 시 줄의 7·8 고카드 1장마다 보너스 +3% (최대 5장)", cluster:"apex"},
-  {id:"echo",   name:"메아리", desc:"같은 숫자로 연결하면 배율 +1", cost:3, cluster:"cartel"},
-  {id:"loaded", name:"사기패", desc:"정산 시 포카드면 보너스 +10%, 파이브카드(같은숫자 5장)면 +30%", cluster:"cartel"},
-  {id:"climax", name:"절정",   desc:"풀하우스 이상 족보를 만든 라운드, 줄의 최장 연결이 6칸부터 길수록 정산 보너스 추가 (최대 8연결)", cluster:"cartel"},
-  {id:"evenodd",   name:"홀짝 정렬", desc:"정산 시 줄이 짝수 또는 홀수 한쪽으로 6장부터 치우칠수록 보너스 (초과분마다 +4%)", cluster:"parity"},
-  {id:"paritybet", name:"패리티 도박", desc:"줄 전체가 짝수만 또는 홀수만이면 정산 보너스 +30% (와일드는 자유)", cluster:"parity"},
-  {id:"twotone",  name:"투톤", desc:"정산 시 한 색(♥♦/♠♣)으로 치우치고 그 색 두 무늬가 다 있으면 치우친 만큼 보너스 (순수 플러시는 제외)"},
+  {id:"greed",  name:t('charm.greed.name'),   desc:t('charm.greed.desc')},
+  {id:"pyro",   name:t('charm.pyro.name'),   desc:t('charm.pyro.desc')},
+  {id:"suited", name:t('charm.suited.name'),desc:t('charm.suited.desc')},
+  {id:"runner", name:t('charm.runner.name'),   desc:t('charm.runner.desc')},
+  {id:"jackpot",name:t('charm.jackpot.name'),   desc:t('charm.jackpot.desc')},
+  {id:"noir",     name:t('charm.noir.name'),   desc:t('charm.noir.desc')},
+  {id:"broker",   name:t('charm.broker.name'), desc:t('charm.broker.desc')},
+  {id:"twins",    name:t('charm.twins.name'), desc:t('charm.twins.desc')},
+  {id:"compactor",name:t('charm.compactor.name'), desc:t('charm.compactor.desc')},
+  {id:"runts",    name:t('charm.runts.name'), desc:t('charm.runts.desc')},
+  {id:"bridge",   name:t('charm.bridge.name'),   desc:t('charm.bridge.desc')},
+  {id:"stair",    name:t('charm.stair.name'),desc:t('charm.stair.desc')},
+  {id:"keystone", name:t('charm.keystone.name'), desc:t('charm.keystone.desc')},
+  {id:"lapidary", name:t('charm.lapidary.name'), desc:t('charm.lapidary.desc'), cost:5, cluster:"gem"},
+  {id:"prism",    name:t('charm.prism.name'),    desc:t('charm.prism.desc'), cost:5, cluster:"gem"},
+  {id:"jewelbox", name:t('charm.jewelbox.name'), desc:t('charm.jewelbox.desc'), cluster:"gem"},
+  {id:"highmult", name:t('charm.highmult.name'), desc:t('charm.highmult.desc'), cost:5, cluster:"apex"},
+  {id:"magnate",  name:t('charm.magnate.name'),  desc:t('charm.magnate.desc'), cluster:"apex"},
+  {id:"echo",   name:t('charm.echo.name'),   desc:t('charm.echo.desc'), cost:3, cluster:"cartel"},
+  {id:"loaded", name:t('charm.loaded.name'), desc:t('charm.loaded.desc'), cluster:"cartel"},
+  {id:"climax", name:t('charm.climax.name'),   desc:t('charm.climax.desc'), cluster:"cartel"},
+  {id:"evenodd",   name:t('charm.evenodd.name'), desc:t('charm.evenodd.desc'), cluster:"parity"},
+  {id:"paritybet", name:t('charm.paritybet.name'), desc:t('charm.paritybet.desc'), cluster:"parity"},
+  {id:"twotone",  name:t('charm.twotone.name'), desc:t('charm.twotone.desc')},
 ];
 const has=id=>S.owned.includes(id);
 
@@ -354,25 +857,25 @@ function maxAscLen(row){ let mx=1,cur=1; for(let i=1;i<row.length;i++){ if(row[i
 function edgeVal(row){ const r=c=>c&&c.enh!=="wild"?c.rank:0; return r(row[0])+r(row[3])+r(row[7]); }   // 0·3·7 칸 숫자 합(와일드=0)
 // 각 잠금 부적의 해금 조건 cond(stats,row)→bool + 컬렉션 힌트. 전부 settle 시점 판정(런중 추적 0).
 const UNLOCKS={
-  noir:     {cond:(st,row)=> (st.bestAnte||0)>=4,                hint:"안테 4 도달"},
-  compactor:{cond:(st,row)=> (st.wins||0)>=1,                    hint:"런 1회 클리어"},
-  broker:   {cond:(st,row)=> maxRankCount(row)>=3,               hint:"한 줄에 같은 숫자 3장"},
-  twins:    {cond:(st,row)=> pairGroups(row)>=2,                 hint:"한 줄에 같은 숫자 2장 그룹 2개"},
-  runts:    {cond:(st,row)=> row.filter(c=>c.rank<=3).length>=4, hint:"한 줄에 A·2·3 저랭크 4장"},
-  bridge:   {cond:(st,row)=> bridgeCount(row)>=3,                hint:"한 줄에 양옆 연결 카드 3장"},
-  stair:    {cond:(st,row)=> maxAscLen(row)>=5,                  hint:"한 줄에 5칸 연속 오름차순"},
-  keystone: {cond:(st,row)=> row.length>=8 && row[0].rank>=7 && row[3].rank>=7 && row[7].rank>=7, hint:"0·3·7번 칸에 7+ 배치"},
-  lapidary: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
-  jewelbox: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:"한 줄에 강화 카드 3장"},
-  prism:    {cond:(st,row)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return !!(w&&g&&m); }, hint:"한 줄에 와일드·황금·배율석 동시"},
-  highmult: {cond:(st,row)=> row.filter(c=>c.rank===8).length>=3, hint:"한 줄에 8 카드 3장"},
-  magnate:  {cond:(st,row)=> row.filter(c=>c.rank>=7).length>=5, hint:"한 줄에 7·8 카드 5장"},
-  echo:   {cond:(st,row)=> maxRankCount(row)>=4, hint:"한 줄에 같은 숫자 4장"},
-  loaded: {cond:(st,row)=> evalHand(row)==="fiveKind", hint:"파이브 카드(같은숫자 5장) 완성"},
-  climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:"8칸 전부 연결 + 풀하우스↑ 동시"},
-  evenodd:   {cond:(st,row)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.max(ev,od)>=6; }, hint:"한 줄에 같은 홀짝 6장"},
-  paritybet: {cond:(st,row)=>{ const nw=row.filter(c=>c.enh!=="wild"); return row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1)); }, hint:"줄 전체 짝수만 또는 홀수만"},
-  twotone:  {cond:(st,row)=>{ let r=0,b=0; for(const c of row) if(c.enh!=="wild"){ if(c.suit===1||c.suit===2)r++; else b++; } return Math.max(r,b)>=6; }, hint:"한 줄에 같은 색(♥♦/♠♣) 6장"},
+  noir:     {cond:(st,row)=> (st.bestAnte||0)>=4,                hint:t('unlock.noir.hint')},
+  compactor:{cond:(st,row)=> (st.wins||0)>=1,                    hint:t('unlock.compactor.hint')},
+  broker:   {cond:(st,row)=> maxRankCount(row)>=3,               hint:t('unlock.broker.hint')},
+  twins:    {cond:(st,row)=> pairGroups(row)>=2,                 hint:t('unlock.twins.hint')},
+  runts:    {cond:(st,row)=> row.filter(c=>c.rank<=3).length>=4, hint:t('unlock.runts.hint')},
+  bridge:   {cond:(st,row)=> bridgeCount(row)>=3,                hint:t('unlock.bridge.hint')},
+  stair:    {cond:(st,row)=> maxAscLen(row)>=5,                  hint:t('unlock.stair.hint')},
+  keystone: {cond:(st,row)=> row.length>=8 && row[0].rank>=7 && row[3].rank>=7 && row[7].rank>=7, hint:t('unlock.keystone.hint')},
+  lapidary: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:t('unlock.lapidary.hint')},
+  jewelbox: {cond:(st,row)=> row.filter(c=>c.enh).length>=3, hint:t('unlock.jewelbox.hint')},
+  prism:    {cond:(st,row)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return !!(w&&g&&m); }, hint:t('unlock.prism.hint')},
+  highmult: {cond:(st,row)=> row.filter(c=>c.rank===8).length>=3, hint:t('unlock.highmult.hint')},
+  magnate:  {cond:(st,row)=> row.filter(c=>c.rank>=7).length>=5, hint:t('unlock.magnate.hint')},
+  echo:   {cond:(st,row)=> maxRankCount(row)>=4, hint:t('unlock.echo.hint')},
+  loaded: {cond:(st,row)=> evalHand(row)==="fiveKind", hint:t('unlock.loaded.hint')},
+  climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:t('unlock.climax.hint')},
+  evenodd:   {cond:(st,row)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.max(ev,od)>=6; }, hint:t('unlock.evenodd.hint')},
+  paritybet: {cond:(st,row)=>{ const nw=row.filter(c=>c.enh!=="wild"); return row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1)); }, hint:t('unlock.paritybet.hint')},
+  twotone:  {cond:(st,row)=>{ let r=0,b=0; for(const c of row) if(c.enh!=="wild"){ if(c.suit===1||c.suit===2)r++; else b++; } return Math.max(r,b)>=6; }, hint:t('unlock.twotone.hint')},
 };
 function getUnlocked(){ try{ const a=JSON.parse(localStorage.getItem("cd_unlocked")); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
 function saveUnlocked(a){ try{ localStorage.setItem("cd_unlocked",JSON.stringify(a)); }catch(e){} }
@@ -380,13 +883,13 @@ function isUnlocked(id){ return STARTER_CHARMS.includes(id) || getUnlocked().inc
 // settle 직후 호출: stats/row로 새로 충족된 잠금 부적을 cd_unlocked에 추가, 새로 해금된 id 배열 반환
 function checkUnlocks(st,row){ const cur=getUnlocked(), fresh=[]; for(const id in UNLOCKS){ if(!cur.includes(id) && UNLOCKS[id].cond(st,row||[])){ cur.push(id); fresh.push(id); } } if(fresh.length) saveUnlocked(cur); return fresh; }
 function charmsHTML(){
-  let h=`<h3>🧿 부적 컬렉션</h3><p class="drawerSub">플레이로 해금되는 부적 — 잠긴 건 조건을 채우면 열립니다.</p>`;
+  let h=`<h3>🧿 ${t('ui.charms.title')}</h3><p class="drawerSub">${t('ui.charms.sub')}</p>`;
   for(const c of CHARMS){
-    if(isUnlocked(c.id)) h+=`<div class="hrow"><span><b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ 해금</span></div>`;
-    else h+=`<div class="hrow" style="opacity:.55"><span><b class="hname">🔒 ？？？</b><br><span class="hdesc">해금 조건: ${(UNLOCKS[c.id]||{}).hint||"비공개"}</span></span><span class="hsmall">잠김</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
+    if(isUnlocked(c.id)) h+=`<div class="hrow"><span><b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ ${t('ui.charms.unlocked')}</span></div>`;
+    else h+=`<div class="hrow" style="opacity:.55"><span><b class="hname">🔒 ？？？</b><br><span class="hdesc">${t('ui.charms.lockedCond')} ${(UNLOCKS[c.id]||{}).hint||t('ui.charms.private')}</span></span><span class="hsmall">${t('ui.charms.lockedTag')}</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
   }
   const n=CHARMS.filter(c=>isUnlocked(c.id)).length;
-  h+=`<p class="drawerNote">🧿 해금 ${n} / ${CHARMS.length}</p>`;
+  h+=`<p class="drawerNote">🧿 ${t('ui.charms.unlocked')} ${n} / ${CHARMS.length}</p>`;
   return h;
 }
 /* ---------- 아웃게임 메타 상점 (드로어 'meta') ---------- */
@@ -394,12 +897,12 @@ function metaHTML(){
   const m=getMeta();
   const gN = m.goldLv<3 ? META_PRICE.gold[m.goldLv] : null;
   const rN = m.rerollLv<2 ? META_PRICE.reroll[m.rerollLv] : null;
-  return `<h3>🪙 아웃게임 상점</h3><p class="drawerSub">런에서 남기고 안 쓴 골드의 1/10이 메타 코인으로 쌓입니다. 비싼 강스킬을 살지, 비축해서 메타에 투자할지.</p>
-  <div class="hrow"><span><b class="hname">🪙 보유 코인</b></span><b class="hbig">${m.coins}</b></div>
-  <div class="hrow"><span><b class="hname">🎟 재도전권</b><br><span class="hdesc">블라인드 실패 시 그 라운드 재시도 (보유 ${m.retry}/3)</span></span>${ m.retry<3 ? `<button onclick="buyMeta('retry')" ${m.coins<META_PRICE.retry?"disabled":""}>🪙 ${META_PRICE.retry}</button>` : `<span class="hsmall">최대</span>` }</div>
-  <div class="hrow"><span><b class="hname">💰 시작 골드</b><br><span class="hdesc">런 시작 골드 +${m.goldLv*3} (Lv${m.goldLv}/3)</span></span>${ gN!=null ? `<button onclick="buyMeta('gold')" ${m.coins<gN?"disabled":""}>🪙 ${gN}</button>` : `<span class="hsmall">최대</span>` }</div>
-  <div class="hrow"><span><b class="hname">🔄 시작 리롤</b><br><span class="hdesc">런 시작 손패 리롤 +${m.rerollLv} (Lv${m.rerollLv}/2)</span></span>${ rN!=null ? `<button onclick="buyMeta('reroll')" ${m.coins<rN?"disabled":""}>🪙 ${rN}</button>` : `<span class="hsmall">최대</span>` }</div>
-  <p class="drawerNote">💡 영구 부스트(골드·리롤)는 다음 런부터 적용됩니다.</p>`;
+  return `<h3>🪙 ${t('ui.meta.title')}</h3><p class="drawerSub">${t('ui.meta.sub')}</p>
+  <div class="hrow"><span><b class="hname">🪙 ${t('ui.meta.coins')}</b></span><b class="hbig">${m.coins}</b></div>
+  <div class="hrow"><span><b class="hname">🎟 ${t('ui.meta.retryTitle')}</b><br><span class="hdesc">${t('ui.meta.retryDesc').replace('{n}',m.retry)}</span></span>${ m.retry<3 ? `<button onclick="buyMeta('retry')" ${m.coins<META_PRICE.retry?"disabled":""}>🪙 ${META_PRICE.retry}</button>` : `<span class="hsmall">${t('ui.meta.max')}</span>` }</div>
+  <div class="hrow"><span><b class="hname">💰 ${t('ui.meta.goldTitle')}</b><br><span class="hdesc">${t('ui.meta.goldDesc').replace('{g}',m.goldLv*3).replace('{lv}',m.goldLv)}</span></span>${ gN!=null ? `<button onclick="buyMeta('gold')" ${m.coins<gN?"disabled":""}>🪙 ${gN}</button>` : `<span class="hsmall">${t('ui.meta.max')}</span>` }</div>
+  <div class="hrow"><span><b class="hname">🔄 ${t('ui.meta.rerollTitle')}</b><br><span class="hdesc">${t('ui.meta.rerollDesc').replace('{r}',m.rerollLv).replace('{lv}',m.rerollLv)}</span></span>${ rN!=null ? `<button onclick="buyMeta('reroll')" ${m.coins<rN?"disabled":""}>🪙 ${rN}</button>` : `<span class="hsmall">${t('ui.meta.max')}</span>` }</div>
+  <p class="drawerNote">💡 ${t('ui.meta.note')}</p>`;
 }
 function buyMeta(kind){
   const m=getMeta();
@@ -429,7 +932,6 @@ function newGame(seed, stake, variant){
 // 블라인드 목표: 안테 기본 × (작은1 / 큰1.5 / 보스2.2)
 function blindBase(ante){ return 150*Math.pow(1.5, ante-1); }   // 스테이크 무관 기준값(족보 보너스 기준). 불씨덱 보정은 sparkComp로만 — charm 불변
 function sparkComp(ante){ return 1.0+0.34*(8-ante)/7; }   // v3.29 불씨덱 front-loaded 보정(target 전용): 초반 강(a1=1.34)→후반 무(a8=1.00) — flatness 보존. run-sim 미러
-const STAKE_T=[0,.03,.03,.04,.04,.06], STAKE_AC=[0,0,0,.008,.008,.014];   // 난이도 사다리 목표 가산(평면/안테비례) — ★run-sim STK_T/STK_AC 미러(드리프트 동기화)
 function stakeMult(ante){ const st=S?S.stake:0; return 1+STAKE_T[st]+STAKE_AC[st]*(ante-1); }   // st0→1(no-op)
 function blindTarget(ante,blind){
   return Math.round(blindBase(ante)*sparkComp(ante)*stakeMult(ante)*(S?S.dmult:1) * (blind===0?1 : blind===1?1.4 : 1.6));   // sparkComp=불씨덱 front-loaded 보정. dmult=시작덱 보정(표준 1=no-op).
@@ -444,8 +946,8 @@ function startBlind(){
   S.target=blindTarget(S.ante,S.blind);
   if(S.boss && S.blind===2) S.target=Math.round(S.target*S.boss.tmult);   // tmult는 진짜 보스 블라인드만(St6 큰블라인드는 룰만, 목표 경감 없음)
   S.hand=Array.from({length:S.handSize}, draw);
-  if(S.blind===0 && (S.ante===4||S.ante===7)){ banner(`⚔ ACT ${actOf(S.ante)} 진입`, "var(--gold)"); try{boom(150);}catch(e){} }
-  else banner(S.boss? `${S.boss.actBoss?"👑 액트 보스":S.boss.icon+" 보스"}: ${S.boss.name} — ${S.boss.desc}` : "", S.boss?"#ff9a9a":"");
+  if(S.blind===0 && (S.ante===4||S.ante===7)){ banner(`⚔ ACT ${actOf(S.ante)} ${t('ui.banner.actEnterSuffix')}`, "var(--gold)"); try{boom(150);}catch(e){} }
+  else banner(S.boss? `${S.boss.actBoss?"👑 "+t('ui.boss.actBoss'):S.boss.icon+" "+t('ui.boss.bossSuffix')}: ${S.boss.name} — ${S.boss.desc}` : "", S.boss?"#ff9a9a":"");
   render();
 }
 function togglePreview(){ if(S){ S.showPreview=document.getElementById("pvToggle").checked; render(); } }
@@ -537,20 +1039,20 @@ function settle(){
   if(hb>0){ hr.style.display="flex"; document.getElementById("tHand").textContent=`🎴 ${HAND_KO[hk]}`; document.getElementById("tBonus").textContent=`+${hb.toLocaleString()}`; }
   else hr.style.display="none";
   document.getElementById("tFinal").textContent=S.score.toLocaleString();
-  document.getElementById("tTarget").textContent=`목표 ${S.target.toLocaleString()}`;
+  document.getElementById("tTarget").textContent=`${t('ui.target')} ${S.target.toLocaleString()}`;
   const res=document.getElementById("tResult"), btn=document.getElementById("tBtn");
   if(pass){
     S.gold += goldEarned(S.score, S.target);                 // 통과 시 초과율 환전
     document.getElementById("hGold").textContent=S.gold;
-    res.textContent = wasBoss ? `${S.anteBoss.icon} 보스 격파!` : "✦ 통과!"; res.className="tallyResult pass";
+    res.textContent = wasBoss ? `${S.anteBoss.icon} ${t('ui.tally.bossDefeated')}` : "✦ "+t('ui.tally.pass'); res.className="tallyResult pass";
     logEvent("clear",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
-    if(wasBoss && S.ante>=ANTES){ btn.textContent="🏆 승리!"; _tallyNext=victory; }
-    else { btn.textContent="다음 → 상점"; _tallyNext=openShop; }
+    if(wasBoss && S.ante>=ANTES){ btn.textContent="🏆 "+t('ui.tally.victory'); _tallyNext=victory; }
+    else { btn.textContent=t('ui.tally.nextShop'); _tallyNext=openShop; }
   } else {
     S.over=true;
-    res.textContent="💀 패배 — 목표 미달"; res.className="tallyResult fail";
+    res.textContent="💀 "+t('ui.tally.fail'); res.className="tallyResult fail";
     logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_KO[hk]});
-    btn.textContent="새 게임 (런 다시)"; _tallyNext=()=>{ cashOut(); newGame(); };
+    btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); newGame(); };
   }
   // 최고 기록 / 통계 갱신 (리텐션)
   const stx=getStats();
@@ -569,12 +1071,12 @@ function settle(){
   const freshUnlocks=checkUnlocks({...stx, bestAnte:Math.max(stx.bestAnte||0, S.ante)}, S.row);   // + 이번 줄(S.row 8장)로 도전과제 판정
   const ur=document.getElementById("tUnlockRow");
   if(freshUnlocks.length){ ur.style.display="flex";
-    document.getElementById("tUnlock").innerHTML=`🔓 새 부적 해금: <b>${freshUnlocks.map(id=>CHARMS.find(c=>c.id===id).name).join(", ")}</b>`;
+    document.getElementById("tUnlock").innerHTML=`🔓 ${t('ui.tally.newUnlock')} <b>${freshUnlocks.map(id=>CHARMS.find(c=>c.id===id).name).join(", ")}</b>`;
     setTimeout(()=>{ beep(720,.07); setTimeout(()=>beep(960,.09),90); },220);
   } else ur.style.display="none";
   document.getElementById("tRecord").style.display = newRec ? "block" : "none";
   { const rt=document.getElementById("tRetry");
-    if(!pass && S.retry>0){ rt.style.display="block"; rt.textContent=`🎟 재도전권 사용 (재시도) · 보유 ${S.retry}`; }
+    if(!pass && S.retry>0){ rt.style.display="block"; rt.textContent=`🎟 ${t('ui.tally.useRetry')} ${S.retry}`; }
     else rt.style.display="none"; }
   document.getElementById("tShare").style.display = (!pass || (wasBoss && S.ante>=ANTES)) ? "block" : "none";   // 런 종료(승/패)에만 공유
   render(); renderStats();
@@ -583,10 +1085,10 @@ function settle(){
 function victory(){
   cashOut();
   { const m=getMeta(); const nx=Math.min(MAX_STAKE,(S.stake||0)+1); if(nx>m.maxStake){ m.maxStake=nx; saveMeta(m);   // 스테이크 N 클리어 → N+1 해금
-      setTimeout(()=>{ banner(`🔓 난이도 St${nx} ${STAKE_NAMES[nx]} 해금! (${STAKE_DESC[nx]})`, "var(--gold)"); try{beep(720,.08); setTimeout(()=>beep(960,.1),100);}catch(e){} }, 1500); } }
+      setTimeout(()=>{ banner(`🔓 ${t('ui.victory.unlockPrefix')} St${nx} ${STAKE_NAMES[nx]} ${t('ui.victory.unlockSuffix')} (${STAKE_DESC[nx]})`, "var(--gold)"); try{beep(720,.08); setTimeout(()=>beep(960,.1),100);}catch(e){} }, 1500); } }
   logEvent("win",{ante:S.ante,score:S.score,stake:S.stake});
   S.over=true; S.score=0;
-  banner("🏆 런 클리어! 안테 8 정복! 🏆","var(--gold)");
+  banner(t('ui.victory.banner'),"var(--gold)");
   flash("#ffd15c"); boom(200); setTimeout(()=>{flash("#ffffff22");boom(150);},250);
   // 화면 가득 축포
   for(let k=0;k<4;k++) setTimeout(()=>sparkBurst(document.getElementById("table"),34,"#ffd15c"),k*180);
@@ -609,39 +1111,39 @@ function weightedSample(pool, n){   // 가중 비복원 샘플 (rng=시드 RNG �
 function shopPool(){
   const pool=[];
   CHARMS.filter(c=>!has(c.id) && isUnlocked(c.id)).forEach(c=>pool.push({type:"charm",charm:c,name:c.name,desc:c.desc,cost:(c.cost||8)}));
-  pool.push({type:"thin", name:"덱 압축 ✂", desc:"덱에서 카드 1장 영구 제거 (체인 확률↑)", cost:3});
-  pool.push({type:"copy", name:"카드 복제 ⧉", desc:"덱 카드 1장을 복사해 추가 (같은 숫자·무늬 빌드 / 🃏파이브 카드)", cost:5});
-  pool.push({type:"enh", enh:"wild", name:"와일드 부여 ★", desc:"덱 카드 1장을 '와일드'로 (무엇과도 연결)", cost:8});
-  pool.push({type:"enh", enh:"mult", name:"배율석 부여 ◆", desc:"덱 카드 1장에 '체인 배율 +1'", cost:5});
-  pool.push({type:"enh", enh:"gold", name:"황금 부여 ●", desc:"덱 카드 1장에 '기본 점수 +5'", cost:5});
-  pool.push({type:"add", name:"카드 추가 +", desc:"고른 무늬의 강한 카드(7~8) 추가", cost:3});
-  pool.push({type:"hand", name:"손패 확장 +1", desc:"매 블라인드 손패 1장 증가 (영구 성장)", cost:8});
-  pool.push({type:"reroll", name:"리롤 +1", desc:"블라인드마다 손패 리롤 횟수 +1 (영구)", cost:5});
+  pool.push({type:"thin", name:t('ui.shop.thin.name'), desc:t('ui.shop.thin.desc'), cost:3});
+  pool.push({type:"copy", name:t('ui.shop.copy.name'), desc:t('ui.shop.copy.desc'), cost:5});
+  pool.push({type:"enh", enh:"wild", name:t('ui.shop.enhWild.name'), desc:t('ui.shop.enhWild.desc'), cost:8});
+  pool.push({type:"enh", enh:"mult", name:t('ui.shop.enhMult.name'), desc:t('ui.shop.enhMult.desc'), cost:5});
+  pool.push({type:"enh", enh:"gold", name:t('ui.shop.enhGold.name'), desc:t('ui.shop.enhGold.desc'), cost:5});
+  pool.push({type:"add", name:t('ui.shop.add.name'), desc:t('ui.shop.add.desc'), cost:3});
+  pool.push({type:"hand", name:t('ui.shop.hand.name'), desc:t('ui.shop.hand.desc'), cost:8});
+  pool.push({type:"reroll", name:t('ui.shop.reroll.name'), desc:t('ui.shop.reroll.desc'), cost:5});
   return pool;
 }
 function openShop(){
   S.shopRerolls=0;
   S.shopOffers = weightedSample(shopPool(),3).map(o=>({...o, sold:false}));
-  document.getElementById("shopTitle").textContent=`안테 ${S.ante} · ${BLINDNAME[S.blind]} 통과! (덱 ${S.deck.length+S.discard.length}장)`;
+  document.getElementById("shopTitle").textContent=`${t('ui.ante')} ${S.ante} · ${BLINDNAME[S.blind]} ${t('ui.shop.cleared')} (${t('ui.shop.deckLabel')} ${S.deck.length+S.discard.length}${t('ui.count.jang')})`;
   renderShop();
   document.getElementById("shop").classList.add("show");
 }
 function renderShop(){
   const body=document.getElementById("shopBody"); body.innerHTML="";
-  const g=document.createElement("div"); g.className="shopGold"; g.innerHTML=`💰 골드 <b>${S.gold}</b>`; body.appendChild(g);
+  const g=document.createElement("div"); g.className="shopGold"; g.innerHTML=`💰 ${t('ui.gold')} <b>${S.gold}</b>`; body.appendChild(g);
   const off=document.createElement("div"); off.className="offer";
   S.shopOffers.forEach((p,i)=>{ const afford=!p.sold && S.gold>=p.cost;
     const d=document.createElement("div"); d.className="ocard"+(p.sold?" sold":afford?"":" cantafford");
-    d.innerHTML=`<div class="on">${p.name}</div><div class="od">${p.desc}</div><div class="ocost">${p.sold?"✓ 구매함":"💰 "+p.cost}</div>`;
+    d.innerHTML=`<div class="on">${p.name}</div><div class="od">${p.desc}</div><div class="ocost">${p.sold?"✓ "+t('ui.shop.purchased'):"💰 "+p.cost}</div>`;
     if(afford) d.onclick=()=>buyShop(i);
     off.appendChild(d); });
   body.appendChild(off);
   const rrCost=REROLL_BASE+S.shopRerolls, canRR=S.gold>=rrCost;
   const rr=document.createElement("div"); rr.style.marginTop="10px";
-  rr.innerHTML=`<button onclick="rerollShop()"${canRR?"":" disabled style='opacity:.45;cursor:not-allowed'"}>🔄 오퍼 새로고침 (💰${rrCost})</button>`;
+  rr.innerHTML=`<button onclick="rerollShop()"${canRR?"":" disabled style='opacity:.45;cursor:not-allowed'"}>🔄 ${t('ui.shop.rerollOffers')} (💰${rrCost})</button>`;
   body.appendChild(rr);
   const skip=document.createElement("div"); skip.style.marginTop="14px";
-  skip.innerHTML=`<button onclick="advanceBlind()">상점 나가기 → (골드 ${S.gold} 보유)</button>`;
+  skip.innerHTML=`<button onclick="advanceBlind()">${t('ui.shop.leave')} → (${t('ui.gold')} ${S.gold} ${t('ui.shop.have')})</button>`;
   body.appendChild(skip);
 }
 function rerollShop(){
@@ -664,7 +1166,7 @@ function buyShop(i){
 }
 function pickDeckCard(p){
   const body=document.getElementById("shopBody");
-  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${p.type==="thin"?"제거할":p.type==="copy"?"복제할":"효과를 줄"} 카드를 고르세요</div>`;
+  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${p.type==="thin"?t('ui.pick.remove'):p.type==="copy"?t('ui.pick.copy'):t('ui.pick.enh')} ${t('ui.pick.cardSuffix')}</div>`;
   const grid=document.createElement("div"); grid.className="deckgrid";
   const refs=[...S.deck, ...S.discard];
   refs.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
@@ -674,7 +1176,7 @@ function pickDeckCard(p){
 function removeCard(card){ let i=S.deck.indexOf(card); if(i>=0){S.deck.splice(i,1);return;} i=S.discard.indexOf(card); if(i>=0) S.discard.splice(i,1); }
 function pickSuitToAdd(){
   const body=document.getElementById("shopBody");
-  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">추가할 무늬 (강한 카드 7~8 랜덤)</div>`;
+  body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${t('ui.pick.suit')}</div>`;
   const grid=document.createElement("div"); grid.className="offer";
   SUITS.forEach(su=>{ const d=document.createElement("div"); d.className="ocard"; d.style.minWidth="80px";
     d.innerHTML=`<div class="on" style="font-size:28px;color:${su.red?'#ff6b6b':'#cdd6f5'}">${su.g}</div>`;
@@ -708,21 +1210,21 @@ function render(){
   const pct=Math.min(100,Math.round(S.score/S.target*100));
   document.getElementById("fill").style.width=pct+"%";
   document.getElementById("barlbl").textContent=`${S.score} / ${S.target}`;
-  document.getElementById("deckinfo").innerHTML=`덱 ${S.deck.length}장 · 버림 ${S.discard.length}장 <span style="color:#9b6fd4;text-decoration:underline">🃏 덱 보기</span>`;
+  document.getElementById("deckinfo").innerHTML=`${t('ui.deckinfo.deck')} ${S.deck.length}${t('ui.count.jang')} · ${t('ui.deckinfo.discard')} ${S.discard.length}${t('ui.count.jang')} <span style="color:#9b6fd4;text-decoration:underline">${t('ui.deckinfo.viewDeck')}</span>`;
   // 안테 진행 점
   const ad=document.getElementById("antedots"); ad.innerHTML="";
   for(let a=1;a<=ANTES;a++){ const d=document.createElement("span"); d.className="adot"+(a<S.ante?" done":a===S.ante?" cur":""); ad.appendChild(d); }
   // 블라인드 정보
   const bi=document.getElementById("blindinfo");
-  if(S.blind===2 && S.boss){ bi.className="blindinfo boss"; bi.innerHTML=`👑 보스: <b>${S.boss.icon} ${S.boss.name}</b> — ${S.boss.desc}`; }
-  else { bi.className="blindinfo"; bi.innerHTML=`안테 ${S.ante} · ${BLINDNAME[S.blind]} &nbsp;·&nbsp; <span style="color:#8a93b6">다음 보스:</span> ${S.anteBoss.icon} ${S.anteBoss.name}`; }
+  if(S.blind===2 && S.boss){ bi.className="blindinfo boss"; bi.innerHTML=`👑 ${t('ui.boss.label')} <b>${S.boss.icon} ${S.boss.name}</b> — ${S.boss.desc}`; }
+  else { bi.className="blindinfo"; bi.innerHTML=`${t('ui.ante')} ${S.ante} · ${BLINDNAME[S.blind]} &nbsp;·&nbsp; <span style="color:#8a93b6">${t('ui.nextBoss')}</span> ${S.anteBoss.icon} ${S.anteBoss.name}`; }
   // 족보 보너스 미리보기 (체인이 메인, 족보는 보조) + 터치=족보표 안내
   const hbEl=document.getElementById("handbonus");
-  const hint=` <span class="hbhint">👆 족보표</span>`;
-  if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 같은 무늬·숫자를 모으면 정산 때 +추가</span>`+hint; }
+  const hint=` <span class="hbhint">👆 ${t('ui.handTable')}</span>`;
+  if(S.row.length===0){ hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.empty')}</span>`+hint; }
   else { const hk=evalHand(S.row), hb=handBonus(S.row);
-    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">족보 보너스</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">(체인에 추가)</span>`+hint;
-    else hbEl.innerHTML=`<span class="hbdim">🎴 족보 보너스 — 현재 ${HAND_KO[hk]}, 보너스 없음</span>`+hint; }
+    if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">${t('ui.handBonus.label')}</span> <span class="hbname">${HAND_KO[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">${t('ui.handBonus.addedToChain')}</span>`+hint;
+    else hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.currentPrefix')} ${HAND_KO[hk]}, ${t('ui.handBonus.none')}</span>`+hint; }
 
   const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
   for(let i=0;i<SLOTS;i++){
@@ -829,45 +1331,33 @@ function skipReveal(){ if(_revealEnd){ _revealTok++; const f=_revealEnd; _reveal
 
 /* ---------- 룰 / 족보 드로어 (터치 → 펼침, 백드롭 터치 → 닫힘) ---------- */
 const mc=(r,s)=>`<span class="mcard${s==="♥"||s==="♦"?" red":""}">${r}${s}</span>`;
-const HANDS_HTML=`
-  <h3>🎴 포커 족보 — 보너스 점수</h3>
-  <p class="drawerSub">체인이 <b>메인 점수</b>! 족보는 정산 때 더해지는 <b style="color:var(--gold)">추가 보너스</b>입니다. (보너스 큰 순)</p>
-  <div class="hrow"><span><b class="hname">🃏 파이브 카드</b><br><span class="hdesc">같은 숫자 5장 — 트럼프 룰 파괴! '카드 복제'로 완성</span></span><span class="hbig">보너스 폭발</span></div>
-  <div class="hrow"><span><b class="hname">스트레이트 플러시</b><br><span class="hdesc">같은 무늬 + 연속 숫자 5장</span></span><span class="hbig">보너스 최대</span></div>
-  <div class="hrow"><span><b class="hname">포카드</b><br><span class="hdesc">같은 숫자 4장</span></span><span class="hbig">보너스 큼</span></div>
-  <div class="hrow"><span><b class="hname">플러시</b><br><span class="hdesc">같은 무늬 5장</span></span><span class="hbig">보너스 큼</span></div>
-  <div class="hrow"><span><b class="hname">풀하우스</b><br><span class="hdesc">같은 숫자 3장 + 2장</span></span><span class="hsmall">보너스 작음</span></div>
-  <div class="hrow"><span><b class="hname">트리플</b><br><span class="hdesc">같은 숫자 3장</span></span><span class="hsmall">보너스 작음</span></div>
-  <div class="hrow"><span><b class="hname">스트레이트</b><br><span class="hdesc">연속 숫자 5장 (예: 4·5·6·7·8)</span></span><span class="hsmall">보너스 작음</span></div>
-  <div class="hrow"><span><b class="hname">투페어</b><br><span class="hdesc">같은 숫자 2장 × 2</span></span><span class="hsmall">보너스 작음</span></div>
-  <div class="hrow"><span><b class="hname">페어</b><br><span class="hdesc">같은 숫자 2장</span></span><span class="hsmall">보너스 없음</span></div>
-  <p class="drawerNote">💡 흔한 족보(투페어·풀하우스 등)는 8장이라 자주 떠서 보너스가 작아요. <b style="color:var(--gold)">플러시·포카드</b>를 노리면 큰 보너스!</p>`;
-const RULES_HTML=`
-  <h3>🃏 CHAIN DEAL — 룰</h3>
-  <p class="rtext">손패 <b>3장 중 하나</b>를 골라 줄에 깐다. 바로 <b>왼쪽 카드와 '통하면' 체인</b>이 터진다!</p>
-  <div class="seg">연결되는 3가지</div>
-  <div class="rrow"><div class="rlabel">① 같은 무늬</div>${mc("5","♠")}${mc("8","♠")} → 둘 다 ♠ (무늬 일치)</div>
-  <div class="rrow"><div class="rlabel">② 같은 숫자</div>${mc("7","♥")}${mc("7","♦")} → 둘 다 7 (숫자 일치)</div>
-  <div class="rrow"><div class="rlabel">③ 연속 숫자 (±1)</div>${mc("4","♣")}${mc("5","♠")} → 4 다음 5 (연속)</div>
-  <p class="rtext">체인이 <b>길게 이어질수록 배율이 폭발</b> → 점수 ↑. 예: ${mc("3","♠")}${mc("4","♠")}${mc("5","♠")}${mc("6","♠")} 처럼 길게!</p>
-  <p class="rtext">8장을 다 깔아 <b>목표 점수</b>를 넘기면 통과.</p>
-  <div class="seg">진행 / 승리</div>
-  <p class="rtext">안테 1~8, 각 안테 = <b>작은 → 큰 → 보스</b> 블라인드. 보스는 특수 규칙으로 방해한다. <b>안테 8 보스 격파 = 승리!</b> 목표 미달 = 처음부터 다시.</p>
-  <div class="seg">+ 족보 보너스</div>
-  <p class="rtext">8장으로 포커 족보가 되면 정산 때 <b style="color:var(--gold)">추가 점수</b>. (족보 보너스 문구를 누르면 족보표가 열려요)</p>`;
+const HANDS_HTML=t('ui.drawer.hands');
+function rulesHTML(){ return `
+  <h3>🃏 CHAIN DEAL — ${t('ui.rules.h3')}</h3>
+  <p class="rtext">${t('ui.rules.p1')}</p>
+  <div class="seg">${t('ui.rules.seg1')}</div>
+  <div class="rrow"><div class="rlabel">${t('ui.rules.rule1.label')}</div>${mc("5","♠")}${mc("8","♠")} ${t('ui.rules.rule1.text')}</div>
+  <div class="rrow"><div class="rlabel">${t('ui.rules.rule2.label')}</div>${mc("7","♥")}${mc("7","♦")} ${t('ui.rules.rule2.text')}</div>
+  <div class="rrow"><div class="rlabel">${t('ui.rules.rule3.label')}</div>${mc("4","♣")}${mc("5","♠")} ${t('ui.rules.rule3.text')}</div>
+  <p class="rtext">${t('ui.rules.p2a')} ${mc("3","♠")}${mc("4","♠")}${mc("5","♠")}${mc("6","♠")} ${t('ui.rules.p2b')}</p>
+  <p class="rtext">${t('ui.rules.p3')}</p>
+  <div class="seg">${t('ui.rules.seg2')}</div>
+  <p class="rtext">${t('ui.rules.p4')}</p>
+  <div class="seg">${t('ui.rules.seg3')}</div>
+  <p class="rtext">${t('ui.rules.p5')}</p>`; }
 function mcEnh(c){ const e=c.enh==="wild"?"★":c.enh==="mult"?"◆":c.enh==="gold"?"●":""; return `<span class="mcard${isRed(c.suit)?" red":""}">${rankStr(c.rank)}${suitG(c.suit)}<span style="color:#9b6fd4;font-size:10px">${e}</span></span>`; }
 function deckHTML(){
   const all=[...S.deck,...S.discard,...S.hand,...S.row];
   all.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
-  let h=`<h3>🃏 현재 덱 (${all.length}장)</h3><p class="drawerSub">덱 + 버림 + 손패 + 줄 전체. 빌드 확인·이상 감시용. (★와일드 ◆배율 ●황금)</p>`;
+  let h=`<h3>🃏 ${t('ui.deck.title')} (${all.length}${t('ui.count.jang')})</h3><p class="drawerSub">${t('ui.deck.sub')}</p>`;
   for(let s=0;s<4;s++){ const cs=all.filter(c=>c.suit===s); if(!cs.length) continue;
-    h+=`<div class="seg">${suitG(s)} ${cs.length}장</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(mcEnh).join("")}</div>`; }
+    h+=`<div class="seg">${suitG(s)} ${cs.length}${t('ui.count.jang')}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(mcEnh).join("")}</div>`; }
   const rc={}; all.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
   const dup=Object.entries(rc).filter(([r,n])=>n>=3).map(([r,n])=>`${rankStr(+r)}×${n}`);
-  h+= dup.length ? `<p class="drawerNote">💡 같은 숫자 3장+: ${dup.join(", ")} (포카드·풀하우스 빌드)</p>` : `<p class="drawerNote">같은 숫자 3장 이상 없음 — 정상 분포</p>`;
+  h+= dup.length ? `<p class="drawerNote">💡 ${t('ui.deck.dupPrefix')} ${dup.join(", ")} ${t('ui.deck.dupSuffix')}</p>` : `<p class="drawerNote">${t('ui.deck.noDup')}</p>`;
   return h;
 }
-function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?RULES_HTML:type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?rulesHTML():type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
 /* ---------- 결과 공유 (v3.21) — 모바일=navigator.share 시트 / 데스크탑=클립보드. 데일리=같은 보드 경쟁 공유(스포일러 없음) ---------- */
@@ -880,16 +1370,16 @@ function shareText(r){
     else if(a===r.ante) strip += "🟥";             // 죽은 안테
     else strip += "⬜";                            // 미도달
   }
-  const sd=""+r.seed, tag = (r.daily ? `데일리 ${sd.slice(4,6)}/${sd.slice(6,8)}` : "프리런") + (r.stake ? ` · St${r.stake} ${STAKE_NAMES[r.stake]}` : "");
-  const head = r.won ? `🏆 안테 ${ANTES} 클리어!` : `안테 ${r.ante}/${ANTES} 💀`;
-  return `CHAIN DEAL 🔗 ${tag}\n${head} · 최고 ${r.best.toLocaleString()}\n${strip}\n${url}`;
+  const sd=""+r.seed, tag = (r.daily ? `${t('ui.share.daily')} ${sd.slice(4,6)}/${sd.slice(6,8)}` : t('ui.share.free')) + (r.stake ? ` · St${r.stake} ${STAKE_NAMES[r.stake]}` : "");
+  const head = r.won ? `🏆 ${t('ui.ante')} ${ANTES} ${t('ui.share.cleared')}` : `${t('ui.ante')} ${r.ante}/${ANTES} 💀`;
+  return `CHAIN DEAL 🔗 ${tag}\n${head} · ${t('ui.best')} ${r.best.toLocaleString()}\n${strip}\n${url}`;
 }
 function shareResult(btn){
   if(!S || !S.lastResult) return;
   const txt = shareText(S.lastResult);
   try{beep(620,.06);}catch(e){}
   if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); return; }   // 모바일 네이티브 공유 시트
-  const done=()=>{ if(btn){ const o=btn.textContent; btn.textContent="✓ 복사됨!"; setTimeout(()=>{ btn.textContent=o; },1400); } };
+  const done=()=>{ if(btn){ const o=btn.textContent; btn.textContent="✓ "+t('ui.share.copied'); setTimeout(()=>{ btn.textContent=o; },1400); } };
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));
   else fallbackCopy(txt,done);
 }
@@ -906,21 +1396,21 @@ function renderDeckLbl(){ const v=DECKS.find(x=>x.id===selDeck)||DECKS[0]; const
 function stakeStep(d){ const mx=getMeta().maxStake; selStake=Math.max(0,Math.min(mx, selStake+d)); try{beep(selStake>0?520:420,.04);}catch(e){} renderStakeLbl(); }
 function renderStakeLbl(){ const el=document.getElementById("stakeLbl"); if(!el) return; const mx=getMeta().maxStake; if(selStake>mx) selStake=mx;
   el.innerHTML=`St${selStake} <span style="color:${selStake>0?'#ffd15c':'#cdd6f5'}">${STAKE_NAMES[selStake]}</span>`;
-  const d=document.getElementById("stakeDesc"); if(d) d.textContent = STAKE_DESC[selStake] + (selStake>=mx ? (mx<MAX_STAKE?"  ·  클리어 시 다음 해금":"  ·  최고 난이도") : ""); }
+  const d=document.getElementById("stakeDesc"); if(d) d.textContent = STAKE_DESC[selStake] + (selStake>=mx ? (mx<MAX_STAKE?"  ·  "+t('ui.stake.nextUnlock'):"  ·  "+t('ui.stake.maxDifficulty')) : ""); }
 
 /* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
-function nickOr(){ return localStorage.getItem("cd_nick")||"익명"; }
-function setNick(){ const cur=nickOr()==="익명"?"":nickOr(); const n=((prompt("리더보드 닉네임 (최대 12자):",cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
+function nickOr(){ return localStorage.getItem("cd_nick")||t('ui.anon'); }
+function setNick(){ const cur=nickOr()===t('ui.anon')?"":nickOr(); const n=((prompt(t('ui.nickPrompt'),cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
 function submitScore(score){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"score",nick:nickOr(),score:score||0,seed:S.seed,ante:S.ante,daily:S.daily?1:0,stake:S.stake||0})}); }catch(e){} }
 function jsonp(action,seed,cb){ const fn="cb_"+Math.floor(Math.random()*1e9); const s=document.createElement("script"); window[fn]=d=>{ cb(d); delete window[fn]; s.remove(); }; s.onerror=()=>{ cb(null); s.remove(); }; s.src=`${LOG_URL}?action=${action}&seed=${seed||""}&callback=${fn}`; document.body.appendChild(s); }
-function boardRows(arr){ if(!arr) return `<p class="hbdim" style="padding:6px 0">불러오기 실패 — Apps Script 재배포(doGet) 확인</p>`; if(!arr.length) return `<p class="hbdim" style="padding:6px 0">아직 기록 없음 — 첫 주자가 되세요!</p>`;
-  return arr.map((r,i)=>`<div class="hrow"><span><b style="color:${i<3?'var(--gold)':'#cdd6f5'}">${i+1}. ${r.nick}</b></span><span class="hname">${(r.score||0).toLocaleString()} <span class="hbdim">안테${r.ante||"-"}</span></span></div>`).join(""); }
+function boardRows(arr){ if(!arr) return `<p class="hbdim" style="padding:6px 0">${t('ui.board.loadFail')}</p>`; if(!arr.length) return `<p class="hbdim" style="padding:6px 0">${t('ui.board.empty')}</p>`;
+  return arr.map((r,i)=>`<div class="hrow"><span><b style="color:${i<3?'var(--gold)':'#cdd6f5'}">${i+1}. ${r.nick}</b></span><span class="hname">${(r.score||0).toLocaleString()} <span class="hbdim">${t('ui.ante')}${r.ante||"-"}</span></span></div>`).join(""); }
 function openBoard(){
   const sd=(S&&S.daily)?S.seed:dailySeed();
-  document.getElementById("drawerBody").innerHTML=`<h3>🏆 리더보드</h3><p class="drawerSub">닉: <b>${nickOr()}</b> <span style="color:#9b6fd4;cursor:pointer;text-decoration:underline" onclick="setNick();openBoard()">변경</span></p><div id="bdDaily"><div class="seg">🗓 오늘 데일리 (#${sd})</div><p class="hbdim">불러오는 중…</p></div><div id="bdAll" style="margin-top:14px"><div class="seg">👑 전체 최고점</div><p class="hbdim">불러오는 중…</p></div>`;
+  document.getElementById("drawerBody").innerHTML=`<h3>🏆 ${t('ui.board.title')}</h3><p class="drawerSub">${t('ui.board.nick')} <b>${nickOr()}</b> <span style="color:#9b6fd4;cursor:pointer;text-decoration:underline" onclick="setNick();openBoard()">${t('ui.board.change')}</span></p><div id="bdDaily"><div class="seg">🗓 ${t('ui.board.todayDaily')} (#${sd})</div><p class="hbdim">${t('ui.board.loading')}</p></div><div id="bdAll" style="margin-top:14px"><div class="seg">👑 ${t('ui.board.allTimeBest')}</div><p class="hbdim">${t('ui.board.loading')}</p></div>`;
   document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){}
-  jsonp("daily", sd, d=>{ const el=document.getElementById("bdDaily"); if(el) el.innerHTML=`<div class="seg">🗓 오늘 데일리 (#${sd})</div>${boardRows(d)}`; });
-  jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 전체 최고점</div>${boardRows(d)}`; });
+  jsonp("daily", sd, d=>{ const el=document.getElementById("bdDaily"); if(el) el.innerHTML=`<div class="seg">🗓 ${t('ui.board.todayDaily')} (#${sd})</div>${boardRows(d)}`; });
+  jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 ${t('ui.board.allTimeBest')}</div>${boardRows(d)}`; });
 }
 
 checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
