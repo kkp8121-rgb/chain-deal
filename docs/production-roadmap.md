@@ -7,12 +7,12 @@
 
 **The path in 5 lines:**
 1. **Refactor first** (Phase 0, ~1 wk): extract rules+content into `src/` modules so game and sims share ONE copy — this kills the drift tax that otherwise makes rich content impossible.
-2. **Build variety, gated by the sim** (Content, ~4–6 mo): charms 24→80, decks 3→8, a new 3-tier consumable system, bosses 12→20, stakes→8, unlock tree, ~45 achievements — every addition screened by a `gate.cjs` regression harness.
+2. **Build variety, gated by the sim** (Content, ~4.5–6.5 mo): charms 24→80, decks 2→8, a new 3-tier consumable system, bosses 12→20-22, stakes→8, unlock tree, ~45 achievements, an onboarding first-run — every addition screened by a `gate.cjs` regression harness.
 3. **Art in parallel** (~2–3 mo, overlaps content): **pixel art, procedural-synthesis** for the 80 charms/cards/bosses in code (GPT 0, 100% consistent — 프로젝트 초기 결정), **GPT only for ~20–30 backgrounds/UI** (16-color quantized), human/outsource for capsule + logo + trailer.
 4. **Wrap & ship** (Phase B, ~1 mo build + calendar walls): Electron+`steamworks.js` for Steam, Capacitor for Android, backend-less achievements/leaderboards/cloud-save, deterministic-replay for the daily board.
 5. **Market from Day 0**: Steam "Coming Soon" page live NOW, wishlist for months, Next Fest, launch.
 
-**Total realistic timeline (solo, part-to-full-time):** **9–14 months** wall-clock from today to dual-store launch. Aggressive full-time floor ~7 months; comfortable ~12.
+**Total realistic timeline (solo, part-to-full-time):** **9–14 months** wall-clock from today to dual-store launch. **Honesty note on the "parallel" tracks:** for ONE person, art∥content parallelism is interleaving, not parallelism — in-game art is itself dev time (§4: the procedural generator is engineering), so the serial full-time sum is Phase 0 (~1wk) + C1 (~1wk) + C2–C9 (20–28wk) + A0–A4 (9–11wk) + Phase B (2–3wk) ≈ **33–44 focused weeks (~8–10 mo full-time)**. The ~7-month floor is reachable ONLY if the sell-assets (capsule/logo/trailer, §4 Hybrid $3–8k) are outsourced; genuinely part-time lands past 14 months. Pick the model explicitly (§8).
 
 **The 3 biggest risks:**
 - **Balance-surface explosion** — 80 charms × 8 decks × consumables is a combinatorial space no solo dev can hand-verify. Mitigation = Phase 0 + the scaled `gate.cjs` toolchain are non-negotiable prerequisites, not nice-to-haves.
@@ -52,16 +52,16 @@ The single behavioral-risk conversion: `connect` must move from reading the `S.b
 | # | Step | Verify gate | Effort |
 |---|------|-------------|--------|
 | 0 | Scaffold: `package.json`+esbuild+`build.mjs`, move `<script>`/CSS/HTML **verbatim** into `src/`. No logic change. | Built file plays identically; funqa/balance byte-stable | 0.5 d |
-| 1 | Extract content data (`CHARMS/BOSSES/DECKS/HAND_BONUS/tuning`) → `src/content/*` | Build diff clean; game identical | 0.5 d |
+| 1 | Extract content data (`CHARMS/BOSSES/DECKS/HAND_BONUS/tuning`) → `src/content/*` **+ i18n key-out**: strings (`name:`/`desc:` ~46 Korean literals today) become keys; text moves to per-locale JSON (KR+EN min). Doing it while touching every data object is near-free; deferring = re-editing 80 charms + 40 consumables later (paying twice) | Build diff clean; game identical (KR locale) | 1.0 d |
 | 2 | Extract pure rules; convert `connect` global→param | funqa + balance + economy match exactly | 1.0 d |
 | 3 | Scoring hook engine; port 24 charms to hooks **behind an equivalence harness** (old-inline vs new-hook on 100k random rows → assert identical) | Equivalence 100%; funqa golden unchanged | 1.5–2.0 d |
 | 4 | **Kill drift:** rewrite run-sim as adapter, delete private copies in balance-check/strategy-sim/hand-frequency/unlock-check | `grep` proves exactly ONE definition of connect/scoreCard/CHARMS. **Payoff reached.** | 1.0 d |
 | 5 | *(follow-on)* Engine/UI split; promote pile-invariant to runnable `assertPileInvariant`; enables true headless sim | Game identical; invariant passes every round | 1.5–2.0 d |
 
 ### Effort & exit criteria
-- **Phase-0 mandatory (Steps 0–4): ≈ 4.5–5 focused days (~1.5–2 wk calendar).** With Step 5 follow-on: ≈ 6–7 d.
+- **Phase-0 mandatory (Steps 0–4): ≈ 5.5–6 focused days (~2 wk calendar)** — includes the i18n key-out (+0.5 d in Step 1) and the manual UI-parity walk (+0.5 d, exit criterion e). With Step 5 follow-on: ≈ 7–8 d.
 - **Build:** esbuild in devDependencies only; ships one self-contained `prototype/index.html` (inlined `<style>`+`<script>`, zero runtime deps). GitHub Pages / Steam wrapper / Android WebView all unchanged.
-- **Exit criteria:** (a) `grep` shows one copy of each rule; (b) `npm run build --check` syntax gate green in CI; (c) golden triple matches pre-refactor exactly; (d) adding a test charm is a single-file edit that both game and sim consume automatically.
+- **Exit criteria:** (a) `grep` shows one copy of each rule; (b) `npm run build --check` syntax gate green in CI; (c) golden triple matches pre-refactor exactly; (d) adding a test charm is a single-file edit that both game and sim consume automatically; (e) **manual UI-parity checklist** — the golden triple is all-headless (scoring/economy/fun sims touch zero DOM), so render/juice(sparkBurst·shake·tally)/click/hover/mobile scale-to-fit must be walked by hand at Steps 0 and 5 (budget ~0.5 d; this surface holds the historical hover-rerender click-swallow bug).
 
 ---
 
@@ -74,9 +74,9 @@ Ordered **by leverage**: build-variety (charms/decks) first — it's what makes 
 | Content | Now | Launch target | Stretch |
 |---|---|---|---|
 | Charms | 24 | **80** (7–8 clusters) | 100 |
-| Decks | 3 | **8** | 10 |
-| Consumables | 0 | **~40** (3-tier, 2-slot) | 52 |
-| Bosses | 12 | **20** (16 reg + 4–6 showdown) | 24 |
+| Decks | 2 (standard[spark baked-in] + high) | **8** | 10 |
+| Consumables | 0 | **~40** (3-tier, 3-slot) | 52 |
+| Bosses | 12 | **20–22** (16 reg + 4–6 showdown) | 24 |
 | Stakes | 6 | **8** | 8 |
 | Enhancements | 3 | **5–6** | 6 |
 | Unlock nodes | ~0 | **~65–75 gated** | 90 |
@@ -93,29 +93,35 @@ Ordered **by leverage**: build-variety (charms/decks) first — it's what makes 
 | G0 build+inline-integrity+syntax | inline == rebuild; parses |
 | G1 card-conservation + mult-cap≤25 + additive-only hooks | exact |
 | G2 build-diversity spread (auto-derived per-cluster strats) | no strat >2× median, none <0.3× |
-| G3 per-item EV z-score / boss conditional-pass / deck parity | charm z∈[−1.5,+2.0]; boss∈[55%,85%] |
+| **G2.5 baseline-clear band (dilution+inflation HARD gate)** | St0 `balance`-strat clear, three layers: **hard floor ≥7.5%** (funQA P3 set the target at ~9%, judged 6.8% "insufficient", v3.29 delivered 8.5% — a 6.x floor would legalize eroding below what QA already failed) + **per-milestone drop ≤1.0pp ratchet** (blocks stair-step Goodhart erosion; 8.5% stays the named regression target) + **inflation ceiling ≤ baseline+2pp** (the project's REAL danger per HANDOVER — v3.24 scout 9.4→41% and v3.23 9→11.9% precedents; G3's z≤+2.0 is per-item only). Breach = **blocked**, not flagged. **Measurement protocol PINNED**: run-sim `--full` N=20000, `balance` strat, St0, standard deck, fixed seed banks; when sim logic itself changes, re-snapshot the baseline into the content-ledger (content vs sim deltas recorded separately) |
+| G3 per-item EV z-score / boss conditional-pass / deck parity | charm z∈[−1.5,+2.0]; boss cond-pass∈[72%,98%] **baseline-anchored** (full-run reachers frame — distinct from the single-round greedy 55–72% design target in CLAUDE.md; don't mix frames) |
 | G4 conditional-clear flatness | per-blind 85–97%, ≤1 wall, no cliff>15pp |
 | G5 economy invariants | escalating reroll, spillover=floor(g*.1), monotonic gold |
-| G6 fun-axis non-regression vs baseline | persona Δ≥−0.3; mass-appeal≥70% |
+| G6 fun-axis non-regression vs baseline | persona fun drop **≤0.2** (funQA SSoT re-QA guard; a larger drop ships ONLY as a named, recorded tradeoff — v3.29 safe −0.35 precedent); mass-appeal≥70% |
 | G7 3-seed-bank robustness | min-bank mass-appeal≥70% |
 
-Two-tier: `--fast` (N=2000, seconds, inner loop) / `--full` (N=20000, 3 banks, sharded across workers, pre-commit). A **content-ledger** snapshots per-item EV/pick-rate each release; the gate diffs it to catch **dilution** (the 13→24 collapse signature: baseline clear 9.6→3.5%) and **creep** before they ship — an addition that drops baseline clear must ship *with* a named compensating lever (weighted offer / reroll / cluster tag).
+Two-tier: `--fast` (N=2000, seconds, inner loop) / `--full` (N=20000, 3 banks, sharded across workers, pre-commit). A **content-ledger** snapshots per-item EV/pick-rate each release; the gate diffs it to catch **dilution** (the 13→24 collapse signature: baseline clear 9.6→3.5%) and **creep** before they ship — an addition that drops baseline clear must ship *with* a named compensating lever (weighted offer / reroll / cluster tag), and may never breach the G2.5 floor.
+
+**CLUSTER_W recalibration = a defined procedure, not runtime magic** (2026-07-02): at each content-milestone close, sweep `CLUSTER_W ∈ {0.05, 0.10, 0.15, 0.20, 0.30}` and adopt the value maximizing baseline-clear **subject to TWO constraints**: (a) the G2 diversity-spread band, and (b) **offer-reachability ≥ the C1-measured threshold** — without (b) the sweep can pick the W=0.05 extreme (v3.25 finding: "low W helps everyone") and crater the un-invested cluster's first-piece discoverability, which G2's sim bots can't see. Same methodology as the manual v3.25 calibration, automated as a gate.cjs `--recalib` mode. **offer-reachability** metric: "probability that the player's invested cluster offers ≥1 charm across the shop's 3 offers within an ante's 3 blinds" — measure the 24-charm baseline at C1, set the threshold from it.
 
 ### Milestones
 
 | # | Ships | Volume | Balance/verify gate | Effort | Depends on |
 |---|-------|--------|---------------------|--------|-----------|
-| **C0** | Refactor done (Phase 0) | — | golden triple + grep=1 | 4.5–5 d | — |
+| **C0** | Refactor done (Phase 0) | — | golden triple + grep=1 + UI-parity walk | 5.5–6 d | — |
 | **C1** | `gate.cjs` + content-ledger + auto-derived strats + forced-inclusion EV harness | tooling | self-test: reproduces current baselines | 3–5 d | C0 |
-| **C2** | **Charms 24→50** (fill existing 7–8 clusters to density) | +26 | greybox per-charm (EV z, diversity Δ, fun Δ) → gate --full green, no dilution | 3–5 wk | C1 |
-| **C3** | **Decks 3→8** + enhancements 3→5/6 | +5 decks, +2–3 enh | each deck teaches a distinct chain strategy; deck-parity band; new strat added free from cluster tags | 2–3 wk | C2 |
+| **C2** | **Charms 24→50** (fill existing 7–8 clusters to density) | +26 | **pre-step: weak-build triage** — buff-or-cut the 3 trap builds funQA flagged (parity 2.3% / position 2.5% / gem 2.6% vs 6.7% best — ★pre-v3.29 numbers: **re-measure the 11-build spread on v3.29 first** (spark's 4 wilds moved enh-synergy and connection-density builds), cite the old numbers as direction only; expanding with traps in-pool compounds dilution). Then greybox per-charm (EV z, diversity Δ, fun Δ) → gate --full green, G2.5 floor holds. **C2 doubles as the lever-validation milestone**: prove weighted-offer/reroll/CLUSTER_W-sweep actually move the trendline at 50 before committing to C6's 80 | 3–5 wk | C1 |
+| **C3** | **Decks 2→8** + enhancements 3→5/6 | +6 decks, +2–3 enh | each deck teaches a distinct chain strategy; **standard/spark split is an explicit deliverable** (spark is currently baked into standard's fullDeck); deck-parity band; new strat added free from cluster tags | 2–3 wk | C2 |
 | **C4** | **Consumable system** (engine slice + Tier1 Splices ~16) | ~16 | NEW metrics: clutch, timing-variance, deadweight; consumable-use personas (hoarder/spender/optimizer/panic). Low timing-variance ⇒ auto-pilot ⇒ cut | 3–4 wk | C1 (engine/consume) |
 | **C5** | **Consumables Tier2 Currents (~12) + Tier3 Surges (~10–12)** | ~24 | Currents = permanent per-connection-type scaling (the original twist, additive/bounded, mult-cap 25); Surges = adjacency-warping high-risk. Same gates | 2–3 wk | C4 |
-| **C6** | **Charms 50→80** (synergy depth across all clusters) | +30 | dilution watch is critical here (~7× the 24-pool pressure); auto-recalibrate CLUSTER_W when offer-reachability dips | 3–4 wk | C2 |
-| **C7** | **Bosses 12→20** (+4–6 fixed showdown for antes 3/6/8) | +8 | ~2.5 candidates/tier; rule-not-statwall; conditional-pass 55–85%; tmult calibrated on run-sim --full (not single-round balance-check) | 2–3 wk | C1 |
+| **C6** | **Charms 50→80** (synergy depth across all clusters) | +30 | dilution watch is critical here (~7× the 24-pool pressure); G2.5 floor is the hard stop; CLUSTER_W re-sweep (the defined `--recalib` procedure above) when offer-reachability dips below the C1-measured threshold; **go/no-go depends on C2's lever validation** | 3–4 wk | C2 |
+| **C7** | **Bosses 12→20-22** (16 reg + 4–6 showdown for antes 3/6/8) | +8–10 | rule-not-statwall; **axis-coverage matrix required** (each of suit/rank/run gets ≥1 sealing/taxing boss — non-♠ suit is the current gap; + 1 additive-decay showdown rule; consumable spec §4.4); **two bands, don't mix frames**: targeted cond-pass 55–85% (axis-all-in bot vs its counter boss) / balance-bot all-boss band 72–98% baseline-anchored + G4 flatness; tmult calibrated on run-sim --full (not single-round balance-check) | 2–3 wk | C1 |
 | **C8** | **Stakes 6→8** + **unlock tree (~65–75 nodes)** + **~45 achievements** + **12–15 challenges** | tail layer | unlock triggers = play-goals that *teach* ("win with suit-runner," "25-mult chain"); stakes calibrated by run-sim sweep (St0 baseline unchanged → St7 monotone >0) | 3–4 wk | C2–C7 |
+| **C9** | **Onboarding: interactive first run** (funQA P1, **pre-v3.29 diagnosis** — "onboarding kills mass-appeal": casual ante-1 93% instant death at the time; v3.29 spark fixed the *structure* (80% PASS), this fixes the *understanding* the bots can't measure — complementary, not substitutes) | tutorial flow | teach-don't-nerf (pure early-relief is a REFUTED lever — it lowers casual fun); guided ante-1: connect rules → settle/hands → shop/charms → consumables → boss adaptation + first-encounter context tips. Verified by human playtest (first-session completion/drop-point), not sims | ~2 wk | C4, C8 |
 
-**Content track subtotal: ~4–6 months** (C2–C8), overlapping art.
+**Content track subtotal: ~4.5–6.5 months** (C2–C9), overlapping art.
+
+**Human-playtest budget (2026-07-02 — the previously unbudgeted serial bottleneck):** master-spec §10 makes human playtest a per-merge gate ("gate green + 인간 플레이테스트 통과 후에만 병합"), so it must be *scheduled*, not implied: **~15% of each content milestone's effort** is a playtest session at milestone close, plus a dedicated **1–2 wk balance-QA window before Phase B**. Rationale from funQA's own lesson: quantitative fun metrics are strong at floor-detection (FAIL) but weak at ceiling-reading (the combo-7.2 pick artifact) — **the human is the ceiling judge**; that is the operational meaning of "final authority." If solo bandwidth can't cover it, external playtesters become a named dependency (recruit via the wishlist/Discord funnel the marketing track builds anyway).
 
 ---
 
@@ -136,9 +142,9 @@ Cards = clean procedural pips (readability-first — illustrating 32 is waste + 
 - **GPT (~20–30 only) + 16-color quantize:** 8–12 backgrounds, UI frame/panel kit, coins/meta icons. GPT = the tool (project decision); quantize to master palette. Minimal AI footprint → minimal Valve AI-disclosure exposure.
 - **Store hero (human/focused-production):** Steam 14 exact-spec images from ONE pixel hero key-art (Header 920×430, Main 1232×706, Vertical 748×896, Library 600×900, Hero 3840×1240, Logo 1280w transparent, +5 shots 1920×1080; small logo legible at 120×45 or reject). Google Play: feature 1024×500 (no alpha), icon 512×512, phone shots. Hero = GPT-assisted draft + hand polish, or outsource. **Trailer.**
 
-### Art roadmap (parallel to content C2–C8)
+### Art roadmap (parallel to content C2–C9)
 ```
-A0 (1wk):   procedural icon generator + master-16 palette + art-param schema → renders test icons
+A0 (1wk):   procedural icon generator + master-16 palette (+ colorblind-safe verify: deuter/protan/tritan sim + contrast — master-spec §5 접근성) + art-param schema → renders test icons
 A1 (2–3wk): procedural vocab depth for 80 charms + card/pip/enh system      → contact-sheet distinctiveness (0 confusable)
 A2 (2wk):   ~20 boss sigils (procedural) + GPT backgrounds 8–12 (quantized) + UI kit → act-tier escalation, mobile-crisp
 A3 (2–3wk ∥, focused/outsource): Steam capsules + logo + Google assets (pixel hero) → 14-asset spec check, 120×45 legible
@@ -159,16 +165,17 @@ In-game art ≈ mostly **DEV time** (the procedural generator, one-time) + GPT b
 
 ### Wrap decision
 - **Steam → Electron + `steamworks.js`** (NOT Tauri). Tauri's <10MB is a false economy: no Node context so `steamworks.js` won't drop in, plus per-OS WebView divergence testing. Electron's 80–150MB is a non-issue for desktop; `steamworks.js` gives achievements+leaderboards+cloud+overlay via npm, no compile. **2–5 days.**
-- **Android → Capacitor** (NOT TWA — TWA needs hosted PWA+service worker; Capacitor wraps the single local HTML file). Produces signed `.aab`. **Must target API 35** (minSdk can stay 24). **1–2 days wrap + 2–4 days PGS bridge** (PGS is native SDK → needs a Capacitor plugin bridge, the one genuinely fiddly integration).
+- **Android → Capacitor** (NOT TWA — TWA needs hosted PWA+service worker; Capacitor wraps the single local HTML file). Produces signed `.aab`. **Must target the current Play API floor at submission time** — the floor rises ~annually (Aug 31); API 35 is the floor as of this writing (2026), expect **≥API 36 for a 2027 launch**; re-verify the month you build the `.aab` (minSdk can stay 24). **1–2 days wrap + 2–4 days PGS bridge** (PGS is native SDK → needs a Capacitor plugin bridge, the one genuinely fiddly integration).
 
 ### Platform services (backend-less, confirmed Valve/Google-hosted)
-Achievements, leaderboards, cloud-save all live on Valve/Google servers, zero backend. `platform/storage.cjs` (from Phase 0) abstracts localStorage → Steam Cloud / Android saves in one file.
+Achievements, leaderboards, cloud-save all live on Valve/Google servers, zero backend. `platform/storage.cjs` (from Phase 0) abstracts localStorage → Steam Cloud / Android saves in one file — and carries **save-schema versioning** (master-spec §6): `schemaVer` field on `cd_meta`/`cd_stats`/`cd_unlocked` + forward v→v+1 migration ladder + **higher-progress-wins** cloud-conflict rule (schemas keep changing across C2–C9; retrofitting after live saves exist is painful).
 
 **The backend-less leaderboard tradeoff:** both boards are **client-trusted and forgeable**. Ship casual/vanity boards as-is. For a **daily-seed competitive board**, lean into CHAIN DEAL's decisive advantage: it's fully deterministic (`mulberry32`) and you already have a Node replayer. Submit **seed + ordered placements**, not the score; re-simulate in a **$0 Cloudflare Worker** (the `LOG_URL` path already exists) and reject mismatches. This turns the old drift-pain into the anti-cheat oracle — but makes rule-parity between game and validator load-bearing (another reason Phase 0 ships first).
 
 ### Store assets, ratings, review
-- **Steam:** own content survey (covers Germany USK auto). Build review + page review ~3–5 business days each, plan 7+; submit build 2–3 wk before release.
+- **Steam:** own content survey (covers Germany USK auto). Build review + page review ~3–5 business days each, plan 7+; submit build 2–3 wk before release. **AI-content disclosure questionnaire is REQUIRED for any GPT asset** (even 1 background) — not volume-scaled; fill it honestly for the ~20–30 GPT backgrounds.
 - **Play:** IARC questionnaire (free, instant). **Hard 2-week wall:** new personal accounts need **12 testers opted-in continuously ≥14 days** before production — start the day you make the account, or use an org account (needs D-U-N-S) to skip.
+- **Play compliance (hard submission blockers, currently unplanned):** a hosted **privacy-policy URL** + completed **Data-Safety form**. The game already POSTs pid + **user-typed nickname** + score/seed/ante/stake to `LOG_URL` (the in-code "개인정보 X" comment is wrong — a nickname is user data). Either declare the transmission in Data Safety, or gate `LOG_URL` off on the mobile build. Budget 0.5–1 d in Phase B.
 
 ### Monetization (Play)
 F2P dominates mobile (~96% of downloads). Best fit: **free + single "unlock full game" IAP** (demo→buy). Optional hybrid: **rewarded ad → meta-currency** (retry token/reroll) maps onto the existing meta-shop with almost no design change — keep opt-in and never gate fairness. Steam = clean upfront paid, carried by wishlisted brand.
@@ -185,7 +192,7 @@ Coming-Soon page LIVE NOW  →  wishlist for months  →  demo ready (~6wk pre-F
 |---|---|---|
 | Steam wrap + services | 2–5 d | review 7+ business days |
 | Steam store page + surveys | 1–2 d | wishlist runway = months |
-| Play wrap + API35 + IARC | 2–4 d | — |
+| Play wrap + target-API floor (at submission, ≥36 expected) + IARC | 2–4 d | — |
 | PGS bridge | 2–4 d | — |
 | Play closed test | — | **12 testers × 14 days (hard)** |
 **Phase B build ≈ 2–3 weeks; calendar dominated by wishlist runway + the 2-week Play gate.**
@@ -195,16 +202,16 @@ Coming-Soon page LIVE NOW  →  wishlist for months  →  demo ready (~6wk pre-F
 ## 6. CRITICAL PATH & DEPENDENCIES
 
 ```
-Phase 0 (refactor) ──┬──> Content C1..C8 ─────────────┐
+Phase 0 (refactor) ──┬──> Content C1..C9 ─────────────┐
                      │                                 ├──> Phase B wrap+services ──> Launch
-                     └──> Art A0..A5 (∥ content) ──────┘         │
+                     └──> Art A0..A4 (∥ content) ──────┘         │
                                                                  └── Marketing (Coming-Soon page starts DAY 1, runs the whole time)
 ```
 - **Phase 0 blocks everything content** (drift makes rich content + valid gates impossible). It does NOT block art A0 (style bible) or the Coming-Soon page.
-- **Content ∥ Art** — the two big tracks run in parallel for months. Art A5 (trailer) is the one true content→art dependency: it needs C2–C5 assets integrated to capture hero footage.
-- **Phase B wrap** needs a feature-complete build (post-C8) but the Steam page + wishlisting starts immediately with placeholder/early art.
+- **Content ∥ Art** — the two big tracks run in parallel for months. Art A4 (trailer) is the one true content→art dependency: it needs C2–C5 assets integrated to capture hero footage.
+- **Phase B wrap** needs a feature-complete build (post-C9) but the Steam page + wishlisting starts immediately with placeholder/early art.
 - **Marketing has no code dependency** and is on the critical path for *success* even though not for *shipping* — start Day 1.
-- **Longest pole:** Content C2–C8 (~4–6 mo) is the critical path; Art (~2.5–4 mo) fits inside it; Phase B (~1 mo) tails it; the Play 2-week test wall and Steam review buffer are absorbed at the end.
+- **Longest pole:** Content C2–C9 (~4.5–6.5 mo) is the critical path; Art (~2.5–4 mo) fits inside it (as interleaving, not true parallelism — §1 honesty note); Phase B (~1 mo) tails it; the Play 2-week test wall and Steam review buffer are absorbed at the end.
 
 ---
 
@@ -213,7 +220,7 @@ Phase 0 (refactor) ──┬──> Content C1..C8 ─────────�
 | Risk | Severity | Mitigation |
 |---|---|---|
 | **Balance-surface explosion** (80×8×consumables uncheckable by hand) | Critical | Phase 0 + `gate.cjs` two-tier harness + content-ledger diff are prerequisites; per-item forced-inclusion EV; greybox-before-`src/` so bad items never ship. Human playtest = final authority on what the machine passes. |
-| **Art consistency at 80 icons** | Critical | Template+palette lock + POST homogenization pass (consistency baked in post, not prompt); contact-sheet QA regenerates outliers; emblem-not-character for bosses. Don't undersell: this is 3–4 wk + real $. |
+| **Procedural icon distinctiveness (80 samey emblems)** | Critical | Consistency is pre-solved structurally by the procedural pivot (§4); the live risk is the OPPOSITE — 80 shape+symbol combos looking samey. Mitigation = rich procedural vocabulary (N shapes × M symbols × accents × deco) sized for 80 distinct + the §4 contact-sheet "0 confusable pairs" verification milestone (A1); emblem-not-character for bosses. Don't undersell: vocab design is 2–3 wk of real engineering. |
 | **Dilution as pool grows** (13→24 collapsed 9.6→3.5%) | High | Ledger gates baseline-clear trendline; an addition dropping it must ship a named compensating lever (weighted offer/reroll/cluster). Auto-recalibrate CLUSTER_W on offer-reachability dip. |
 | **Scope creep** (80→100 charms, 52 consumables, endless polish) | High | Launch targets are the ceiling, stretch is post-launch. Mastery multiplier (8×8 cells) delivers 100h+ from *cheap* content (decks/stakes) — resist adding expensive content. |
 | **Marketing / wishlists** | High | Coming-Soon page Day 1; months of runway; enter Next Fest with a wishlist tier already built. Trailer = #1 lever, funded from the art budget. |
@@ -231,7 +238,7 @@ Phase 0 (refactor) ──┬──> Content C1..C8 ─────────�
 - Whether to do Step 5 (engine/UI split) now or defer (it buys headless sim + runtime pile-invariant; not blocking).
 
 **Before Content:**
-- **Consumable mechanic final design** — confirm the 3-tier CHAIN-native design (Splices/Currents/Surges), the 2-slot cap, and whether Currents (per-connection-type permanent scaling) is the signature growth knob. This is the biggest *new design* decision in the whole project.
+- ✅ **RESOLVED (2026-07-02 design re-review) — Consumable mechanic**: 3-tier CHAIN-native design (Splices/Currents/Surges) confirmed; **3-slot cap** confirmed (fun grounding: one hold per tier archetype — Splice=casual rescue, Current=mastery investment, Surge=dopamine climax — so the casual-blocker response (dopamine density + early survival, the gate-deciding persona) stays intact; 2 slots would force rescue-vs-climax exclusion. Thriller is an accepted bot-artifact since v3.29 — Surge's tension contribution is upside, not the justification). Tuning ladder is DOWNWARD only (C4 sim may cut to 2 only if hoarding/deadweight shows slack AND G6/G7 fun gates pass — slot count feeds casual rescue capacity, so the cut itself is a fun-regression risk; consumable spec §3). Currents = the signature growth knob, coefficients sim-calibrated at C5.
 - Cluster count (7 vs 8) and which build each of the 8 decks teaches.
 - Which ~40% of content is unlock-gated vs start-available (pacing the 100h arc).
 
@@ -239,7 +246,7 @@ Phase 0 (refactor) ──┬──> Content C1..C8 ─────────�
 - ✅ **RESOLVED — art style: pixel, procedural-synthesis for in-game (GPT 0), GPT only for ~20–30 backgrounds** (project initial decision, GDD §8/§9.4). Icon method = **Option A** (fully procedural; distinctiveness handled by rich vocab + contact-sheet verify).
 - ✅ **RESOLVED — AI tool: GPT** (backgrounds only). AI-disclosure exposure minimal (few assets).
 - **Budget band (revised)**: Solo procedural (~$0.1–0.6k) vs Hybrid outsource-hero (~$3–8k) — decides only the capsule/logo/**trailer** quality ceiling (in-game art is dev-time, not cash).
-- Outsource vs solo for capsule/hero/logo/trailer (the sell-assets) — still open.
+- Outsource vs solo for capsule/hero/logo/trailer (the sell-assets) — still open. **Note this doubles as the timeline decision (§1 honesty note): outsourcing the sell-assets is the only way "art ∥ content" is real for a solo dev; solo-everything = serial ~8–10 mo full-time.**
 - Procedural icon vocabulary depth (how many shapes×symbols×accents) to guarantee 80 distinct — the A0/A1 design task.
 
 **Before Phase B:**
