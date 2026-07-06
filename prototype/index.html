@@ -1134,22 +1134,26 @@ function scoreSettle(hb, hk, row, ctx){
 // →cap→jackpot). 순수(S/document 미접근) — 호출부(main.cjs placeCard)가 이미 card를 push한 row를 넘긴다.
 //   row: 카드가 마지막 원소로 이미 포함된 줄 전체 / card: 방금 배치한 카드 / left: 배치 전 줄의 마지막 카드(첫 장이면 null)
 //   ctx: has/boss(id)->bool/isRed/liveDeckCount/connect(a,b)->bool(현재 보스로 바인딩)/climbSealed(a,b)->bool/ownedHooks
-// 반환 {gained,base,runLen,bonus} — gained=최종 획득 점수(=score에 가산할 값), base=카드 기본점, runLen=체인 길이,
-// bonus=체인 보너스(비연결 시 0). juicePlace 연출이 base/runLen/bonus를 그대로 소비(호출부 책임 — main.cjs).
+// 반환 {gained,base,runLen,bonus,mult,rawMult} — gained=최종 획득 점수(=score에 가산할 값), base=카드 기본점, runLen=체인 길이,
+// bonus=체인 보너스(비연결 시 0), mult=캡 적용 직후(잭팟 chainMul/연결세 이전) 체인 배율(비연결 시 0), rawMult=mult의
+// 클램프 直前 원값(비연결 시 0) — G1 mult-cap 게이트(tools/gate.cjs)가 캡(25, 닻 보스는 3)이 실제로 적용되는지
+// (mult===min(rawMult,cap))를 검증하는 유일한 소비처(게임 로직은 mult만 사용, rawMult는 계측 전용). juicePlace 연출은
+// base/runLen/bonus만 소비(호출부 책임 — main.cjs).
 function scoreCard(row, card, left, ctx){
   const rust = ctx.boss('rust');
   let base = (ctx.boss('red_curse') && ctx.isRed(card.suit)) ? 0 : card.rank;
   if(ctx.boss('tax') && card.rank>=7) base=0; else if(ctx.boss('peasant') && card.rank<=3) base=0;   // 사치세/보릿고개
   base += scoreCardBase(card, ctx);   // greed/lapidary/compactor/runts (부적 훅)
   if(card.enh==="gold" && !rust) base+=5;
-  let gained=base, runLen=1, bonus=0;
+  let gained=base, runLen=1, bonus=0, mult=0, rawMult=0;
 
   if(left && ctx.connect(card,left) && !ctx.climbSealed(card,left) && !(ctx.boss('frost') && row.length<=2)){   // 냉각: 줄 첫 2장 연결 무효 / 내리막: 오름 ±1 봉인
     runLen=1; for(let i=row.length-1;i>0;i--){ if(ctx.connect(row[i],row[i-1]) && !ctx.climbSealed(row[i],row[i-1])) runLen++; else break; }
-    let mult=runLen-1;
+    mult=runLen-1;
     mult += scoreCardMult(card, left, ctx);   // pyro/noir/suited/runner/highmult/echo (부적 훅)
     for(let i=row.length-runLen;i<row.length;i++) if(row[i].enh==="mult" && !rust) mult+=1;
     if(ctx.boss('dull')) mult=Math.max(1,mult-1);
+    rawMult=mult;   // ★G1(b) 게이트 계측용: 클램프 前 원값(tools/gate.cjs가 실제 적용된 cap이 25/닻3와 일치하는지 검증하는 유일한 소비처) — 게임 로직엔 미사용
     mult=Math.min(mult, ctx.boss('anchor')?3:25);   // 닻: 배율 3 캡
     let sum=0; for(let i=row.length-runLen;i<row.length;i++) sum+=row[i].rank;
     bonus=sum*mult;
@@ -1157,7 +1161,7 @@ function scoreCard(row, card, left, ctx){
     if(ctx.boss('toll')) bonus=Math.round(bonus*0.5);   // 연결세: 보너스 반감
     gained+=bonus;
   }
-  return { gained, base, runLen, bonus };
+  return { gained, base, runLen, bonus, mult, rawMult };
 }
 
 // scoreHandBase: 족보 기본 보너스(가산 전, override/settle훅 적용 전) = blindBase × HAND_BONUS[hk]. 순수.
