@@ -31,6 +31,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, "src");
 const CONTENT_DIR = path.join(SRC, "content");
 const RULES_DIR = path.join(SRC, "rules");
+const UI_DIR = path.join(SRC, "ui");
 const OUT = path.join(__dirname, "prototype", "index.html");
 
 // Matches a whole-line local require, e.g.:  const { CHARMS } = require('./content/charms.cjs');
@@ -85,8 +86,9 @@ async function main() {
   // parse; a broken content/rules file fails the build).
   const contentFiles = listCjsFilesRecursive(CONTENT_DIR);
   const rulesFiles = listCjsFilesRecursive(RULES_DIR);
+  const uiFiles = listCjsFilesRecursive(UI_DIR);
   await Promise.all(
-    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles].map((entry) =>
+    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles, ...uiFiles].map((entry) =>
       build({ entryPoints: [entry], bundle: false, write: false, logLevel: "silent" })
     )
   );
