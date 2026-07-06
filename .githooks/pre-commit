@@ -1,0 +1,31 @@
+#!/bin/sh
+# C1 회귀 게이트 — pre-commit 훅 (의존성 0, core.hooksPath=.githooks 로 배선).
+# 밸런스/규칙/빌드 관련 파일이 스테이징될 때만 `node tools/gate.cjs --fast`(~37s) 실행.
+#   그 외 커밋(문서·훅·설정 등)은 게이트를 건너뛰고 즉시 통과.
+# 의도된 콘텐츠/밸런스 변경이면 먼저 `npm run gate:snapshot`(ledger 갱신) 후 커밋.
+# 강제 우회(비권장): git commit --no-verify
+
+RELEVANT='^(src/|build\.mjs|prototype/index\.html|tools/(run-sim|balance-check|economy-check|gate)\.cjs|tools/gate-baseline\.json|tools/funqa/)'
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+
+if ! printf '%s\n' "$staged" | grep -qE "$RELEVANT"; then
+  exit 0    # 밸런스/규칙/빌드 무관 커밋 → 게이트 스킵(즉시 통과)
+fi
+
+echo "▶ C1 게이트(--fast, ~37s) — 밸런스/규칙/빌드 회귀 검사..."
+if ! node tools/gate.cjs --fast; then
+  echo ""
+  echo "✗ C1 게이트 RED — 커밋 차단."
+  echo "  · 의도치 않은 회귀 → 원인 수정 후 재커밋."
+  echo "  · 의도된 콘텐츠/밸런스 변경 → 'npm run gate:snapshot' 으로 ledger 갱신 후 커밋."
+  echo "  · 강제 우회(비권장) → git commit --no-verify"
+  exit 1
+fi
+
+# 게이트가 build.mjs 로 prototype 을 재생성 → 최신 빌드 산출물을 커밋에 포함(GitHub Pages 배포 정합).
+if ! git diff --quiet -- prototype/index.html 2>/dev/null; then
+  git add prototype/index.html
+  echo "  · prototype/index.html 재빌드분 자동 스테이징(빌드 산출물 정책)"
+fi
+echo "✓ C1 게이트 GREEN"
+exit 0
