@@ -10,44 +10,69 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>CHAIN DEAL <span style="font-size:13px;color:#8a93b6">{{ui.h1Sub}}</span></h1>
-  <div class="sub" onclick="openDrawer('rules')" style="cursor:pointer">{{ui.subHtml}}</div>
 
-  <div class="stats" id="stats" onclick="openDrawer('stats')"></div>
-  <div class="antedots" id="antedots"></div>
-  <div class="hud">
-    <div class="chip">{{ui.ante}} <b id="hAnte">1</b>/8</div>
-    <div class="chip" id="stakeChip" style="display:none;color:var(--gold)">⚔ St<b id="hStake">0</b></div>
-    <div class="chip" id="goldChip">💰 <b id="hGold">0</b></div>
-    <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
-    <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ {{ui.toggle.preview}}</label>
-    <label class="toggle"><input type="checkbox" id="fxToggle"> ⏩ {{ui.toggle.fastFx}}</label>
+  <!-- ── Title ── -->
+  <div class="screen active" id="scrTitle">
+    <div class="titleLogo"><h1>CHAIN DEAL</h1><div class="sub" onclick="openDrawer('rules')" style="cursor:pointer">{{ui.subHtml}}</div></div>
+    <div class="titlePanel">
+      <div class="controls" style="align-items:center;gap:6px">{{ui.stakeSectionLabel}} <button onclick="stakeStep(-1)">◀</button> <b id="stakeLbl" style="min-width:150px;display:inline-block;text-align:center">{{ui.stakeLblDefault}}</b> <button onclick="stakeStep(1)">▶</button></div>
+      <div id="stakeDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">{{ui.stake.desc.0}}</div>
+      <div class="controls" style="align-items:center;gap:6px">{{ui.deckSectionLabel}} <button onclick="deckStep(-1)">◀</button> <b id="deckLbl" style="min-width:150px;display:inline-block;text-align:center">{{deck.standard.name}}</b> <button onclick="deckStep(1)">▶</button></div>
+      <div id="deckDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">{{deck.standard.desc}}</div>
+    </div>
+    <div class="titleMenu">
+      <button onclick="newGame(null,selStake,selDeck)">▶ {{ui.btn.newGame}}</button>
+      <button onclick="newGame(dailySeed(),selStake,selDeck)">🗓 {{ui.daily}}</button>
+      <button onclick="openDrawer('charms')">🧿 {{ui.btn.charms}}</button>
+      <button onclick="openDrawer('meta')">🪙 {{ui.btn.shop}}</button>
+      <button onclick="openBoard()">🏆 {{ui.board.title}}</button>
+      <button onclick="showScreen('settings')">{{ui.title.settings}}</button>
+    </div>
   </div>
-  <div class="blindinfo" id="blindinfo"></div>
-  <div class="handbonus" id="handbonus" onclick="openDrawer('hands')" style="cursor:pointer"></div>
 
-  <div class="table" id="table"><div class="row" id="row"></div></div>
-
-  <div class="handlbl">{{ui.hand.pickPrompt}}</div>
-  <div class="hand" id="hand"></div>
-  <div class="controls" id="rerollBox" style="margin-top:6px; display:none"><button id="btnReroll" onclick="rerollHand()">🔄 {{ui.reroll.btn}} <span id="rrc"></span></button></div>
-  <div class="deckinfo" id="deckinfo" onclick="openDrawer('deck')" style="cursor:pointer"></div>
-
-  <div class="charms" id="charms"></div>
-  <div class="banner" id="banner"></div>
-  <div class="controls" style="align-items:center;gap:6px">{{ui.stakeSectionLabel}} <button onclick="stakeStep(-1)">◀</button> <b id="stakeLbl" style="min-width:150px;display:inline-block;text-align:center">{{ui.stakeLblDefault}}</b> <button onclick="stakeStep(1)">▶</button></div>
-  <div id="stakeDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">{{ui.stake.desc.0}}</div>
-  <div class="controls" style="align-items:center;gap:6px">{{ui.deckSectionLabel}} <button onclick="deckStep(-1)">◀</button> <b id="deckLbl" style="min-width:150px;display:inline-block;text-align:center">{{deck.standard.name}}</b> <button onclick="deckStep(1)">▶</button></div>
-  <div id="deckDesc" style="text-align:center;font-size:11px;color:#8a93b6;margin-top:1px">{{deck.standard.desc}}</div>
-  <div class="controls"><button onclick="newGame(null,selStake,selDeck)">{{ui.btn.newGame}}</button> <button onclick="newGame(dailySeed(),selStake,selDeck)">🗓 {{ui.daily}}</button> <button onclick="openBoard()">🏆 {{ui.board.title}}</button> <button onclick="openDrawer('charms')">🧿 {{ui.btn.charms}}</button> <button onclick="openDrawer('meta')">🪙 {{ui.btn.shop}}</button></div>
-
-  <div class="help">
-{{ui.help.html}}
+  <!-- ── Run (보드: 기존 마크업 그대로 + Pause) ── -->
+  <div class="screen" id="scrRun">
+    <div class="stats" id="stats" onclick="openDrawer('stats')"></div>
+    <div class="antedots" id="antedots"></div>
+    <div class="hud">
+      <div class="chip">{{ui.ante}} <b id="hAnte">1</b>/8</div>
+      <div class="chip" id="stakeChip" style="display:none;color:var(--gold)">⚔ St<b id="hStake">0</b></div>
+      <div class="chip" id="goldChip">💰 <b id="hGold">0</b></div>
+      <div class="bar"><div class="fill" id="fill"></div><div class="barlbl" id="barlbl">0 / 0</div></div>
+      <label class="toggle"><input type="checkbox" id="pvToggle" checked onchange="togglePreview()"> ⚡ {{ui.toggle.preview}}</label>
+      <label class="toggle"><input type="checkbox" id="fxToggle"> ⏩ {{ui.toggle.fastFx}}</label>
+      <button class="hudBtn" onclick="openPause()">⏸</button>
+    </div>
+    <div class="blindinfo" id="blindinfo"></div>
+    <div class="handbonus" id="handbonus" onclick="openDrawer('hands')" style="cursor:pointer"></div>
+    <div class="table" id="table"><div class="row" id="row"></div></div>
+    <div class="handlbl">{{ui.hand.pickPrompt}}</div>
+    <div class="hand" id="hand"></div>
+    <div class="controls" id="rerollBox" style="margin-top:6px; display:none"><button id="btnReroll" onclick="rerollHand()">🔄 {{ui.reroll.btn}} <span id="rrc"></span></button></div>
+    <div class="deckinfo" id="deckinfo" onclick="openDrawer('deck')" style="cursor:pointer"></div>
+    <div class="charms" id="charms"></div>
+    <div class="banner" id="banner"></div>
   </div>
+
+  <!-- ── Settings / Summary (mount로 채움) ── -->
+  <div class="screen" id="scrSettings"></div>
+  <div class="screen" id="scrSummary"></div>
+
 </div>
 
 <div class="modal" id="shop">
   <div class="shop"><h2 id="shopTitle">{{ui.shop.titleDefault}}</h2><div id="shopBody"></div></div>
+</div>
+
+<div class="modal" id="pause">
+  <div class="shop" style="max-width:360px">
+    <h2>{{ui.pause.title}}</h2>
+    <div class="titleMenu" style="margin-top:12px">
+      <button onclick="closePause()">{{ui.pause.resume}}</button>
+      <button onclick="closePause();showScreen('settings')">{{ui.pause.settings}}</button>
+      <button onclick="quitToMenu()" style="border-color:#c85048">{{ui.pause.quit}}</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -78,24 +103,5 @@
   </div>
 </div>
 
-<section id="comments" style="max-width:720px;margin:34px auto 60px;padding:0 16px;font-family:system-ui,-apple-system,sans-serif">
-  <h3 style="color:#cdd6f5;font-size:18px;margin:0 0 4px">💬 {{ui.comments.title}}</h3>
-  <p style="color:#8a93b6;font-size:13px;margin:0 0 14px">{{ui.comments.desc}}</p>
-  <script src="https://giscus.app/client.js"
-    data-repo="kkp8121-rgb/chain-deal"
-    data-repo-id="R_kgDOS9K_Gw"
-    data-category="General"
-    data-category-id="DIC_kwDOS9K_G84C_Y6s"
-    data-mapping="pathname"
-    data-strict="0"
-    data-reactions-enabled="1"
-    data-emit-metadata="0"
-    data-input-position="top"
-    data-theme="dark_dimmed"
-    data-lang="ko"
-    crossorigin="anonymous"
-    async>
-  </script>
-</section>
 </body>
 </html>
