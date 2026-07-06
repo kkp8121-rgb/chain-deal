@@ -831,6 +831,69 @@ function t(key){ const tbl=LOCALES[CUR_LOCALE]||LOCALES.ko; const v=tbl[key]; if
 const SUITS=[{k:0,g:"♠",red:false},{k:1,g:"♥",red:true},{k:2,g:"♦",red:true},{k:3,g:"♣",red:false}];
 const RANKSTR=["","A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const rankStr=r=>RANKSTR[r], suitG=s=>SUITS[s].g, isRed=s=>SUITS[s].red;
+// src/ui/router.cjs — 앱 셸 화면 라우터. build.mjs가 main.cjs의 require로 인라인(전역 스코프).
+// 화면 def = { el, mount?(el,ctx), unmount?() }. .wrap 안의 .screen 섹션을 토글.
+const _SCREENS = {};
+let _CUR = null;
+function registerScreen(id, def){ _SCREENS[id] = def; }
+function showScreen(id, ctx){
+  const next = _SCREENS[id];
+  if(!next) return;
+  if(_CUR && _CUR !== id){
+    const prev = _SCREENS[_CUR];
+    if(prev){ if(prev.el) prev.el.classList.remove("active"); if(prev.unmount) prev.unmount(); }
+  }
+  if(next.el) next.el.classList.add("active");
+  if(next.mount) next.mount(next.el, ctx);
+  _CUR = id;
+}
+function currentScreen(){ return _CUR; }
+// src/ui/screens.cjs — 앱 셸 화면 mount(Settings/Summary) + Pause. build.mjs가 main.cjs require로 인라인.
+// main.cjs 전역(t/S/getStats/newGame/shareResult/showScreen/setNick/nickOr/beep) 런타임 사용.
+let _router = null;
+function registerScreens(router){ _router = router; }
+
+function _byId(id){ return document.getElementById(id); }
+
+function openPause(){ _byId("pause").classList.add("show"); try{beep(500,.04);}catch(e){} }
+function closePause(){ _byId("pause").classList.remove("show"); }
+function quitToMenu(){ closePause(); if(typeof S!=="undefined" && S) S.over=true; showScreen("title"); try{beep(360,.05);}catch(e){} }
+
+function mountSettings(el){
+  el.innerHTML = "";
+  const card = document.createElement("div"); card.className="settingsCard";
+  card.innerHTML =
+    `<h2 style="color:var(--gold);text-align:center;margin:.1em 0 .6em">${t('ui.settings.title')}</h2>`+
+    `<div class="setRow"><label>${t('ui.settings.mute')}</label><input type="checkbox" id="setMute"></div>`+
+    `<div class="setRow"><label>${t('ui.settings.nick')}</label><input type="text" id="setNickInput" maxlength="12" placeholder="${t('ui.settings.nickPlaceholder')}"></div>`+
+    `<button class="closeBtn" style="width:100%;margin-top:16px" onclick="showScreen('title')">${t('ui.settings.back')}</button>`;
+  el.appendChild(card);
+  const mute = _byId("setMute");
+  try{ mute.checked = localStorage.getItem("cd_muted")==="1"; }catch(e){}
+  mute.onchange = ()=>{ MUTED = mute.checked; try{ localStorage.setItem("cd_muted", MUTED?"1":"0"); }catch(e){} };
+  const nick = _byId("setNickInput");
+  const cur = nickOr(); if(cur!==t('ui.anon')) nick.value = cur;
+  nick.onchange = ()=>{ setNick(nick.value); };
+}
+
+function mountSummary(el, ctx){
+  el.innerHTML = "";
+  const win = !!(ctx && ctx.win);
+  const r = (typeof S!=="undefined" && S && S.lastResult) ? S.lastResult : { ante:1, best:0 };
+  const card = document.createElement("div"); card.className="summaryCard";
+  card.innerHTML =
+    `<div class="summaryResult ${win?'win':'lose'}">${win?t('ui.summary.win'):t('ui.summary.lose')}</div>`+
+    `<div class="setRow"><label>${t('ui.summary.reachedAnte')}</label><b>${r.ante||1} / 8</b></div>`+
+    `<div class="setRow"><label>${t('ui.summary.bestScore')}</label><b>${(r.best||0).toLocaleString()}</b></div>`+
+    `<button class="tallyBtn" style="background:#2d7d46;margin-top:14px" onclick="shareResult(this)">📋 ${t('ui.tally.shareBtn')}</button>`+
+    `<div class="controls" style="margin-top:10px">`+
+      `<button onclick="showScreen('title')">▶ ${t('ui.summary.newRun')}</button>`+
+      `<button onclick="showScreen('title')">🏠 ${t('ui.summary.menu')}</button>`+
+    `</div>`;
+  el.appendChild(card);
+  if(win){ try{ if(typeof flash==="function"){ flash("#ffd15c"); } }catch(e){} }
+}
+
 function mkCard(s,r){ return {suit:s, rank:r, enh:null}; }
 // 시작 덱 = A~8 (32장). 풀 52장은 3택1에 카드풀이 너무 커서 체인이 안 됨 → 압축. 높은 카드는 상점 성장.
 function fullDeck(){ const d=[]; for(let s=0;s<4;s++) for(let r=1;r<=8;r++) d.push(mkCard(s,r)); const ord=d.map((c,i)=>[c.rank,i]).sort((a,b)=>a[0]-b[0]); for(let k=0;k<4;k++) d[ord[k][1]].enh="wild"; return d; }   // 불씨덱(v3.29): 최저랭크 4장 wild(연결밀도↑=캐주얼 도파민). sparkComp 보정과 세트 — run-sim starterDeck 미러
@@ -963,6 +1026,7 @@ function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return 
 // 순수 규칙(Phase 0 Step 2): 전역 S/document/localStorage 미접근.
 function spillover(gold){ return Math.floor(gold*0.1); }
 let S=null;
+let MUTED = false; try{ MUTED = localStorage.getItem("cd_muted")==="1"; }catch(e){}
 // t()는 main.cjs 최상단의 i18n require에서 공유(재require 금지 — src/content/locale/i18n.cjs 헤더 주석 참조)
 // ★Phase 0 Step 3a: base/mult/chainMul 훅(11부적) + ★3b: settle/settleOverride 훅(13부적) = 부적 선언 1곳
 //   (effect-registry, 로드맵 §2). hooks.base(card,ctx)->number / hooks.mult(card,left,ctx)->number /
@@ -1088,6 +1152,7 @@ function buyMeta(kind){
 }
 
 function newGame(seed, stake, variant){
+  showScreen('run');
   const daily = seed!=null;
   const useSeed = daily ? seed : Math.floor(Math.random()*2147483647);
   RNG = mulberry32(useSeed);                          // ★ S 생성 전 시드 설정 (shuffle/pickBoss가 시드 사용)
@@ -1313,7 +1378,7 @@ function settle(){
     S.over=true;
     res.textContent="💀 "+t('ui.tally.fail'); res.className="tallyResult fail";
     logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_LABEL[hk]});
-    btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); newGame(); };
+    btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); showScreen('summary', { win:false }); };
   }
   // 최고 기록 / 통계 갱신 (리텐션)
   const stx=getStats();
@@ -1353,7 +1418,7 @@ function victory(){
   flash("#ffd15c"); boom(200); setTimeout(()=>{flash("#ffffff22");boom(150);},250);
   // 화면 가득 축포
   for(let k=0;k<4;k++) setTimeout(()=>sparkBurst(document.getElementById("table"),34,"#ffd15c"),k*180);
-  render();
+  showScreen('summary', { win:true });
 }
 
 /* ---------- 덱빌딩 상점 (블라인드마다) ---------- */
@@ -1544,10 +1609,12 @@ function flash(col){ const f=document.createElement("div"); f.style.cssText=`pos
   document.body.appendChild(f); requestAnimationFrame(()=>f.style.opacity="0"); setTimeout(()=>f.remove(),420); }
 function banner(m,c){ const b=document.getElementById("banner"); b.textContent=m||""; b.style.color=c||"#e6ebff"; }
 let AC=null; function ac(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
-function beep(f,d,type){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type=type||"triangle"; o.frequency.value=f;
+let _toastT=null;
+function toast(msg){ let el=document.getElementById("_toast"); if(!el){ el=document.createElement("div"); el.id="_toast"; el.className="toast"; document.body.appendChild(el); } el.textContent=msg; el.classList.add("show"); clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove("show"),1400); }
+function beep(f,d,type){ if(MUTED)return; const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type=type||"triangle"; o.frequency.value=f;
   g.gain.setValueAtTime(.0001,a.currentTime); g.gain.exponentialRampToValueAtTime(.18,a.currentTime+.01); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);
   o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+d+.02); }
-function boom(f){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type="sine";
+function boom(f){ if(MUTED)return; const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type="sine";
   o.frequency.setValueAtTime(f,a.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,a.currentTime+.3);
   g.gain.setValueAtTime(.3,a.currentTime); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.4); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.42); }
 
@@ -1646,7 +1713,7 @@ function shareResult(btn){
 }
 function fallbackCopy(txt,done){
   try{ const ta=document.createElement("textarea"); ta.value=txt; ta.style.cssText="position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); if(done)done(); }
-  catch(e){ alert(txt); }
+  catch(e){ toast(t('ui.toast.copied')); }
 }
 
 /* ---------- 난이도 사다리 선택 UI (v3.22) ---------- */
@@ -1661,7 +1728,7 @@ function renderStakeLbl(){ const el=document.getElementById("stakeLbl"); if(!el)
 
 /* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
 function nickOr(){ return localStorage.getItem("cd_nick")||t('ui.anon'); }
-function setNick(){ const cur=nickOr()===t('ui.anon')?"":nickOr(); const n=((prompt(t('ui.nickPrompt'),cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
+function setNick(n){ const v=((n||"").trim()).slice(0,12); if(v) localStorage.setItem("cd_nick",v); return nickOr(); }
 function submitScore(score){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"score",nick:nickOr(),score:score||0,seed:S.seed,ante:S.ante,daily:S.daily?1:0,stake:S.stake||0})}); }catch(e){} }
 function jsonp(action,seed,cb){ const fn="cb_"+Math.floor(Math.random()*1e9); const s=document.createElement("script"); window[fn]=d=>{ cb(d); delete window[fn]; s.remove(); }; s.onerror=()=>{ cb(null); s.remove(); }; s.src=`${LOG_URL}?action=${action}&seed=${seed||""}&callback=${fn}`; document.body.appendChild(s); }
 function boardRows(arr){ if(!arr) return `<p class="hbdim" style="padding:6px 0">${t('ui.board.loadFail')}</p>`; if(!arr.length) return `<p class="hbdim" style="padding:6px 0">${t('ui.board.empty')}</p>`;
@@ -1675,7 +1742,12 @@ function openBoard(){
 }
 
 checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
-newGame();
+registerScreen('title',    { el: document.getElementById('scrTitle') });
+registerScreen('run',      { el: document.getElementById('scrRun') });
+registerScreen('settings', { el: document.getElementById('scrSettings'), mount: mountSettings });
+registerScreen('summary',  { el: document.getElementById('scrSummary'), mount: mountSummary });
+registerScreens({ showScreen, currentScreen });
+showScreen('title');
 selDeck=getMeta().deck||"standard"; renderDeckLbl();
 </script>
 

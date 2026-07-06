@@ -5,6 +5,8 @@ const { t } = require('./content/locale/i18n.cjs');
 const SUITS=[{k:0,g:"♠",red:false},{k:1,g:"♥",red:true},{k:2,g:"♦",red:true},{k:3,g:"♣",red:false}];
 const RANKSTR=["","A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const rankStr=r=>RANKSTR[r], suitG=s=>SUITS[s].g, isRed=s=>SUITS[s].red;
+const { registerScreen, showScreen, currentScreen } = require('./ui/router.cjs');
+const { registerScreens, openPause, closePause, quitToMenu, mountSettings, mountSummary } = require('./ui/screens.cjs');
 const { mkCard, fullDeck, highDeck, DECKS } = require('./content/decks.cjs');
 /* ---------- 시드 RNG (데일리 시드 = 결정론적 판) ---------- */
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -77,6 +79,7 @@ const STAKE_NAMES=[t('ui.stake.name.0'),t('ui.stake.name.1'),t('ui.stake.name.2'
 function goldEarned(score,target){ const gb=(S&&S.stake>=2)?0:GOLD_BASE; return Math.floor(gb + Math.max(0, score/target - 1)*GOLD_K); }   // St2: 통과 골드 바닥 제거(초과분만)
 const { spillover } = require('./rules/economy.cjs');
 let S=null;
+let MUTED = false; try{ MUTED = localStorage.getItem("cd_muted")==="1"; }catch(e){}
 const { CHARMS } = require('./content/charms.cjs');
 const has=id=>S.owned.includes(id);
 
@@ -148,6 +151,7 @@ function buyMeta(kind){
 }
 
 function newGame(seed, stake, variant){
+  showScreen('run');
   const daily = seed!=null;
   const useSeed = daily ? seed : Math.floor(Math.random()*2147483647);
   RNG = mulberry32(useSeed);                          // ★ S 생성 전 시드 설정 (shuffle/pickBoss가 시드 사용)
@@ -262,7 +266,7 @@ function settle(){
     S.over=true;
     res.textContent="💀 "+t('ui.tally.fail'); res.className="tallyResult fail";
     logEvent("death",{ante:S.ante,blind:S.blind,score:S.score,target:S.target,hand:HAND_LABEL[hk]});
-    btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); newGame(); };
+    btn.textContent=t('ui.tally.newGame'); _tallyNext=()=>{ cashOut(); showScreen('summary', { win:false }); };
   }
   // 최고 기록 / 통계 갱신 (리텐션)
   const stx=getStats();
@@ -302,7 +306,7 @@ function victory(){
   flash("#ffd15c"); boom(200); setTimeout(()=>{flash("#ffffff22");boom(150);},250);
   // 화면 가득 축포
   for(let k=0;k<4;k++) setTimeout(()=>sparkBurst(document.getElementById("table"),34,"#ffd15c"),k*180);
-  render();
+  showScreen('summary', { win:true });
 }
 
 /* ---------- 덱빌딩 상점 (블라인드마다) ---------- */
@@ -493,10 +497,12 @@ function flash(col){ const f=document.createElement("div"); f.style.cssText=`pos
   document.body.appendChild(f); requestAnimationFrame(()=>f.style.opacity="0"); setTimeout(()=>f.remove(),420); }
 function banner(m,c){ const b=document.getElementById("banner"); b.textContent=m||""; b.style.color=c||"#e6ebff"; }
 let AC=null; function ac(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
-function beep(f,d,type){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type=type||"triangle"; o.frequency.value=f;
+let _toastT=null;
+function toast(msg){ let el=document.getElementById("_toast"); if(!el){ el=document.createElement("div"); el.id="_toast"; el.className="toast"; document.body.appendChild(el); } el.textContent=msg; el.classList.add("show"); clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove("show"),1400); }
+function beep(f,d,type){ if(MUTED)return; const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type=type||"triangle"; o.frequency.value=f;
   g.gain.setValueAtTime(.0001,a.currentTime); g.gain.exponentialRampToValueAtTime(.18,a.currentTime+.01); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);
   o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+d+.02); }
-function boom(f){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type="sine";
+function boom(f){ if(MUTED)return; const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain(); o.type="sine";
   o.frequency.setValueAtTime(f,a.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,a.currentTime+.3);
   g.gain.setValueAtTime(.3,a.currentTime); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.4); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+.42); }
 
@@ -595,7 +601,7 @@ function shareResult(btn){
 }
 function fallbackCopy(txt,done){
   try{ const ta=document.createElement("textarea"); ta.value=txt; ta.style.cssText="position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); if(done)done(); }
-  catch(e){ alert(txt); }
+  catch(e){ toast(t('ui.toast.copied')); }
 }
 
 /* ---------- 난이도 사다리 선택 UI (v3.22) ---------- */
@@ -610,7 +616,7 @@ function renderStakeLbl(){ const el=document.getElementById("stakeLbl"); if(!el)
 
 /* ---------- 리더보드 (A2) — 데일리 + 전체 ---------- */
 function nickOr(){ return localStorage.getItem("cd_nick")||t('ui.anon'); }
-function setNick(){ const cur=nickOr()===t('ui.anon')?"":nickOr(); const n=((prompt(t('ui.nickPrompt'),cur)||"").trim()).slice(0,12); if(n) localStorage.setItem("cd_nick",n); return nickOr(); }
+function setNick(n){ const v=((n||"").trim()).slice(0,12); if(v) localStorage.setItem("cd_nick",v); return nickOr(); }
 function submitScore(score){ if(!LOG_URL) return; try{ fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"score",nick:nickOr(),score:score||0,seed:S.seed,ante:S.ante,daily:S.daily?1:0,stake:S.stake||0})}); }catch(e){} }
 function jsonp(action,seed,cb){ const fn="cb_"+Math.floor(Math.random()*1e9); const s=document.createElement("script"); window[fn]=d=>{ cb(d); delete window[fn]; s.remove(); }; s.onerror=()=>{ cb(null); s.remove(); }; s.src=`${LOG_URL}?action=${action}&seed=${seed||""}&callback=${fn}`; document.body.appendChild(s); }
 function boardRows(arr){ if(!arr) return `<p class="hbdim" style="padding:6px 0">${t('ui.board.loadFail')}</p>`; if(!arr.length) return `<p class="hbdim" style="padding:6px 0">${t('ui.board.empty')}</p>`;
@@ -624,5 +630,10 @@ function openBoard(){
 }
 
 checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
-newGame();
+registerScreen('title',    { el: document.getElementById('scrTitle') });
+registerScreen('run',      { el: document.getElementById('scrRun') });
+registerScreen('settings', { el: document.getElementById('scrSettings'), mount: mountSettings });
+registerScreen('summary',  { el: document.getElementById('scrSummary'), mount: mountSummary });
+registerScreens({ showScreen, currentScreen });
+showScreen('title');
 selDeck=getMeta().deck||"standard"; renderDeckLbl();
