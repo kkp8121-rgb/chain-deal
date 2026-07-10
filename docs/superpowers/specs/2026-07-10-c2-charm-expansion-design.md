@@ -37,7 +37,7 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 | 클러스터 | v3.29 | 판정 | 근거 · 방향 |
 |---|---|---|---|
 | **parity** | 1.47% | ⛔ **CUT** (또는 전제 재설계) | one-parity 줄(전부 짝/홀)은 랭크 ±2씩 → **±1 연결(3연결타입 중 1개)을 자진 포기**하고 약한 settle과 맞바꿈 = self-sabotage. 3갈래 증거: (a) settle-버프 leak, (b) build-exclusive 시너지 +0.14pp만, (c) mult-복원은 **헌법상 막힘**(신규 곱셈 금지 + mult-훅은 연결에서만 발동하는데 parity는 연결이 없음). → 2종(evenodd/paritybet) 제거, 클러스터 슬롯을 다른 축에 재배분. ★human 확인 대상(cut 결정). |
-| **spatial** | 1.85% | ⚠️ **측정 불가 (sim 아티팩트)** | bridge/stair/keystone는 **의도적 카드 배치**를 보상하는데 그리디 봇은 즉시-점수-최대만 함 → 배치 못 모델(memory §5). 저 1.85%는 *실제 실력 천장이 아니라 봇 한계*일 수 있음. → **committed-placement pick 정책**(spatial 빌드용 배치 휴리스틱)을 `run-sim`에 추가해 실제 천장을 재측정한 뒤에야 buff/cut 판정 가능. 그 전엔 확장 보류. |
+| **spatial** | 1.85% | 🔧 **측정됨: 배치로 못 살림 → 체인-시너지** | ★**committed-placement pick 실험 완료(2026-07-10)**: 위치가치(bridge/stair/keystone settle 기여)를 배치 결정에 반영 → **+0.04pp만**(1.87→1.91%, paired reseed). **sim 아티팩트 아님 확정** — 위치 settle 보너스(합계 max ~.43×blindBase)가 너무 작아, 체인 최대화 대비 열위(완벽 배치로도 못 이김). memory §5의 "그리디 과소평가"는 실재하나 **미미**(보너스 자체가 작아서). ∴ gem/compact와 **동일 처방**: 위치구조를 **mult/연결로**(settle 아님) 주는 신규부적. (caveat: heuristic이 myopic이라 진짜 천장은 하한 추정 — 단 페이오프-매그니튜드 논거가 결론 지지.) |
 | **gem** | 2.00% | 🔧 **체인-시너지 신규부적** | enh(wild=만능연결·gold=base·mult=mult)는 체인과 안 싸움. 약한 건 gem 부적(lapidary/prism/jewelbox)이 골드-비싼 enh 스태킹에 작은 settle만 줌. → 신규는 **enh를 mult/연결로 전환**(예 "와일드 카드로 연결 시 mult +1", "줄의 enh 3+장이면 runLen 판정에 보너스"). settle 적재 금지. |
 | **compact** | 2.66% | 🔧 **체인-시너지 신규부적** | 덱 압축은 연결 일관성을 높이나 compactor 페이오프(base 가산)가 약함. → 신규는 **압축을 mult/연결로**(예 "덱 24장 이하면 runLen −1 보정 완화", "압축분만큼 mult 가산"). |
 | healthy 8종 | 5.7~8.5% | ✅ **밀도 확장** | flush/black/color/apex/cartel/jokbo/(compact/spatial 후속) — build-exclusive 시너지("클러스터 부적 N+개 보유 시 발동")로 깊이 추가. leak 없이 전념자만 보상. |
@@ -63,15 +63,15 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 | **parity CUT 여부** | ✅ CUT (3갈래 증거) | cut 시 24→22, 슬롯 2개를 gem/compact/신규축에 재배분 |
 | **클러스터 7 vs 8** | 8 (parity 제거 후 신축 1개로 채움 or gem/compact 심화) | 마스터리 다양성 |
 | **8덱 각 전략** | master-spec 미정 — C3(덱 2→8)와 공동설계 | 각 덱이 1클러스터를 "가르침" |
-| **확장 우선순위** | gem→compact→healthy 밀도→spatial(sim모델 후) | parity는 cut, spatial은 측정선행 |
+| **확장 우선순위** | gem→compact→spatial 체인-시너지 → healthy 밀도 | parity는 cut(3갈래 증거), spatial 측정완료(아티팩트 아님, 재설계 대상) |
 
 ---
 
 ## 4. 구현 순서 (제안)
 
-1. **spatial sim-모델** — `run-sim`에 committed-placement pick 추가 → spatial 실제 천장 재측정 → buff/cut 판정 (측정 인프라, 콘텐츠 0). **verify**: spatial 클리어율이 그리디 1.85%보다 유의하게 높으면 아티팩트 확정.
-2. **엔진 플러밍** — `ctx.clusterCount(cl)` (gem 첫 체인-시너지 부적과 함께). **verify**: 게임·sim ctx 일치, 게이트 G0/G1 GREEN.
-3. **gem/compact 체인-시너지 신규부적** — 각 클러스터에 mult/연결 기여 부적 추가. **verify**: 시드 페어드측정서 해당 빌드↑ + 타빌드 flat(leak 없음) + 게이트 9/9.
+1. ~~spatial sim-모델~~ ✅ **완료(2026-07-10)** — committed-placement pick 실험 → **+0.04pp**(sim 아티팩트 아님). spatial을 체인-시너지 재설계 대상으로 확정(gem/compact 합류). 실험 revert(spatial 전용 특수 placer는 sim 일관성 저해).
+2. **엔진 플러밍** — `ctx.clusterCount(cl)` (gem 첫 체인-시너지 부적과 함께, YAGNI). **verify**: 게임·sim ctx 일치, 게이트 G0/G1 GREEN.
+3. **gem/compact/spatial 체인-시너지 신규부적** — 각 클러스터에 **mult/연결 기여**(settle 아님) 부적 추가. spatial=위치구조→mult(예 "다리 카드마다 mult+1"), gem=enh→연결(예 "와일드 연결 시 mult+1"), compact=압축→mult. **verify**: 시드 페어드측정서 해당 빌드↑ + 타빌드 flat(leak 없음) + 게이트 9/9.
 4. **parity CUT** (human 승인 시) — evenodd/paritybet 제거, locale·unlock·ledger 정리. **verify**: 게이트 재snapshot, 잔여 참조 grep=0.
 5. **healthy 밀도 확장 + build-exclusive 시너지** — 24→50까지. **verify**: 각 추가 시 시드측정 + `gate.cjs --full`(G2.5 floor≥7.5%·인플레≤+2pp·G2 다양성·G6 재미).
 
