@@ -152,7 +152,6 @@ const STRATS={
   gem:    { charm:{jewelbox:10,lapidary:8,prism:7,greed:5,suited:4}, enh:{wild:8,gold:7,mult:7}, item:{thin:5,hand:5,add:2,copy:2,reroll:1} },   // enh 스태킹(강화카드 떡칠)
   apex:   { charm:{magnate:10,highmult:9,greed:5,jackpot:5,keystone:4}, enh:{mult:4,gold:3,wild:3}, item:{add:9,thin:4,copy:6,hand:5,reroll:1} },   // 고랭크 7·8(add로 7~8 카드 매입)
   cartel: { charm:{loaded:10,echo:9,twins:8,broker:7,climax:6,jackpot:4}, enh:{wild:3,mult:3,gold:2}, item:{copy:9,thin:6,hand:5,add:1,reroll:1} },   // 같은수(copy로 동일 랭크 복제)
-  parity: { charm:{paritybet:10,evenodd:9,greed:5,twins:5,suited:4}, enh:{wild:6,mult:3,gold:3}, item:{thin:8,hand:5,add:3,copy:3,reroll:1} },   // 홀짝(thin으로 한쪽 패리티 정제 — 도구상 어려움=의도된 직교)
   color:  { charm:{twotone:10,pyro:9,greed:5,suited:4,jackpot:4}, enh:{wild:3,mult:4,gold:3}, item:{add:8,thin:5,hand:5,copy:3,reroll:1} },   // 색(투톤+발화) 빌드 — 대표 빨강 경로
 };
 function priority(o, strat){
@@ -173,7 +172,7 @@ function applyOne(state, o, strat){
 }
 // 유료 상점: 3장 제시 → 우선순위 높은 것부터 살 수 있는 만큼 구매(골드 차감)
 // 가중 오퍼 (index.html 미러): 미투자 클러스터 부적을 CLUSTER_W로 감량 → 희석 완화
-const CLUSTER={lapidary:"gem",prism:"gem",jewelbox:"gem",highmult:"apex",magnate:"apex",echo:"cartel",loaded:"cartel",climax:"cartel",evenodd:"parity",paritybet:"parity"};
+const CLUSTER={lapidary:"gem",prism:"gem",jewelbox:"gem",highmult:"apex",magnate:"apex",echo:"cartel",loaded:"cartel",climax:"cartel"};
 const CLUSTER_W=0.15;   // index.html 동기화 (캘리브: balance 3.5%→7.3% 회복, 베이스라인 9.6% 미초과)
 function ownsClusterSim(owned, cl){ for(const id of owned) if(CLUSTER[id]===cl) return true; return false; }
 function offerWeightSim(o, owned){ if(o.type!=="charm") return 1; const cl=CLUSTER[o.id]; if(!cl) return 1; return ownsClusterSim(owned,cl)?1:CLUSTER_W; }
@@ -262,7 +261,7 @@ function simulateStrat(strat, opts){
 if (require.main === module) {
 const N=20000;
 const BL=["작은","큰","보스"];
-const STRAT_KO={balance:"밸런스 빌드",flush:"플러시 빌드",black:"흑심(검정/2색) 빌드",jokbo:"족보(중개상+쌍둥이) 빌드",compact:"압축(정련가+잔챙이) 빌드",spatial:"위치-맥락(다리+계단+주춧돌) 빌드",gem:"보석세공(enh 스태킹) 빌드",apex:"정점(고랭크 7·8) 빌드",cartel:"같은수 카르텔 빌드",parity:"홀짝 패리티 빌드",color:"색(투톤) 빌드"};
+const STRAT_KO={balance:"밸런스 빌드",flush:"플러시 빌드",black:"흑심(검정/2색) 빌드",jokbo:"족보(중개상+쌍둥이) 빌드",compact:"압축(정련가+잔챙이) 빌드",spatial:"위치-맥락(다리+계단+주춧돌) 빌드",gem:"보석세공(enh 스태킹) 빌드",apex:"정점(고랭크 7·8) 빌드",cartel:"같은수 카르텔 빌드",color:"색(투톤) 빌드"};
 for(const strat of Object.keys(STRATS)){
   let win=0; const death={};
   for(let i=0;i<N;i++){ const r=runFull(strat); if(r.result==="win") win++; else { const k=`안테${r.ante} ${BL[r.blind]}`; death[k]=(death[k]||0)+1; } }

@@ -46,10 +46,6 @@ const CHARMS=[
     hooks:{ settle:(row,hk,ctx)=> hk==="fourKind" ? Math.round(ctx.blindBase*.10) : hk==="fiveKind" ? Math.round(ctx.blindBase*.30) : 0 }},
   {id:"climax", name:t('charm.climax.name'),   desc:t('charm.climax.desc'), cluster:"cartel",
     hooks:{ settle:(row,hk,ctx)=>{ if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)) return 0; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(ctx.connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return Math.round(ctx.blindBase*.03*Math.max(0,Math.min(L,8)-5)); } }},
-  {id:"evenodd",   name:t('charm.evenodd.name'), desc:t('charm.evenodd.desc'), cluster:"parity",
-    hooks:{ settle:(row,hk,ctx)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.round(ctx.blindBase*.04*Math.max(0,Math.max(ev,od)-5)); } }},
-  {id:"paritybet", name:t('charm.paritybet.name'), desc:t('charm.paritybet.desc'), cluster:"parity",
-    hooks:{ settle:(row,hk,ctx)=>{ const nw=row.filter(c=>c.enh!=="wild"); return (row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1))) ? Math.round(ctx.blindBase*.30) : 0; } }},
   {id:"twotone",  name:t('charm.twotone.name'), desc:t('charm.twotone.desc'),
     hooks:{ settle:(row,hk,ctx)=>{ let h=0,d=0,s=0,c=0; for(const x of row){ if(x.enh==="wild")continue; if(x.suit===1)h++; else if(x.suit===2)d++; else if(x.suit===0)s++; else c++; } const red=h+d,black=s+c,dom=Math.max(red,black); const bothSuits=red>=black?(h>0&&d>0):(s>0&&c>0); return bothSuits ? Math.round(ctx.blindBase*0.04*Math.max(0,Math.min(dom,8)-4)) : 0; } }},
 ];

@@ -110,8 +110,6 @@ const UNLOCKS={
   echo:   {cond:(st,row)=> maxRankCount(row)>=4, hint:t('unlock.echo.hint')},
   loaded: {cond:(st,row)=> evalHand(row)==="fiveKind", hint:t('unlock.loaded.hint')},
   climax: {cond:(st,row)=>{ if(row.length<8) return false; if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(evalHand(row))) return false; const b=bossId(); let L=1,cur=1; for(let i=1;i<row.length;i++){ if(connect(row[i],row[i-1],b)){ cur++; if(cur>L)L=cur; } else cur=1; } return L>=8; }, hint:t('unlock.climax.hint')},
-  evenodd:   {cond:(st,row)=>{ let ev=0,od=0; for(const c of row) if(c.enh!=="wild")(c.rank%2?od++:ev++); return Math.max(ev,od)>=6; }, hint:t('unlock.evenodd.hint')},
-  paritybet: {cond:(st,row)=>{ const nw=row.filter(c=>c.enh!=="wild"); return row.length>=8 && (nw.every(c=>c.rank%2===0)||nw.every(c=>c.rank%2===1)); }, hint:t('unlock.paritybet.hint')},
   twotone:  {cond:(st,row)=>{ let r=0,b=0; for(const c of row) if(c.enh!=="wild"){ if(c.suit===1||c.suit===2)r++; else b++; } return Math.max(r,b)>=6; }, hint:t('unlock.twotone.hint')},
 };
 function getUnlocked(){ try{ const a=JSON.parse(localStorage.getItem("cd_unlocked")); if(Array.isArray(a)) return a; }catch(e){} return STARTER_CHARMS.slice(); }
@@ -242,7 +240,7 @@ function settle(){
   if(S.settled) return; S.settled=true;
   const chain=S.score;                               // 족보 보너스 전 = 체인 점수
   const hk=evalHand(S.row); let hb=handBonus(S.row); // 족보 판정·보너스 (discard 전)
-  hb = scoreSettle(hb, hk, S.row, settleCtx());       // broker(override)/twins/bridge/stair/keystone/prism/jewelbox/magnate/loaded/climax/evenodd/paritybet/twotone (부적 훅, content/charms.cjs 선언)
+  hb = scoreSettle(hb, hk, S.row, settleCtx());       // broker(override)/twins/bridge/stair/keystone/prism/jewelbox/magnate/loaded/climax/twotone (부적 훅, content/charms.cjs 선언)
   S.score+=hb;                                       // 최종 = 체인 + 족보 보너스
   S.discard.push(...S.row);
   S.discard.push(...S.hand);                          // ★ 버그 수정: 손패도 덱으로 회수 (안 하면 매 라운드 3장 유실 → 덱 고갈 → fallback 카드 양산)
