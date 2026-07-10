@@ -44,7 +44,7 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 
 | 클러스터 | v3.29 | 판정 | 근거 · 방향 |
 |---|---|---|---|
-| **parity** | 1.47% | ⛔ **CUT** (또는 전제 재설계) | one-parity 줄(전부 짝/홀)은 랭크 ±2씩 → **±1 연결(3연결타입 중 1개)을 자진 포기**하고 약한 settle과 맞바꿈 = self-sabotage. 3갈래 증거: (a) settle-버프 leak, (b) build-exclusive 시너지 +0.14pp만, (c) mult-복원은 **헌법상 막힘**(신규 곱셈 금지 + mult-훅은 연결에서만 발동하는데 parity는 연결이 없음). → 2종(evenodd/paritybet) 제거, 클러스터 슬롯을 다른 축에 재배분. ★human 확인 대상(cut 결정). |
+| **parity** | 1.47% | ✅ **CUT 실행됨** (커밋 `ca6b26d`, 부적 24→22) | one-parity 줄은 랭크 ±2씩 → **±1 연결을 자진 포기**하고 약한 settle과 맞바꿈=self-sabotage. 3갈래 증거(settle-버프 leak·시너지 +0.14pp·mult-복원 헌법상 막힘). evenodd/paritybet + STRAT/CLUSTER/UNLOCKS 제거. ★**게이트 9/9 GREEN**(구 v3.29 ledger 대비로도 — 약빌드라 balance 8.45%·spread·flatness·재미 무영향). ledger는 보수적 v3.29 앵커 유지(재anchor는 C2 콘텐츠 결정과 함께). 가역적(git revert). |
 | **spatial** | 1.85% | 🔧 **측정됨: 배치로 못 살림 → 체인-시너지** | ★**committed-placement pick 실험 완료(2026-07-10)**: 위치가치(bridge/stair/keystone settle 기여)를 배치 결정에 반영 → **+0.04pp만**(1.87→1.91%, paired reseed). **sim 아티팩트 아님 확정** — 위치 settle 보너스(합계 max ~.43×blindBase)가 너무 작아, 체인 최대화 대비 열위(완벽 배치로도 못 이김). memory §5의 "그리디 과소평가"는 실재하나 **미미**(보너스 자체가 작아서). ∴ gem/compact와 **동일 처방**: 위치구조를 **mult/연결로**(settle 아님) 주는 신규부적. (caveat: heuristic이 myopic이라 진짜 천장은 하한 추정 — 단 페이오프-매그니튜드 논거가 결론 지지.) |
 | **gem** | 2.00% | 🎲 **spice 수용(기본) / human-playtest bet** | 실험4·5로 chain-synergy(약/hard게이트)도 gem 못살림 + leak(sim 검증불가, §0). enh→mult 전환 설계는 유효 방향이나 **효과는 인간 플레이테스트로만 검증** — sim은 지배 안함(=다양성 무해)만 확인. |
 | **compact** | 2.66% | 🎲 **spice 수용(기본) / human-playtest bet** | 동상. 압축→mult 방향 유효하나 sim 검증불가 → 인간 플레이테스트 베팅 or spice 수용. |
