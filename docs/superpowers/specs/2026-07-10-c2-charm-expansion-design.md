@@ -24,17 +24,19 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 1. **계수 버프 (REJECTED)** — 앵커부적 계수 상향은 시드고정 페어드측정서 **함정빌드(+0.25~0.64pp)보다 healthy 빌드를 더 키움**(balance +1.41·black +2.07), 절대격차 확대(6.98→7.77pp). 병인 = `run-sim` **buy-everything filler-buy**(memory `balance-calibration` §6): 부적 트리거가 *어떤 강한 줄에서도 우발 발생* → 모든 빌드가 주워 이득. threshold-게이팅도 못 막음.
 2. **build-exclusive settle-시너지 (REJECTED)** — evenodd를 paritybet 동시보유 시 증폭 게이팅 → run별재시드 페어드 **parity +0.14pp만**(최하위 유지). settle 적재 무스케일.
 3. **committed-placement (spatial, REJECTED)** — 위치가치를 배치 결정에 반영하는 pick → spatial **+0.04pp만**(1.87→1.91%). 위치 settle(max ~.43×blindBase)이 너무 작아 배치로 못 살림 = sim 아티팩트 아님.
-4. **chain-synergy mult (약게이트, REJECTED as shortcut)** — jewelbox에 "committed gem(lapidary 동시보유) 시 enh 연결마다 mult+1" 훅 추가 → gem **+0.12pp만**, 게다가 **전 빌드 균등 leak**(balance +0.11·black +0.10·apex +0.16 — apex가 타겟보다 더 상승). co-ownership-of-2 게이트는 filler-buyer가 다 뚫음.
+4. **chain-synergy mult, 약게이트 (REJECTED)** — jewelbox에 "committed gem(lapidary 동시보유) 시 enh 연결마다 mult+1" → gem **+0.12pp만 + 전 빌드 균등 leak**(apex +0.16이 타겟보다 큼). co-own-2 게이트를 filler가 뚫음.
+5. **chain-synergy mult, HARD 게이트 (REJECTED — ★sim 구조 한계 확정)** — `ctx.clusterCount('gem')≥3`(gem 3종 전부 보유=전념) + enh 연결마다 mult+2 → gem **+0.21pp만, 그런데도 leak**(black +0.19·apex +0.19 ≈ 타겟). 병인: 가중오퍼가 **첫 클러스터 부적만** down-weight → 하나 사면 나머지 full-weight → **buy-everything이 8안테에 걸쳐 clusterCount≥3을 전 빌드에 누적**. **어떤 소유-기반 게이트도 leak 불가피**.
 
-### 실험이 확정한 것 (메타)
+### ★실험이 확정한 것 (메타 — 5실험, C2 전제 변경)
 
-> **단일-부적 개입은 어떤 종류든(계수·settle-시너지·배치·mult-시너지) 함정빌드에 marginal(+0.04~0.16pp) + leak이다.** 함정빌드 약점은 **부적 튜닝 레벨에서 해결 불가** — 약한 build-exclusive 게이트(co-own 2)는 buy-everything filler가 뚫는다. 유일하게 미검증인 레버 = **hard `clusterCount≥3` 게이트 + chain-synergy** — 이건 엔진 플러밍 + 조밀한 클러스터(=C2 콘텐츠 자체)가 있어야만 테스트 가능 → **shortcut PoC 불가, C2 빌드아웃이 곧 검증**.
+> **1) 함정빌드는 부적 튜닝 레벨서 해결 불가** — 5종 개입(계수·settle시너지·배치·mult시너지 약/hard게이트) 전부 marginal(+0.04~0.21pp). 약점은 전략 비효율.
+> **2) ★이 sim(run-sim/gate)은 build-exclusive 시너지를 구조적으로 평가 불가** — buy-everything(memory §6, 유지 필수)이 모든 클러스터 부적을 모든 빌드에 누적시켜 **어떤 소유-기반 hard 게이트도 leak**한다. 즉 C2가 추가하려는 바로 그 콘텐츠(전념빌드 보상 시너지)를 sim이 못 잰다. **로드맵 원칙 그대로: sim=floor 감지기(인플레·지배 차단), 인간=ceiling 판정자.** build-exclusive 시너지의 *효과*는 **인간 플레이테스트로만 검증 가능**(memory §5 "진짜 캘리브는 사람 로그").
 
-### C2 대원칙 (확정)
+### C2 대원칙 (확정 — 개정)
 
-> **함정 클러스터 fix는 (a) mult 엔진에 기여(체인-시너지)하면서 (b) hard `clusterCount≥3` 게이트로 전념자만 트리거해야 한다. settle 적재·약게이트는 leak+무스케일.** 그래도 안 되면 **cut(parity)·spice 수용**이 정답.
+> **1) parity는 CUT** (구조적 안티시너지 + 5레버 무효, 이견 없음). **2) gem/compact/spatial = spice 수용이 기본값** — sim상 지배 안 함(=다양성엔 무해), 살리려면 **인간 플레이테스트 기반 설계 베팅**(sim은 leak/floor만 확인, 효과는 못 잼). **3) charm-adding≠빌드 살아남** — "밀도 채움"으로 약빌드를 top-tier로 만들 수 있다는 보장 없음. 무리한 확장 대신 **healthy 8클러스터 밀도 + 신규 강클러스터**에 C2 예산 집중.
 
-체인이 `Σrank × mult`(mult 25캡) 엔진인데 함정빌드는 mult를 안 쓰고 가산 gimmick에 의존 → 비효율. 단 4실험이 보여주듯 **charm-adding만으로 약클러스터를 top-tier로 만들 수 있다는 보장은 없다** — "밀도 채움"이 곧 "빌드 살아남"은 아님. 약클러스터는 **core-mechanic 재설계 또는 cut/spice** 결정이 필요(가산>곱셈 헌법 유지 — mult 가산 허용, 신규 곱셈 금지).
+체인이 `Σrank × mult`(25캡) 엔진인데 함정빌드는 mult 안 쓰고 가산 gimmick 의존 → 비효율. 헌법 유지(가산>곱셈, mult 가산 허용, 신규 곱셈 금지).
 
 ---
 
@@ -44,9 +46,10 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 |---|---|---|---|
 | **parity** | 1.47% | ⛔ **CUT** (또는 전제 재설계) | one-parity 줄(전부 짝/홀)은 랭크 ±2씩 → **±1 연결(3연결타입 중 1개)을 자진 포기**하고 약한 settle과 맞바꿈 = self-sabotage. 3갈래 증거: (a) settle-버프 leak, (b) build-exclusive 시너지 +0.14pp만, (c) mult-복원은 **헌법상 막힘**(신규 곱셈 금지 + mult-훅은 연결에서만 발동하는데 parity는 연결이 없음). → 2종(evenodd/paritybet) 제거, 클러스터 슬롯을 다른 축에 재배분. ★human 확인 대상(cut 결정). |
 | **spatial** | 1.85% | 🔧 **측정됨: 배치로 못 살림 → 체인-시너지** | ★**committed-placement pick 실험 완료(2026-07-10)**: 위치가치(bridge/stair/keystone settle 기여)를 배치 결정에 반영 → **+0.04pp만**(1.87→1.91%, paired reseed). **sim 아티팩트 아님 확정** — 위치 settle 보너스(합계 max ~.43×blindBase)가 너무 작아, 체인 최대화 대비 열위(완벽 배치로도 못 이김). memory §5의 "그리디 과소평가"는 실재하나 **미미**(보너스 자체가 작아서). ∴ gem/compact와 **동일 처방**: 위치구조를 **mult/연결로**(settle 아님) 주는 신규부적. (caveat: heuristic이 myopic이라 진짜 천장은 하한 추정 — 단 페이오프-매그니튜드 논거가 결론 지지.) |
-| **gem** | 2.00% | 🔧 **체인-시너지 신규부적** | enh(wild=만능연결·gold=base·mult=mult)는 체인과 안 싸움. 약한 건 gem 부적(lapidary/prism/jewelbox)이 골드-비싼 enh 스태킹에 작은 settle만 줌. → 신규는 **enh를 mult/연결로 전환**(예 "와일드 카드로 연결 시 mult +1", "줄의 enh 3+장이면 runLen 판정에 보너스"). settle 적재 금지. |
-| **compact** | 2.66% | 🔧 **체인-시너지 신규부적** | 덱 압축은 연결 일관성을 높이나 compactor 페이오프(base 가산)가 약함. → 신규는 **압축을 mult/연결로**(예 "덱 24장 이하면 runLen −1 보정 완화", "압축분만큼 mult 가산"). |
-| healthy 8종 | 5.7~8.5% | ✅ **밀도 확장** | flush/black/color/apex/cartel/jokbo/(compact/spatial 후속) — build-exclusive 시너지("클러스터 부적 N+개 보유 시 발동")로 깊이 추가. leak 없이 전념자만 보상. |
+| **gem** | 2.00% | 🎲 **spice 수용(기본) / human-playtest bet** | 실험4·5로 chain-synergy(약/hard게이트)도 gem 못살림 + leak(sim 검증불가, §0). enh→mult 전환 설계는 유효 방향이나 **효과는 인간 플레이테스트로만 검증** — sim은 지배 안함(=다양성 무해)만 확인. |
+| **compact** | 2.66% | 🎲 **spice 수용(기본) / human-playtest bet** | 동상. 압축→mult 방향 유효하나 sim 검증불가 → 인간 플레이테스트 베팅 or spice 수용. |
+| **spatial** | 1.85% | 🎲 **spice 수용(기본) / human-playtest bet** | 실험3(committed-placement +0.04pp)로 아티팩트 아님 확정 + 위치 settle 너무 작음. 위치→mult 방향 유효하나 sim 검증불가. |
+| healthy 8종 | 5.7~8.5% | ✅ **밀도 확장 = C2 예산 집중처** | flush/black/color/apex/cartel/jokbo + **신규 강클러스터** — sim으로 인플레/지배만 확인 가능(build-exclusivity는 sim 못잼, §0). 약클러스터 무리한 확장보다 여기+신규 강축에 투자. |
 
 ---
 
@@ -77,7 +80,7 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 
 1. ~~spatial sim-모델~~ ✅ **완료(2026-07-10)** — committed-placement pick 실험 → **+0.04pp**(sim 아티팩트 아님). spatial을 체인-시너지 재설계 대상으로 확정(gem/compact 합류). 실험 revert(spatial 전용 특수 placer는 sim 일관성 저해).
 2. **엔진 플러밍** — `ctx.clusterCount(cl)` (gem 첫 체인-시너지 부적과 함께, YAGNI). **verify**: 게임·sim ctx 일치, 게이트 G0/G1 GREEN.
-3. **gem/compact/spatial 체인-시너지 신규부적** — 각 클러스터에 **mult/연결 기여**(settle 아님) 부적 추가, **반드시 hard `clusterCount≥3` 게이트**(약게이트 co-own-2는 실험4서 leak 확인). spatial=위치구조→mult(예 "다리 카드마다 mult+1"), gem=enh→연결, compact=압축→mult. **★이 단계가 "hard-gate chain-synergy" 가설의 유일한 검증점** — 실패 시 해당 클러스터는 cut/spice로 강등(charm-adding 고집 금지). **verify**: 시드 페어드측정서 해당 빌드↑(+2pp↑ 목표) + 타빌드 flat(leak 없음, Δ<0.2pp) + 게이트 9/9.
+3. **(선택·human-bet) gem/compact/spatial chain-synergy 신규부적** — ★실험5로 **sim은 이걸 검증 못함 확정**(hard 게이트도 buy-everything leak). 그래서 이 단계는 **기본 SKIP(spice 수용)** — 굳이 살릴 땐 **인간 플레이테스트 베팅**: mult/연결 기여 부적 추가(spatial=위치→mult, gem=enh→연결, compact=압축→mult). **verify**: sim/게이트는 **floor만**(인플레≤+2pp·G2 지배 안함·leak Δ<0.2pp = 다양성 무해) 확인 → **효과(전념자 체감)는 인간 플레이테스트가 판정**(로드맵 "human=ceiling"). floor 위반 없으면 다양성엔 무해하니 재미 판단은 사람.
 4. **parity CUT** (human 승인 시) — evenodd/paritybet 제거, locale·unlock·ledger 정리. **verify**: 게이트 재snapshot, 잔여 참조 grep=0.
 5. **healthy 밀도 확장 + build-exclusive 시너지** — 24→50까지. **verify**: 각 추가 시 시드측정 + `gate.cjs --full`(G2.5 floor≥7.5%·인플레≤+2pp·G2 다양성·G6 재미).
 
