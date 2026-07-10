@@ -30,7 +30,7 @@ pre-v3.29 함정 3종(parity/spatial/gem)보다 **악화 + compact 신규 합류
 ### ★실험이 확정한 것 (메타 — 5실험, C2 전제 변경)
 
 > **1) 함정빌드는 부적 튜닝 레벨서 해결 불가** — 5종 개입(계수·settle시너지·배치·mult시너지 약/hard게이트) 전부 marginal(+0.04~0.21pp). 약점은 전략 비효율.
-> **2) ★이 sim(run-sim/gate)은 build-exclusive 시너지를 구조적으로 평가 불가** — buy-everything(memory §6, 유지 필수)이 모든 클러스터 부적을 모든 빌드에 누적시켜 **어떤 소유-기반 hard 게이트도 leak**한다. 즉 C2가 추가하려는 바로 그 콘텐츠(전념빌드 보상 시너지)를 sim이 못 잰다. **로드맵 원칙 그대로: sim=floor 감지기(인플레·지배 차단), 인간=ceiling 판정자.** build-exclusive 시너지의 *효과*는 **인간 플레이테스트로만 검증 가능**(memory §5 "진짜 캘리브는 사람 로그").
+> **2) ★이 sim(run-sim/gate)은 build-specific 콘텐츠를 구조적으로 평가 불가** — buy-everything(memory §6, 유지 필수)이 모든 클러스터 부적을 모든 빌드에 누적시켜 **어떤 소유-기반 hard 게이트도 leak**한다. ★**실험6·7(healthy 밀도 추가로 재확증)**: apex에 신규부적 추가 시도 → 범용(7/8 mult+1)=전빌드 인플레(apex=balance 동반), 특화(8-8 mult+2)=apex 미도움(그리디가 8 인접배치 안함). **범용=인플레 / 특화=미발동** → 클린한 build-specific 추가 자체가 불가. 즉 C2가 추가하려는 바로 그 콘텐츠(전념빌드 보상)를 sim이 못 잰다. **로드맵 원칙 그대로: sim=floor 감지기(인플레·지배 차단), 인간=ceiling 판정자.** 효과는 **인간 플레이테스트로만 검증**(memory §5).
 
 ### C2 대원칙 (확정 — 개정)
 
