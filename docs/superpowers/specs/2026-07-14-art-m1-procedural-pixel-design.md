@@ -47,7 +47,7 @@ src/art/
 
 **데이터 스키마**: 각 부적 레코드에 `art:{shape,symbol,accent}` 필드 추가(`src/content/charms.cjs`). accent는 **전 부적 명시**(§5 매핑 표가 SSoT — cluster 유도 아님, 클러스터 색 예약 규칙은 §3). deco는 M1 보류(§1 Out). **sim에는 불활성 데이터**(run-sim이 hooks만 소비) — 게이트 무영향.
 
-**공개 API** (전부 param→canvas 순수 함수): `artDrawCardFace(card)` · `artDrawCharmEmblem(art,cluster,locked)` · `artHydrate(root)`(`canvas[data-cface]`/`canvas[data-emblem]` 스캔 페인트 — innerHTML로 만드는 표면 공용) · `artContactSheet(root)`.
+**공개 API** (전부 param→canvas 순수 함수): `artDrawCardFace(card)` · `artDrawCharmEmblem(art,locked)` · `artHydrate(root)`(`canvas[data-cface]`/`canvas[data-emblem]` 스캔 페인트 — innerHTML로 만드는 표면 공용) · `artContactSheet(root)`.
 
 ## 3. 마스터 16색 팔레트 (`ART_PAL`)
 

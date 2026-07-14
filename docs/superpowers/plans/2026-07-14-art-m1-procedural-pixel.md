@@ -309,7 +309,7 @@ git commit -m "feat(art): 절차적 픽셀 카드 페이스 32종 — cardEl can
 
 **Interfaces:**
 - Consumes: pixel/sprites 전역, `ART_ACCENT`, `ART_C`
-- Produces: `artDrawCharmEmblem(art,cluster,locked) -> HTMLCanvasElement(16×16)` · `artEmblemHTML(c,locked,px) -> string` (`<canvas class="cemblem" data-em="shape,symbol,accent,locked" style="width:{px}px;height:{px}px">`) · artHydrate가 data-em도 페인트
+- Produces: `artDrawCharmEmblem(art,locked) -> HTMLCanvasElement(16×16)` · `artEmblemHTML(c,locked,px) -> string` (`<canvas class="cemblem" data-em="shape,symbol,accent,locked" style="width:{px}px;height:{px}px">`) · artHydrate가 data-em도 페인트
 
 - [ ] **Step 1: charms.cjs — 22종에 art 필드 추가** (spec §5 표 = SSoT. hooks·cost·cluster 무변경, 필드만 추가). 매핑 (id → shape/symbol/accent):
 
@@ -344,15 +344,13 @@ const ART_SYMBOL={
   steps:[".......XXX",".......X..","....XXXX..","....X.....",".XXXX.....",".X........","XX........","X.........","X.........","XXXXXXXXXX"],
   scales:["....X.....","..XXXXX...",".X..X..X..","X...X...X.","XXX.X.XXX.",".X..X..X..","....X.....","....X.....","...XXX....","..XXXXX..."],
 };
-function artDrawCharmEmblem(art,cluster,locked){
+function artDrawCharmEmblem(art,locked){
   const g=artGrid(16,16);
   artRect(g,0,0,16,16,ART_C.navy); artFrame(g,0,0,16,16,ART_C.slate);
   const ac=locked?ART_C.soft:ART_C[art.accent];
   ART_SHAPE[art.shape](g,ac);
-  const inner=locked?ART_C.navy:ART_C.navy;
-  // 심볼은 틀 위에 navy로 음각 후 하이라이트 — 가독을 위해 2패스(그림자+본체)
-  const sym=ART_SYMBOL[art.symbol]||ART_SYMBOL.flame;
-  artStamp(g,3,3,sym,locked?ART_C.ink:ART_C.navy);
+  const sym=ART_SYMBOL[art.symbol]||ART_SYMBOL.flame;   // 폴백=중복 flame이 시트에서 시각적으로 드러남(무성 실패 방지)
+  artStamp(g,3,3,sym,locked?ART_C.ink:ART_C.navy);      // 틀 위 navy 음각 — locked는 ink로 실루엣만
   return artPaint(g,ART_PAL);
 }
 function artEmblemHTML(c,locked,px){ const a=c.art; return `<canvas class="cemblem" width="16" height="16" style="width:${px}px;height:${px}px" data-em="${a.shape},${a.symbol},${a.accent},${locked?1:0}"></canvas>`; }
@@ -364,7 +362,7 @@ module.exports = { ART_SHAPE, ART_SYMBOL, artDrawCharmEmblem, artEmblemHTML };
 
 ```js
   root.querySelectorAll("canvas[data-em]").forEach(cv=>{ const a=cv.getAttribute("data-em").split(",");
-    const src=artDrawCharmEmblem({shape:a[0],symbol:a[1],accent:a[2]},null,a[3]==="1");
+    const src=artDrawCharmEmblem({shape:a[0],symbol:a[1],accent:a[2]},a[3]==="1");
     cv.getContext("2d").drawImage(src,0,0); cv.removeAttribute("data-em"); });
 ```
 
@@ -436,8 +434,8 @@ function artContactSheet(root){
   for(let s=0;s<4;s++) for(let r=1;r<=8;r++) artSheetCanvas(faces,artDrawCardFace({suit:s,rank:r,enh:null}),2);
   ["wild","gold","mult"].forEach(e=>artSheetCanvas(faces,artDrawCardFace({suit:0,rank:1,enh:e}),2,e));
   const emb=artSheetSection(root,"엠블럼 22 (+locked)");
-  for(const c of CHARMS){ artSheetCanvas(emb,artDrawCharmEmblem(c.art,c.cluster||null,false),3,c.id); }
-  for(const c of CHARMS){ artSheetCanvas(emb,artDrawCharmEmblem(c.art,c.cluster||null,true),3); }
+  for(const c of CHARMS){ artSheetCanvas(emb,artDrawCharmEmblem(c.art,false),3,c.id); }
+  for(const c of CHARMS){ artSheetCanvas(emb,artDrawCharmEmblem(c.art,true),3); }
   for(const k in ART_CVD){ const p=artCvdPal(ART_CVD[k]); const sec=artSheetSection(root,"CVD "+k);
     for(let i=1;i<ART_PAL.length;i++){ const g=artGrid(12,12); artRect(g,0,0,12,12,i); artSheetCanvas(sec,artPaint(g,p),3,String(i)); }
     for(const c of CHARMS){ const g=artGrid(16,16); artRect(g,0,0,16,16,ART_C.navy); artFrame(g,0,0,16,16,ART_C.slate); ART_SHAPE[c.art.shape](g,ART_C[c.art.accent]); artStamp(g,3,3,ART_SYMBOL[c.art.symbol]||ART_SYMBOL.flame,ART_C.navy); artSheetCanvas(sec,artPaint(g,p),3,c.id); } }
