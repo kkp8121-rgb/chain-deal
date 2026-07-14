@@ -6,4 +6,5 @@ const { artGrid, artSet, artRect, artFrame, artStamp, artStamp180, artPaint } = 
 const { ART_GLYPH, ART_PIP, ART_BADGE } = require('./sprites.cjs');
 const { artDrawCardFace, artFaceHTML, artHydrate } = require('./cards.cjs');
 const { ART_SHAPE, ART_SYMBOL, artDrawCharmEmblem, artEmblemHTML } = require('./charmart.cjs');
-module.exports = { ART_PAL, ART_C, ART_ACCENT, artGrid, artSet, artRect, artFrame, artStamp, artStamp180, artPaint, ART_GLYPH, ART_PIP, ART_BADGE, artDrawCardFace, artFaceHTML, artHydrate, ART_SHAPE, ART_SYMBOL, artDrawCharmEmblem, artEmblemHTML };
+const { artContactSheet } = require('./sheet.cjs');
+module.exports = { ART_PAL, ART_C, ART_ACCENT, artGrid, artSet, artRect, artFrame, artStamp, artStamp180, artPaint, ART_GLYPH, ART_PIP, ART_BADGE, artDrawCardFace, artFaceHTML, artHydrate, ART_SHAPE, ART_SYMBOL, artDrawCharmEmblem, artEmblemHTML, artContactSheet };

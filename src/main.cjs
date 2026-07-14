@@ -200,7 +200,7 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
 // ★Step 4a: connect/climbSealed 연결판정·chain rank합·boss base/mult/cap 효과·enh(gold/mult-enh)까지
 // scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
 const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
-const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML } = require('./art/art.cjs');
+const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML, artContactSheet } = require('./art/art.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -628,11 +628,14 @@ function openBoard(){
   jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 ${t('ui.board.allTimeBest')}</div>${boardRows(d)}`; });
 }
 
-checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
-registerScreen('title',    { el: document.getElementById('scrTitle') });
-registerScreen('run',      { el: document.getElementById('scrRun') });
-registerScreen('settings', { el: document.getElementById('scrSettings'), mount: mountSettings });
-registerScreen('summary',  { el: document.getElementById('scrSummary'), mount: mountSummary });
-registerScreens({ showScreen, currentScreen });
-showScreen('title');
-selDeck=getMeta().deck||"standard"; renderDeckLbl();
+if(/[?&]art=sheet(&|$)/.test(location.search)){ artContactSheet(document.body); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0)
+else {
+  checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
+  registerScreen('title',    { el: document.getElementById('scrTitle') });
+  registerScreen('run',      { el: document.getElementById('scrRun') });
+  registerScreen('settings', { el: document.getElementById('scrSettings'), mount: mountSettings });
+  registerScreen('summary',  { el: document.getElementById('scrSummary'), mount: mountSummary });
+  registerScreens({ showScreen, currentScreen });
+  showScreen('title');
+  selDeck=getMeta().deck||"standard"; renderDeckLbl();
+}
