@@ -120,8 +120,8 @@ function checkUnlocks(st,row){ const cur=getUnlocked(), fresh=[]; for(const id i
 function charmsHTML(){
   let h=`<h3>🧿 ${t('ui.charms.title')}</h3><p class="drawerSub">${t('ui.charms.sub')}</p>`;
   for(const c of CHARMS){
-    if(isUnlocked(c.id)) h+=`<div class="hrow"><span><b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ ${t('ui.charms.unlocked')}</span></div>`;
-    else h+=`<div class="hrow" style="opacity:.55"><span><b class="hname">🔒 ？？？</b><br><span class="hdesc">${t('ui.charms.lockedCond')} ${(UNLOCKS[c.id]||{}).hint||t('ui.charms.private')}</span></span><span class="hsmall">${t('ui.charms.lockedTag')}</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
+    if(isUnlocked(c.id)) h+=`<div class="hrow"><span>${artEmblemHTML(c,false,20)}<b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ ${t('ui.charms.unlocked')}</span></div>`;
+    else h+=`<div class="hrow" style="opacity:.55"><span>${artEmblemHTML(c,true,20)}<b class="hname">🔒 ？？？</b><br><span class="hdesc">${t('ui.charms.lockedCond')} ${(UNLOCKS[c.id]||{}).hint||t('ui.charms.private')}</span></span><span class="hsmall">${t('ui.charms.lockedTag')}</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
   }
   const n=CHARMS.filter(c=>isUnlocked(c.id)).length;
   h+=`<p class="drawerNote">🧿 ${t('ui.charms.unlocked')} ${n} / ${CHARMS.length}</p>`;
@@ -200,7 +200,7 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
 // ★Step 4a: connect/climbSealed 연결판정·chain rank합·boss base/mult/cap 효과·enh(gold/mult-enh)까지
 // scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
 const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
-const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate } = require('./art/art.cjs');
+const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML } = require('./art/art.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -347,10 +347,11 @@ function renderShop(){
   const off=document.createElement("div"); off.className="offer";
   S.shopOffers.forEach((p,i)=>{ const afford=!p.sold && S.gold>=p.cost;
     const d=document.createElement("div"); d.className="ocard"+(p.sold?" sold":afford?"":" cantafford");
-    d.innerHTML=`<div class="on">${p.name}</div><div class="od">${p.desc}</div><div class="ocost">${p.sold?"✓ "+t('ui.shop.purchased'):"💰 "+p.cost}</div>`;
+    d.innerHTML=`${p.type==="charm"?artEmblemHTML(p.charm,false,24):""}<div class="on">${p.name}</div><div class="od">${p.desc}</div><div class="ocost">${p.sold?"✓ "+t('ui.shop.purchased'):"💰 "+p.cost}</div>`;
     if(afford) d.onclick=()=>buyShop(i);
     off.appendChild(d); });
   body.appendChild(off);
+  artHydrate(body);
   const rrCost=REROLL_BASE+S.shopRerolls, canRR=S.gold>=rrCost;
   const rr=document.createElement("div"); rr.style.marginTop="10px";
   rr.innerHTML=`<button onclick="rerollShop()"${canRR?"":" disabled style='opacity:.45;cursor:not-allowed'"}>🔄 ${t('ui.shop.rerollOffers')} (💰${rrCost})</button>`;
@@ -392,9 +393,10 @@ function pickSuitToAdd(){
   body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${t('ui.pick.suit')}</div>`;
   const grid=document.createElement("div"); grid.className="offer";
   SUITS.forEach(su=>{ const d=document.createElement("div"); d.className="ocard"; d.style.minWidth="80px";
-    d.innerHTML=`<div class="on" style="font-size:28px;color:${su.red?'#ff6b6b':'#cdd6f5'}">${su.g}</div>`;
+    d.innerHTML=artFaceHTML({suit:su.k,rank:8,enh:null},"suitpick");
     d.onclick=()=>{ S.deck.push(mkCard(su.k,7+ri(2))); shuffle(S.deck); renderShop(); }; grid.appendChild(d); });
   body.appendChild(grid);
+  artHydrate(grid);
 }
 function advanceBlind(){
   S.shopOffers=null;
@@ -452,7 +454,8 @@ function render(){
     w.appendChild(cardEl(c)); w.insertAdjacentHTML("beforeend",zap);
     w.onclick=()=>placeCard(i); hand.appendChild(w);
   });
-  document.getElementById("charms").innerHTML=S.owned.map(id=>`<span class="ctag">${CHARMS.find(c=>c.id===id).name}</span>`).join("");
+  document.getElementById("charms").innerHTML=S.owned.map(id=>{const c=CHARMS.find(x=>x.id===id); return `<span class="ctag">${artEmblemHTML(c,false,18)}${c.name}</span>`;}).join("");
+  artHydrate(document.getElementById("charms"));
   const rbox=document.getElementById("rerollBox");
   if(rbox){ rbox.style.display=S.rerollMax>0?"flex":"none";
     document.getElementById("rrc").textContent="("+S.rerolls+")";
@@ -563,13 +566,13 @@ function deckHTML(){
   all.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
   let h=`<h3>🃏 ${t('ui.deck.title')} (${all.length}${t('ui.count.jang')})</h3><p class="drawerSub">${t('ui.deck.sub')}</p>`;
   for(let s=0;s<4;s++){ const cs=all.filter(c=>c.suit===s); if(!cs.length) continue;
-    h+=`<div class="seg">${suitG(s)} ${cs.length}${t('ui.count.jang')}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(mcEnh).join("")}</div>`; }
+    h+=`<div class="seg">${suitG(s)} ${cs.length}${t('ui.count.jang')}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(c=>artFaceHTML(c,"mini")).join("")}</div>`; }
   const rc={}; all.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
   const dup=Object.entries(rc).filter(([r,n])=>n>=3).map(([r,n])=>`${rankStr(+r)}×${n}`);
   h+= dup.length ? `<p class="drawerNote">💡 ${t('ui.deck.dupPrefix')} ${dup.join(", ")} ${t('ui.deck.dupSuffix')}</p>` : `<p class="drawerNote">${t('ui.deck.noDup')}</p>`;
   return h;
 }
-function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?rulesHTML():type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?rulesHTML():type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; artHydrate(document.getElementById("drawerBody")); document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
 /* ---------- 결과 공유 (v3.21) — 모바일=navigator.share 시트 / 데스크탑=클립보드. 데일리=같은 보드 경쟁 공유(스포일러 없음) ---------- */

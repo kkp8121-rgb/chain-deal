@@ -128,6 +128,9 @@
   .spark{position:absolute; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:35}
   .charms{display:flex; gap:7px; justify-content:center; margin-top:7px; flex-wrap:wrap; min-height:24px}
   .ctag{background:#241b40; border:1px solid var(--rune); border-radius:6px; padding:2px 9px; font-size:11px; color:#d9ccf5}
+  canvas.cemblem{image-rendering:pixelated; vertical-align:-3px; margin-right:4px}
+  canvas.cface.mini{width:26px; height:37px; image-rendering:pixelated}
+  canvas.cface.suitpick{width:50px; height:72px; image-rendering:pixelated}
   .banner{margin-top:9px; min-height:22px; text-align:center; font-size:15px; font-weight:700}
   .controls{display:flex; gap:10px; justify-content:center; margin-top:8px; flex-wrap:wrap}
   button{font-family:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line);
@@ -1023,49 +1026,49 @@ let MUTED = false; try{ MUTED = localStorage.getItem("cd_muted")==="1"; }catch(e
 //   hooks.settleOverride(row,hk,ctx)->number|null(hb 자체를 덮어씀, broker 전용). 엔진은 src/rules/scoring.cjs.
 const CHARMS=[
   {id:"greed",  name:t('charm.greed.name'),   desc:t('charm.greed.desc'),
-    hooks:{ base:(card,ctx)=>3 }},
+    hooks:{ base:(card,ctx)=>3 }, art:{shape:"coin",symbol:"stack",accent:"bronze"}},
   {id:"pyro",   name:t('charm.pyro.name'),   desc:t('charm.pyro.desc'),
-    hooks:{ mult:(card,left,ctx)=> ctx.isRed(card.suit) ? 2 : 0 }},
+    hooks:{ mult:(card,left,ctx)=> ctx.isRed(card.suit) ? 2 : 0 }, art:{shape:"shield",symbol:"flame",accent:"red"}},
   {id:"suited", name:t('charm.suited.name'),desc:t('charm.suited.desc'),
-    hooks:{ mult:(card,left,ctx)=> card.suit===left.suit ? 1 : 0 }},
+    hooks:{ mult:(card,left,ctx)=> card.suit===left.suit ? 1 : 0 }, art:{shape:"banner",symbol:"pips2",accent:"steel"}},
   {id:"runner", name:t('charm.runner.name'),   desc:t('charm.runner.desc'),
-    hooks:{ mult:(card,left,ctx)=> Math.abs(card.rank-left.rank)===1 ? 1 : 0 }},
+    hooks:{ mult:(card,left,ctx)=> Math.abs(card.rank-left.rank)===1 ? 1 : 0 }, art:{shape:"banner",symbol:"ascend",accent:"green"}},
   {id:"jackpot",name:t('charm.jackpot.name'),   desc:t('charm.jackpot.desc'),
-    hooks:{ chainMul:(bonus,runLen,ctx)=> runLen>=4 ? bonus*2 : bonus }},
+    hooks:{ chainMul:(bonus,runLen,ctx)=> runLen>=4 ? bonus*2 : bonus }, art:{shape:"coin",symbol:"burst",accent:"white"}},
   {id:"noir",     name:t('charm.noir.name'),   desc:t('charm.noir.desc'),
-    hooks:{ mult:(card,left,ctx)=> !ctx.isRed(card.suit) ? 2 : 0 }},
+    hooks:{ mult:(card,left,ctx)=> !ctx.isRed(card.suit) ? 2 : 0 }, art:{shape:"diamond",symbol:"spademoon",accent:"ink"}},
   {id:"broker",   name:t('charm.broker.name'), desc:t('charm.broker.desc'),
-    hooks:{ settleOverride:(row,hk,ctx)=>{ const BR={pair:.05,twoPair:.08,trips:.12}; return BR[hk]!=null ? Math.round(ctx.blindBase*BR[hk]) : null; } }},
+    hooks:{ settleOverride:(row,hk,ctx)=>{ const BR={pair:.05,twoPair:.08,trips:.12}; return BR[hk]!=null ? Math.round(ctx.blindBase*BR[hk]) : null; } }, art:{shape:"coin",symbol:"scales",accent:"steel"}},
   {id:"twins",    name:t('charm.twins.name'), desc:t('charm.twins.desc'),
-    hooks:{ settle:(row,hk,ctx)=>{ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return Math.round(ctx.blindBase*.03*Math.min(g,4)); } }},
+    hooks:{ settle:(row,hk,ctx)=>{ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return Math.round(ctx.blindBase*.03*Math.min(g,4)); } }, art:{shape:"plate",symbol:"twindots",accent:"white"}},
   {id:"compactor",name:t('charm.compactor.name'), desc:t('charm.compactor.desc'),
-    hooks:{ base:(card,ctx)=> Math.min(8, Math.max(0, 32-ctx.liveDeckCount)) }},
+    hooks:{ base:(card,ctx)=> Math.min(8, Math.max(0, 32-ctx.liveDeckCount)) }, art:{shape:"plate",symbol:"press",accent:"ink"}},
   {id:"runts",    name:t('charm.runts.name'), desc:t('charm.runts.desc'),
-    hooks:{ base:(card,ctx)=> card.rank<=3 ? 4 : 0 }},
+    hooks:{ base:(card,ctx)=> card.rank<=3 ? 4 : 0 }, art:{shape:"shield",symbol:"sprout",accent:"green"}},
   {id:"bridge",   name:t('charm.bridge.name'),   desc:t('charm.bridge.desc'),
-    hooks:{ settle:(row,hk,ctx)=> Math.round(ctx.blindBase*.03*Math.min(ctx.bridgeCount(row),3)) }},
+    hooks:{ settle:(row,hk,ctx)=> Math.round(ctx.blindBase*.03*Math.min(ctx.bridgeCount(row),3)) }, art:{shape:"plate",symbol:"arch",accent:"steel"}},
   {id:"stair",    name:t('charm.stair.name'),desc:t('charm.stair.desc'),
-    hooks:{ settle:(row,hk,ctx)=> Math.round(ctx.blindBase*.04*Math.max(0,Math.min(ctx.maxAscLen(row),6)-2)) }},
+    hooks:{ settle:(row,hk,ctx)=> Math.round(ctx.blindBase*.04*Math.max(0,Math.min(ctx.maxAscLen(row),6)-2)) }, art:{shape:"shield",symbol:"steps",accent:"steel"}},
   {id:"keystone", name:t('charm.keystone.name'), desc:t('charm.keystone.desc'),
-    hooks:{ settle:(row,hk,ctx)=> Math.round(ctx.blindBase*.18*Math.max(0,(ctx.edgeVal(row)-12)/12)) }},
+    hooks:{ settle:(row,hk,ctx)=> Math.round(ctx.blindBase*.18*Math.max(0,(ctx.edgeVal(row)-12)/12)) }, art:{shape:"diamond",symbol:"keystone",accent:"steel"}},
   {id:"lapidary", name:t('charm.lapidary.name'), desc:t('charm.lapidary.desc'), cost:5, cluster:"gem",
-    hooks:{ base:(card,ctx)=> (card.enh && !ctx.boss('rust')) ? 3 : 0 }},
+    hooks:{ base:(card,ctx)=> (card.enh && !ctx.boss('rust')) ? 3 : 0 }, art:{shape:"gem",symbol:"chisel",accent:"cyan"}},
   {id:"prism",    name:t('charm.prism.name'),    desc:t('charm.prism.desc'), cost:5, cluster:"gem",
-    hooks:{ settle:(row,hk,ctx)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return (w&&g&&m && !ctx.boss('rust')) ? Math.round(ctx.blindBase*.12) : 0; } }},
+    hooks:{ settle:(row,hk,ctx)=>{ let w=0,g=0,m=0; for(const c of row){ if(c.enh==="wild")w=1; else if(c.enh==="gold")g=1; else if(c.enh==="mult")m=1; } return (w&&g&&m && !ctx.boss('rust')) ? Math.round(ctx.blindBase*.12) : 0; } }, art:{shape:"diamond",symbol:"prism",accent:"cyan"}},
   {id:"jewelbox", name:t('charm.jewelbox.name'), desc:t('charm.jewelbox.desc'), cluster:"gem",
-    hooks:{ settle:(row,hk,ctx)=>{ let e=0; for(const c of row) if(c.enh) e++; return Math.round(ctx.blindBase*.025*Math.min(e,6)); } }},
+    hooks:{ settle:(row,hk,ctx)=>{ let e=0; for(const c of row) if(c.enh) e++; return Math.round(ctx.blindBase*.025*Math.min(e,6)); } }, art:{shape:"plate",symbol:"box",accent:"cyan"}},
   {id:"highmult", name:t('charm.highmult.name'), desc:t('charm.highmult.desc'), cost:5, cluster:"apex",
-    hooks:{ mult:(card,left,ctx)=> card.rank>=7 ? 1 : 0 }},
+    hooks:{ mult:(card,left,ctx)=> card.rank>=7 ? 1 : 0 }, art:{shape:"shield",symbol:"peak",accent:"gold"}},
   {id:"magnate",  name:t('charm.magnate.name'),  desc:t('charm.magnate.desc'), cluster:"apex",
-    hooks:{ settle:(row,hk,ctx)=>{ let h=0; for(const c of row) if(c.enh!=="wild"&&c.rank>=7) h++; return Math.round(ctx.blindBase*.03*Math.min(h,5)); } }},
+    hooks:{ settle:(row,hk,ctx)=>{ let h=0; for(const c of row) if(c.enh!=="wild"&&c.rank>=7) h++; return Math.round(ctx.blindBase*.03*Math.min(h,5)); } }, art:{shape:"coin",symbol:"ingot",accent:"gold"}},
   {id:"echo",   name:t('charm.echo.name'),   desc:t('charm.echo.desc'), cost:3, cluster:"cartel",
-    hooks:{ mult:(card,left,ctx)=> card.rank===left.rank ? 1 : 0 }},
+    hooks:{ mult:(card,left,ctx)=> card.rank===left.rank ? 1 : 0 }, art:{shape:"banner",symbol:"waves",accent:"orange"}},
   {id:"loaded", name:t('charm.loaded.name'), desc:t('charm.loaded.desc'), cluster:"cartel",
-    hooks:{ settle:(row,hk,ctx)=> hk==="fourKind" ? Math.round(ctx.blindBase*.10) : hk==="fiveKind" ? Math.round(ctx.blindBase*.30) : 0 }},
+    hooks:{ settle:(row,hk,ctx)=> hk==="fourKind" ? Math.round(ctx.blindBase*.10) : hk==="fiveKind" ? Math.round(ctx.blindBase*.30) : 0 }, art:{shape:"diamond",symbol:"dice",accent:"orange"}},
   {id:"climax", name:t('charm.climax.name'),   desc:t('charm.climax.desc'), cluster:"cartel",
-    hooks:{ settle:(row,hk,ctx)=>{ if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)) return 0; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(ctx.connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return Math.round(ctx.blindBase*.03*Math.max(0,Math.min(L,8)-5)); } }},
+    hooks:{ settle:(row,hk,ctx)=>{ if(!["fullHouse","fourKind","straightFlush","fiveKind"].includes(hk)) return 0; let L=1,cur=1; for(let i=1;i<row.length;i++){ if(ctx.connect(row[i],row[i-1])){ cur++; if(cur>L)L=cur; } else cur=1; } return Math.round(ctx.blindBase*.03*Math.max(0,Math.min(L,8)-5)); } }, art:{shape:"shield",symbol:"bolt",accent:"orange"}},
   {id:"twotone",  name:t('charm.twotone.name'), desc:t('charm.twotone.desc'),
-    hooks:{ settle:(row,hk,ctx)=>{ let h=0,d=0,s=0,c=0; for(const x of row){ if(x.enh==="wild")continue; if(x.suit===1)h++; else if(x.suit===2)d++; else if(x.suit===0)s++; else c++; } const red=h+d,black=s+c,dom=Math.max(red,black); const bothSuits=red>=black?(h>0&&d>0):(s>0&&c>0); return bothSuits ? Math.round(ctx.blindBase*0.04*Math.max(0,Math.min(dom,8)-4)) : 0; } }},
+    hooks:{ settle:(row,hk,ctx)=>{ let h=0,d=0,s=0,c=0; for(const x of row){ if(x.enh==="wild")continue; if(x.suit===1)h++; else if(x.suit===2)d++; else if(x.suit===0)s++; else c++; } const red=h+d,black=s+c,dom=Math.max(red,black); const bothSuits=red>=black?(h>0&&d>0):(s>0&&c>0); return bothSuits ? Math.round(ctx.blindBase*0.04*Math.max(0,Math.min(dom,8)-4)) : 0; } }, art:{shape:"diamond",symbol:"halves",accent:"red"}},
 ];
 const has=id=>S.owned.includes(id);
 
@@ -1106,8 +1109,8 @@ function checkUnlocks(st,row){ const cur=getUnlocked(), fresh=[]; for(const id i
 function charmsHTML(){
   let h=`<h3>🧿 ${t('ui.charms.title')}</h3><p class="drawerSub">${t('ui.charms.sub')}</p>`;
   for(const c of CHARMS){
-    if(isUnlocked(c.id)) h+=`<div class="hrow"><span><b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ ${t('ui.charms.unlocked')}</span></div>`;
-    else h+=`<div class="hrow" style="opacity:.55"><span><b class="hname">🔒 ？？？</b><br><span class="hdesc">${t('ui.charms.lockedCond')} ${(UNLOCKS[c.id]||{}).hint||t('ui.charms.private')}</span></span><span class="hsmall">${t('ui.charms.lockedTag')}</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
+    if(isUnlocked(c.id)) h+=`<div class="hrow"><span>${artEmblemHTML(c,false,20)}<b class="hname">${c.name}</b><br><span class="hdesc">${c.desc}</span></span><span class="hbig">✓ ${t('ui.charms.unlocked')}</span></div>`;
+    else h+=`<div class="hrow" style="opacity:.55"><span>${artEmblemHTML(c,true,20)}<b class="hname">🔒 ？？？</b><br><span class="hdesc">${t('ui.charms.lockedCond')} ${(UNLOCKS[c.id]||{}).hint||t('ui.charms.private')}</span></span><span class="hsmall">${t('ui.charms.lockedTag')}</span></div>`;   // ★불변식: 시작 부적 아닌 모든 부적은 UNLOCKS 항목 필요(없으면 영구 잠김)
   }
   const n=CHARMS.filter(c=>isUnlocked(c.id)).length;
   h+=`<p class="drawerNote">🧿 ${t('ui.charms.unlocked')} ${n} / ${CHARMS.length}</p>`;
@@ -1384,7 +1387,58 @@ function artHydrate(root){
   root.querySelectorAll("canvas[data-cf]").forEach(cv=>{ const a=cv.getAttribute("data-cf").split(","); const card={suit:+a[0],rank:+a[1],enh:a[2]||null}; const k=card.suit+":"+card.rank+":"+(card.enh||"");
     let src=artFaceCache.get(k); if(!src){ src=artPaint(artFaceGrid(card.suit,card.rank,card.enh),ART_PAL); artFaceCache.set(k,src); }
     cv.getContext("2d").drawImage(src,0,0); cv.removeAttribute("data-cf"); });
+  root.querySelectorAll("canvas[data-em]").forEach(cv=>{ const a=cv.getAttribute("data-em").split(",");   // 부적 엠블럼(charmart.cjs, 함수선언=호이스팅되어 textual 순서 무관)
+    const src=artDrawCharmEmblem({shape:a[0],symbol:a[1],accent:a[2]},a[3]==="1");
+    cv.getContext("2d").drawImage(src,0,0); cv.removeAttribute("data-em"); });
 }
+// src/art/charmart.cjs — 부적 엠블럼 16×16 (spec §5). navy 바탕+slate 보더+accent.
+// (shape,accent) 조합 22종 유니크 = 구분성 1차 규칙. locked=ink-soft 실루엣.
+// ★art/ 규약: 최상위 식별자 art/ART_ 접두, leaf 간 require 금지(파사드 art.cjs만 의존 순서로 require).
+//   여기서 쓰는 artGrid/artRect/artFrame/artStamp/artPaint·ART_C/ART_PAL 은 concat 전역(pixel/palette).
+// ★심볼 인코딩: 10행×10자, "X"=칠함 "."=투명. 스탬프 위치 (3,3) — 틀 위 navy 음각(심볼=구멍). locked는 ink 실루엣.
+//   판독 규칙: 2px 이상 굵기(1px 음각은 안 보임)·수직/수평/계단 우선. Task 6에서 시각 이터레이션(키·크기 불변).
+const ART_SHAPE={
+  shield:(g,c)=>{ artRect(g,3,2,10,9,c); artRect(g,4,11,8,2,c); artRect(g,6,13,4,1,c); },
+  coin:(g,c)=>{ artRect(g,4,2,8,12,c); artRect(g,2,4,12,8,c); artRect(g,3,3,10,10,c); },
+  banner:(g,c)=>{ artRect(g,3,2,10,11,c); artRect(g,3,13,4,1,c); artRect(g,9,13,4,1,c); },
+  plate:(g,c)=>{ artRect(g,2,4,12,9,c); },
+  diamond:(g,c)=>{ for(let j=0;j<6;j++){ artRect(g,8-1-j,2+j,2+2*j,1,c); artRect(g,8-1-j,13-j,2+2*j,1,c); } artRect(g,2,8,12,1,c); },
+  gem:(g,c)=>{ artRect(g,5,2,6,1,c); artRect(g,3,3,10,4,c); artRect(g,4,7,8,3,c); artRect(g,6,10,4,2,c); artRect(g,7,12,2,1,c); },
+};
+const ART_SYMBOL={
+  flame:["....X.....","...XX.....","...XXX....","..XXXX....",".XXXXXX...",".XX.XXX...","XXX.XXXX..","XXXXXXXX..",".XXXXXX...","..XXXX...."],
+  arch:["..........","XXXXXXXXXX","X..XXXX..X","..XX..XX..",".XX....XX.",".X......X.","XX......XX","X........X","X........X",".........."],
+  steps:[".......XXX",".......X..","....XXXX..","....X.....",".XXXX.....",".X........","XX........","X.........","X.........","XXXXXXXXXX"],
+  scales:["....X.....","..XXXXX...",".X..X..X..","X...X...X.","XXX.X.XXX.",".X..X..X..","....X.....","....X.....","...XXX....","..XXXXX..."],
+  stack:["..........",".XXXXXXXX.",".XXXXXXXX.","..........",".XXXXXXXX.",".XXXXXXXX.","..........",".XXXXXXXX.",".XXXXXXXX.",".........."],
+  pips2:["..........","..........",".XX....XX.","XXXX..XXXX","XXXX..XXXX","XXXX..XXXX",".XX....XX.","..........","..........",".........."],
+  ascend:["..........","......XXXX","......XXXX","....XXXX..","....XX....","..XXXX....","..XX......","XXXX......","XX........",".........."],
+  burst:["....XX....",".X..XX..X.","..X.XX.X..","...XXXX...","XXXXXXXXXX","XXXXXXXXXX","...XXXX...","..X.XX.X..",".X..XX..X.","....XX...."],
+  spademoon:["..XXXX....",".XXX......","XXX....X..","XX....XXX.","XX...XXXXX","XX....XXX.","XX.....X..","XXX.......",".XXX......","..XXXX...."],
+  twindots:["XXXX..XXXX",".XX....XX.",".XX....XX.",".XX....XX.",".XX....XX.",".XX....XX.",".XX....XX.",".XX....XX.","XXXX..XXXX",".........."],
+  press:["XXXXXXXXXX","XXXXXXXXXX","....XX....","....XX....","..XXXXXX..","..XXXXXX..","..........","XXXXXXXXXX","XXXXXXXXXX",".........."],
+  sprout:[".XX....XX.","XXXX..XXXX",".XXX..XXX.","...XXXX...","....XX....","....XX....","....XX....","....XX....","..XXXXXX..",".........."],
+  keystone:["..........","XXXXXXXXXX","XXXXXXXXXX",".XXXXXXXX.",".XXXXXXXX.","..XXXXXX..","..XXXXXX..","...XXXX...","...XXXX...",".........."],
+  chisel:[".XXX......",".XXX......",".XXX......",".XXX...X..","..X...XXX.","..X..XXXXX","..X...XXX.",".XXX...X..","..........",".........."],
+  prism:["...X......","..XXX.....","..XXX..XXX",".XXXXX....",".XXXXX.XXX","XXXXXXX...","XXXXXXX.XX","..........","..........",".........."],
+  box:[".XXXXXXXX.",".X......X.",".XXXXXXXX.","..........","XXXXXXXXXX","X...XX...X","X..XXXX..X","X...XX...X","X........X","XXXXXXXXXX"],
+  peak:["....XXXX..","....X.....","...XXX....","...XXXX...","..XXXXXX..","..XXXXXX..",".XXXXXXXX.","XXXXXXXXXX","XXXXXXXXXX",".........."],
+  ingot:["..........","...XXXX...","..XXXXXX..","..XXXXXX..","..........",".XXXXXXXX.","XXXXXXXXXX","XXXXXXXXXX","..........",".........."],
+  waves:["..........","...XXXX...","..X....X..",".X..XX..X.",".X.X..X.X.",".X.X..X.X.",".X..XX..X.","..X....X..","...XXXX...",".........."],
+  dice:["XXXXXXXXXX","X........X","X.XX..XX.X","X.XX..XX.X","X........X","X...XX...X","X...XX...X","X.XX..XX.X","X.XX..XX.X","XXXXXXXXXX"],
+  bolt:[".....XXX..","....XX....","...XX.....","..XXXXX...",".....XX...","....XX....","...XX.....","..XX......",".X........",".........."],
+  halves:["...XXXX...",".XXX...X..",".XX.....X.","XXX......X","XXX......X","XXX......X","XXX......X",".XX.....X.",".XXX...X..","...XXXX..."],
+};
+function artDrawCharmEmblem(art,locked){
+  const g=artGrid(16,16);
+  artRect(g,0,0,16,16,ART_C.navy); artFrame(g,0,0,16,16,ART_C.slate);
+  const ac=locked?ART_C.soft:ART_C[art.accent];
+  ART_SHAPE[art.shape](g,ac);
+  const sym=ART_SYMBOL[art.symbol]||ART_SYMBOL.flame;   // 폴백=중복 flame이 시트에서 시각적으로 드러남(무성 실패 방지)
+  artStamp(g,3,3,sym,locked?ART_C.ink:ART_C.navy);      // 틀 위 navy 음각 — locked는 ink로 실루엣만
+  return artPaint(g,ART_PAL);
+}
+function artEmblemHTML(c,locked,px){ const a=c.art; return `<canvas class="cemblem" width="16" height="16" style="width:${px}px;height:${px}px" data-em="${a.shape},${a.symbol},${a.accent},${locked?1:0}"></canvas>`; }
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -1531,10 +1585,11 @@ function renderShop(){
   const off=document.createElement("div"); off.className="offer";
   S.shopOffers.forEach((p,i)=>{ const afford=!p.sold && S.gold>=p.cost;
     const d=document.createElement("div"); d.className="ocard"+(p.sold?" sold":afford?"":" cantafford");
-    d.innerHTML=`<div class="on">${p.name}</div><div class="od">${p.desc}</div><div class="ocost">${p.sold?"✓ "+t('ui.shop.purchased'):"💰 "+p.cost}</div>`;
+    d.innerHTML=`${p.type==="charm"?artEmblemHTML(p.charm,false,24):""}<div class="on">${p.name}</div><div class="od">${p.desc}</div><div class="ocost">${p.sold?"✓ "+t('ui.shop.purchased'):"💰 "+p.cost}</div>`;
     if(afford) d.onclick=()=>buyShop(i);
     off.appendChild(d); });
   body.appendChild(off);
+  artHydrate(body);
   const rrCost=REROLL_BASE+S.shopRerolls, canRR=S.gold>=rrCost;
   const rr=document.createElement("div"); rr.style.marginTop="10px";
   rr.innerHTML=`<button onclick="rerollShop()"${canRR?"":" disabled style='opacity:.45;cursor:not-allowed'"}>🔄 ${t('ui.shop.rerollOffers')} (💰${rrCost})</button>`;
@@ -1576,9 +1631,10 @@ function pickSuitToAdd(){
   body.innerHTML=`<div style="font-size:13px;color:#aab3d6">${t('ui.pick.suit')}</div>`;
   const grid=document.createElement("div"); grid.className="offer";
   SUITS.forEach(su=>{ const d=document.createElement("div"); d.className="ocard"; d.style.minWidth="80px";
-    d.innerHTML=`<div class="on" style="font-size:28px;color:${su.red?'#ff6b6b':'#cdd6f5'}">${su.g}</div>`;
+    d.innerHTML=artFaceHTML({suit:su.k,rank:8,enh:null},"suitpick");
     d.onclick=()=>{ S.deck.push(mkCard(su.k,7+ri(2))); shuffle(S.deck); renderShop(); }; grid.appendChild(d); });
   body.appendChild(grid);
+  artHydrate(grid);
 }
 function advanceBlind(){
   S.shopOffers=null;
@@ -1636,7 +1692,8 @@ function render(){
     w.appendChild(cardEl(c)); w.insertAdjacentHTML("beforeend",zap);
     w.onclick=()=>placeCard(i); hand.appendChild(w);
   });
-  document.getElementById("charms").innerHTML=S.owned.map(id=>`<span class="ctag">${CHARMS.find(c=>c.id===id).name}</span>`).join("");
+  document.getElementById("charms").innerHTML=S.owned.map(id=>{const c=CHARMS.find(x=>x.id===id); return `<span class="ctag">${artEmblemHTML(c,false,18)}${c.name}</span>`;}).join("");
+  artHydrate(document.getElementById("charms"));
   const rbox=document.getElementById("rerollBox");
   if(rbox){ rbox.style.display=S.rerollMax>0?"flex":"none";
     document.getElementById("rrc").textContent="("+S.rerolls+")";
@@ -1747,13 +1804,13 @@ function deckHTML(){
   all.sort((a,b)=> a.suit-b.suit || a.rank-b.rank);
   let h=`<h3>🃏 ${t('ui.deck.title')} (${all.length}${t('ui.count.jang')})</h3><p class="drawerSub">${t('ui.deck.sub')}</p>`;
   for(let s=0;s<4;s++){ const cs=all.filter(c=>c.suit===s); if(!cs.length) continue;
-    h+=`<div class="seg">${suitG(s)} ${cs.length}${t('ui.count.jang')}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(mcEnh).join("")}</div>`; }
+    h+=`<div class="seg">${suitG(s)} ${cs.length}${t('ui.count.jang')}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${cs.map(c=>artFaceHTML(c,"mini")).join("")}</div>`; }
   const rc={}; all.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
   const dup=Object.entries(rc).filter(([r,n])=>n>=3).map(([r,n])=>`${rankStr(+r)}×${n}`);
   h+= dup.length ? `<p class="drawerNote">💡 ${t('ui.deck.dupPrefix')} ${dup.join(", ")} ${t('ui.deck.dupSuffix')}</p>` : `<p class="drawerNote">${t('ui.deck.noDup')}</p>`;
   return h;
 }
-function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?rulesHTML():type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
+function openDrawer(type){ document.getElementById("drawerBody").innerHTML=type==="rules"?rulesHTML():type==="stats"?statsHTML():type==="deck"?deckHTML():type==="charms"?charmsHTML():type==="meta"?metaHTML():HANDS_HTML; artHydrate(document.getElementById("drawerBody")); document.getElementById("drawerBd").classList.add("show"); document.getElementById("drawer").classList.add("show"); try{beep(560,.05);}catch(e){} }
 function closeDrawer(){ document.getElementById("drawerBd").classList.remove("show"); document.getElementById("drawer").classList.remove("show"); }
 
 /* ---------- 결과 공유 (v3.21) — 모바일=navigator.share 시트 / 데스크탑=클립보드. 데일리=같은 보드 경쟁 공유(스포일러 없음) ---------- */

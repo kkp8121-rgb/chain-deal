@@ -36,5 +36,8 @@ function artHydrate(root){
   root.querySelectorAll("canvas[data-cf]").forEach(cv=>{ const a=cv.getAttribute("data-cf").split(","); const card={suit:+a[0],rank:+a[1],enh:a[2]||null}; const k=card.suit+":"+card.rank+":"+(card.enh||"");
     let src=artFaceCache.get(k); if(!src){ src=artPaint(artFaceGrid(card.suit,card.rank,card.enh),ART_PAL); artFaceCache.set(k,src); }
     cv.getContext("2d").drawImage(src,0,0); cv.removeAttribute("data-cf"); });
+  root.querySelectorAll("canvas[data-em]").forEach(cv=>{ const a=cv.getAttribute("data-em").split(",");   // 부적 엠블럼(charmart.cjs, 함수선언=호이스팅되어 textual 순서 무관)
+    const src=artDrawCharmEmblem({shape:a[0],symbol:a[1],accent:a[2]},a[3]==="1");
+    cv.getContext("2d").drawImage(src,0,0); cv.removeAttribute("data-em"); });
 }
 module.exports = { artDrawCardFace, artFaceHTML, artHydrate };

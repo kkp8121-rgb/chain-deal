@@ -121,6 +121,9 @@
   .spark{position:absolute; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:35}
   .charms{display:flex; gap:7px; justify-content:center; margin-top:7px; flex-wrap:wrap; min-height:24px}
   .ctag{background:#241b40; border:1px solid var(--rune); border-radius:6px; padding:2px 9px; font-size:11px; color:#d9ccf5}
+  canvas.cemblem{image-rendering:pixelated; vertical-align:-3px; margin-right:4px}
+  canvas.cface.mini{width:26px; height:37px; image-rendering:pixelated}
+  canvas.cface.suitpick{width:50px; height:72px; image-rendering:pixelated}
   .banner{margin-top:9px; min-height:22px; text-align:center; font-size:15px; font-weight:700}
   .controls{display:flex; gap:10px; justify-content:center; margin-top:8px; flex-wrap:wrap}
   button{font-family:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line);
