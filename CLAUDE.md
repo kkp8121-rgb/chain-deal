@@ -32,6 +32,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **`src/main.cjs`** — 게임 오케스트레이션(전역 `S` 상태·루프·render·juice·상점·render 프리뷰). content/rules를 require.
 - **`src/content/`** — 순수 데이터: `charms.cjs`(부적 24종, ★각 부적이 `hooks` 필드로 효과 선언) · `bosses.cjs`(12종) · `decks.cjs`(2종 + 생성기) · `hands.cjs`(`HAND_BONUS`) · `tuning.cjs`(상수) · `locale/`(ko/en + `t()` 로더).
 - **`src/rules/`** — 순수 함수(전역 미접근): `connect.cjs`(connect(a,b,boss)·climbSealed) · `hands.cjs`(evalHand·hasRun5) · `blinds.cjs`(blindBase·sparkComp) · `economy.cjs`(spillover) · `scoring.cjs`(★훅 엔진 `scoreCard`/`scoreSettle` — 부적 hooks + boss/enh/cap 일괄 적용).
+- **`src/art/`** (M1, 2026-07-14) — 절차적 픽셀 아트(브라우저 전용, 표시층 — 밸런스 무관·tools 미소비): `palette.cjs`(ART_PAL 16색) · `pixel.cjs`(그리드/페인트 분리 프리미티브) · `sprites.cjs`(핍·글리프·배지 비트맵) · `cards.cjs`(artDrawCardFace 25×36+faceCache+artHydrate) · `charmart.cjs`(엠블럼 22종, (shape,accent) 유니크) · `sheet.cjs`(컨택트시트+CVD) · `art.cjs`(파사드). ★**star 토폴로지**: leaf 간 require 금지, art.cjs만 의존 순서 require(build.mjs가 중복 require throw). 부적 아트 = charms.cjs `art:{shape,symbol,accent}` 필드(sim 불활성). 검수 표면 = **`?art=sheet`**(컨택트시트+색약 3종 시뮬, 배포 페이지에서도 동작). 설계 `docs/superpowers/specs/2026-07-14-art-m1-procedural-pixel-design.md`.
 - **`build.mjs`** — raw-concat + esbuild 파싱게이트 → `prototype/index.html`. **`src/index.template.html`** = 셸(빌드타임 로케일 주입).
 - **콘텐츠 추가 = 데이터 1객체**(hooks 포함) — `src/content/`에 추가하면 게임과 sim이 자동 소비(드리프트 0).
 
