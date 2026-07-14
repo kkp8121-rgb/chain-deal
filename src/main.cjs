@@ -628,7 +628,7 @@ function openBoard(){
   jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 ${t('ui.board.allTimeBest')}</div>${boardRows(d)}`; });
 }
 
-if(/[?&]art=sheet(&|$)/.test(location.search)){ artContactSheet(document.body); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0)
+if(/[?&]art=sheet(&|$)/.test(location.search)){ document.addEventListener("DOMContentLoaded",()=>artContactSheet(document.body)); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0). ★DOMContentLoaded 이후 렌더: 이 <script>는 셸 마크업(드로어·탤리) 앞이라, 동기 실행하면 body를 비워도 파서가 그 마크업을 시트 뒤에 덧붙인다
 else {
   checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
   registerScreen('title',    { el: document.getElementById('scrTitle') });

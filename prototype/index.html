@@ -1036,13 +1036,13 @@ const CHARMS=[
   {id:"jackpot",name:t('charm.jackpot.name'),   desc:t('charm.jackpot.desc'),
     hooks:{ chainMul:(bonus,runLen,ctx)=> runLen>=4 ? bonus*2 : bonus }, art:{shape:"coin",symbol:"burst",accent:"white"}},
   {id:"noir",     name:t('charm.noir.name'),   desc:t('charm.noir.desc'),
-    hooks:{ mult:(card,left,ctx)=> !ctx.isRed(card.suit) ? 2 : 0 }, art:{shape:"diamond",symbol:"spademoon",accent:"ink"}},
+    hooks:{ mult:(card,left,ctx)=> !ctx.isRed(card.suit) ? 2 : 0 }, art:{shape:"diamond",symbol:"spademoon",accent:"white"}},
   {id:"broker",   name:t('charm.broker.name'), desc:t('charm.broker.desc'),
     hooks:{ settleOverride:(row,hk,ctx)=>{ const BR={pair:.05,twoPair:.08,trips:.12}; return BR[hk]!=null ? Math.round(ctx.blindBase*BR[hk]) : null; } }, art:{shape:"coin",symbol:"scales",accent:"steel"}},
   {id:"twins",    name:t('charm.twins.name'), desc:t('charm.twins.desc'),
     hooks:{ settle:(row,hk,ctx)=>{ const rc={}; for(const c of row) if(c.enh!=="wild") rc[c.rank]=(rc[c.rank]||0)+1; let g=0; for(const k in rc) if(rc[k]>=2) g++; return Math.round(ctx.blindBase*.03*Math.min(g,4)); } }, art:{shape:"plate",symbol:"twindots",accent:"white"}},
   {id:"compactor",name:t('charm.compactor.name'), desc:t('charm.compactor.desc'),
-    hooks:{ base:(card,ctx)=> Math.min(8, Math.max(0, 32-ctx.liveDeckCount)) }, art:{shape:"plate",symbol:"press",accent:"ink"}},
+    hooks:{ base:(card,ctx)=> Math.min(8, Math.max(0, 32-ctx.liveDeckCount)) }, art:{shape:"plate",symbol:"press",accent:"bronze"}},
   {id:"runts",    name:t('charm.runts.name'), desc:t('charm.runts.desc'),
     hooks:{ base:(card,ctx)=> card.rank<=3 ? 4 : 0 }, art:{shape:"shield",symbol:"sprout",accent:"green"}},
   {id:"bridge",   name:t('charm.bridge.name'),   desc:t('charm.bridge.desc'),
@@ -1891,7 +1891,7 @@ function openBoard(){
   jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 ${t('ui.board.allTimeBest')}</div>${boardRows(d)}`; });
 }
 
-if(/[?&]art=sheet(&|$)/.test(location.search)){ artContactSheet(document.body); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0)
+if(/[?&]art=sheet(&|$)/.test(location.search)){ document.addEventListener("DOMContentLoaded",()=>artContactSheet(document.body)); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0). ★DOMContentLoaded 이후 렌더: 이 <script>는 셸 마크업(드로어·탤리) 앞이라, 동기 실행하면 body를 비워도 파서가 그 마크업을 시트 뒤에 덧붙인다
 else {
   checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
   registerScreen('title',    { el: document.getElementById('scrTitle') });

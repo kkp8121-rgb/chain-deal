@@ -70,7 +70,7 @@ src/art/
 | 15 | white | `#ffffff` | 하이라이트·액센트 |
 | 16 | steel | `#6f8fd2` | 액센트 |
 
-**클러스터 색 예약 (검수 반영)**: cyan=gem · gold=apex · orange=cartel은 **클러스터 부적 전용** — 무클러스터 부적 액센트로 재사용 금지(accent→클러스터 역매핑 = 게임플레이 가독성, 로드맵 §4). 무클러스터 부적은 red/green/ink/steel/bronze/white에서 배정(§5 표 — purple은 mult enh 전용으로 액센트 미사용).
+**클러스터 색 예약 (검수 반영)**: cyan=gem · gold=apex · orange=cartel은 **클러스터 부적 전용** — 무클러스터 부적 액센트로 재사용 금지(accent→클러스터 역매핑 = 게임플레이 가독성, 로드맵 §4). 무클러스터 부적은 red/green/steel/bronze/white에서 배정(§5 표 — purple은 mult enh 전용으로 액센트 미사용. ★ink는 Task 6 시각 검수에서 navy 바탕 대비 부족으로 액센트 사용 제외 — noir→white, compactor→bronze 재배정, 2026-07-14).
 
 **CVD 수용기준 (검수 반영 — 실사용 범위로 재정의)**: sheet.cjs 내장 deuteranopia/protanopia/tritanopia 시뮬(Viénot/Brettel 근사 행렬) 하에서 —
 1. **(필수) 카드 가독성**: paper 대비 ink·red 대비비 유지(랭크/핍 판독).
@@ -87,7 +87,7 @@ src/art/
 ## 5. 부적 엠블럼 (`artDrawCharmEmblem`)
 
 - **논리 16×16**, navy 바탕 + slate 보더 + accent 적용. 유효 심볼 영역 ~10×10.
-- **구분성 1차 규칙 (검수 반영)**: **(shape,accent) 조합은 22종 전부 유니크** — symbol이 뭉개지는 최소 표시 크기에서도 틀+색만으로 오인 쌍이 없다. shape 5종(shield/coin/banner/plate/diamond) × accent 9색(§3 예약 규칙 준수) → 45조합, 80종 확장 시 shape 어휘 +2~3종 추가로 대응(조합 유여 확보, deco는 그때 도입).
+- **구분성 1차 규칙 (검수 반영)**: **(shape,accent) 조합은 22종 전부 유니크** — symbol이 뭉개지는 최소 표시 크기에서도 틀+색만으로 오인 쌍이 없다. shape 5종(shield/coin/banner/plate/diamond) × accent 8색(§3 예약 규칙 준수, ink 제외) → 40조합, 80종 확장 시 shape 어휘 +2~3종 추가로 대응(조합 유여 확보, deco는 그때 도입).
 - **22종 매핑 (SSoT — 구현 시 픽셀 가독성 재량 조정 허용, 단 (shape,accent) 유니크 불변)**:
 
 | id | shape | symbol | accent | | id | shape | symbol | accent |
@@ -97,10 +97,10 @@ src/art/
 | suited | banner | 동일핍 2 | steel | | keystone | diamond | 쐐기돌 | steel |
 | runner | banner | 오름화살 | green | | lapidary | gem※ | 정+보석 | cyan |
 | jackpot | coin | 별폭발 | white | | prism | diamond | 프리즘 삼각 | cyan |
-| noir | diamond | 스페이드 달 | ink | | jewelbox | plate | 보석함 | cyan |
+| noir | diamond | 스페이드 달 | white | | jewelbox | plate | 보석함 | cyan |
 | broker | coin | 저울 | steel | | highmult | shield | 산정상 | gold |
 | twins | plate | 쌍점 II | white | | magnate | coin | 금괴 | gold |
-| compactor | plate | 압착기 | ink | | echo | banner | 음파 겹원 | orange |
+| compactor | plate | 압착기 | bronze | | echo | banner | 음파 겹원 | orange |
 | runts | shield | 새싹 | green | | loaded | diamond | 주사위 | orange |
 | twotone | diamond | 반반원 | red | | climax | shield | 번개 | orange |
 
