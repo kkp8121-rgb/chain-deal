@@ -200,7 +200,7 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
 // ★Step 4a: connect/climbSealed 연결판정·chain rank합·boss base/mult/cap 효과·enh(gold/mult-enh)까지
 // scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
 const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
-const { ART_PAL, ART_C, ART_ACCENT } = require('./art/art.cjs');
+const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate } = require('./art/art.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -407,10 +407,7 @@ function advanceBlind(){
 /* ---------- 렌더 ---------- */
 function cardEl(card){
   const el=document.createElement("div"); el.className="pcard "+(isRed(card.suit)?"red":"black")+(cardSealed(card)?" sealed":"");
-  const rs=rankStr(card.rank), g=suitG(card.suit);
-  const enh=card.enh==="wild"?"★":card.enh==="mult"?"◆":card.enh==="gold"?"●":"";
-  el.innerHTML=`<div class="corner tl">${rs}<br>${g}</div><div class="center">${g}</div><div class="corner br">${rs}<br>${g}</div>`
-    +(enh?`<div class="enh" style="color:${card.enh==='gold'?'#caa23c':card.enh==='wild'?'#5ad15a':'#9b6fd4'}">${enh}</div>`:"");
+  el.appendChild(artDrawCardFace(card));   // 절차적 픽셀 페이스(v-art M1) — 표시 전용, 로직 무접촉
   return el;
 }
 let cellEls=[];

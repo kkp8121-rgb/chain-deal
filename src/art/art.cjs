@@ -4,4 +4,5 @@
 const { ART_PAL, ART_C, ART_ACCENT } = require('./palette.cjs');
 const { artGrid, artSet, artRect, artFrame, artStamp, artStamp180, artPaint } = require('./pixel.cjs');
 const { ART_GLYPH, ART_PIP, ART_BADGE } = require('./sprites.cjs');
-module.exports = { ART_PAL, ART_C, ART_ACCENT, artGrid, artSet, artRect, artFrame, artStamp, artStamp180, artPaint, ART_GLYPH, ART_PIP, ART_BADGE };
+const { artDrawCardFace, artFaceHTML, artHydrate } = require('./cards.cjs');
+module.exports = { ART_PAL, ART_C, ART_ACCENT, artGrid, artSet, artRect, artFrame, artStamp, artStamp180, artPaint, ART_GLYPH, ART_PIP, ART_BADGE, artDrawCardFace, artFaceHTML, artHydrate };
