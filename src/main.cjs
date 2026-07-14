@@ -201,7 +201,7 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
 // scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
 const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
 const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML, artContactSheet, artSheetLoad, artSheetReady } = require('./art/art.cjs');
-const { rStageInit, rActive, rStageResize } = require('./render/render.cjs');
+const { rStageInit, rActive, rStageResize, rSync } = require('./render/render.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -439,6 +439,8 @@ function render(){
     if(hb>0) hbEl.innerHTML=`🎴 <span class="hblbl">${t('ui.handBonus.label')}</span> <span class="hbname">${HAND_LABEL[hk]}</span> <span class="hbplus">+${hb}</span> <span class="hbdim">${t('ui.handBonus.addedToChain')}</span>`+hint;
     else hbEl.innerHTML=`<span class="hbdim">🎴 ${t('ui.handBonus.label')} — ${t('ui.handBonus.currentPrefix')} ${HAND_LABEL[hk]}, ${t('ui.handBonus.none')}</span>`+hint; }
 
+  if(rActive()){ document.body.classList.add("pixi-on"); rSync(S); }   // M2: Pixi 씬 diff 동기화(row/hand DOM 재구성 스킵). CSS .pixi-on이 #table/.handlbl/#hand 숨김·#stage 표시
+  else {
   const row=document.getElementById("row"); row.innerHTML=""; cellEls=[];
   for(let i=0;i<SLOTS;i++){
     if(i<S.row.length){ const el=cardEl(S.row[i]); row.appendChild(el); cellEls[i]=el; }
@@ -455,6 +457,7 @@ function render(){
     w.appendChild(cardEl(c)); w.insertAdjacentHTML("beforeend",zap);
     w.onclick=()=>placeCard(i); hand.appendChild(w);
   });
+  }
   document.getElementById("charms").innerHTML=S.owned.map(id=>{const c=CHARMS.find(x=>x.id===id); return `<span class="ctag">${artEmblemHTML(c,false,18)}${c.name}</span>`;}).join("");
   artHydrate(document.getElementById("charms"));
   const rbox=document.getElementById("rerollBox");
@@ -465,6 +468,7 @@ function render(){
 
 /* ---------- 연출 ---------- */
 function juicePlace(idx, base, runLen, bonus, gained){
+  if(rActive()) return;   // TODO(M2 Task 3): rActive 시 rJuicePlace(idx,base,er,runLen,big)로 대체 — 임시 가드(stale cellEls 접근·오디오 중복 방지). Pixi 경로 juice/오디오는 Task 3에서 복원
   const cell=cellEls[idx]; if(cell) cell.classList.add("place");
   popup(cell,"+"+base,"#bcd",0); beep(330,.07);
   if(runLen>=2){
@@ -639,7 +643,7 @@ else {
   registerScreen('settings', { el: document.getElementById('scrSettings'), mount: mountSettings });
   registerScreen('summary',  { el: document.getElementById('scrSummary'), mount: mountSummary });
   registerScreens({ showScreen, currentScreen });
-  rStageInit(document.getElementById('stage'), ()=>{});   // M2 스캐폴드: Pixi 스테이지 마운트/폴백 배선(캔버스는 CSS로 항상 숨김 — 표시·rSync는 다음 태스크). 시트모드 분기에선 호출 안 함
+  rStageInit(document.getElementById('stage'), ()=>{ if(typeof S!=="undefined"&&S) render(); });   // M2: Pixi 스테이지 마운트/폴백 배선. onReady 시 게임 진행 중이면 즉시 재렌더(async init이 판 도중 완료된 레이스에서 DOM→Pixi 전환). 시트모드 분기에선 호출 안 함
   showScreen('title');
   selDeck=getMeta().deck||"standard"; renderDeckLbl();
 }

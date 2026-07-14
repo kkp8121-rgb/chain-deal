@@ -82,7 +82,10 @@
 
   /* M2 렌더층: Pixi 스테이지 마운트 지점. 지금은 항상 숨김(스캐폴드 — 다음 태스크에서 rActive() 시 표시). 캔버스는 중앙 정렬 */
   #stage{display:none}
-  #stage canvas{display:block; margin:0 auto}
+  #stage canvas{display:block; margin:0 auto; max-width:100%; height:auto}
+  /* rActive() 시 render()가 body에 .pixi-on 부여 → 보드/손패/프롬프트 DOM 숨김·Pixi 스테이지 표시(spec §5). 폴백(?render=dom·WebGL 실패)에선 미부여 → DOM 경로 그대로 */
+  .pixi-on #table, .pixi-on .handlbl, .pixi-on #hand{display:none}
+  .pixi-on #stage{display:block}
   .table{position:relative; background:#0e1530; border:1px solid var(--line); border-radius:14px;
     padding:20px 12px; margin:8px 0; min-height:118px; box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
   .table.shake{animation:shake .32s}
