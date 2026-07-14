@@ -32,6 +32,7 @@ const SRC = path.join(__dirname, "src");
 const CONTENT_DIR = path.join(SRC, "content");
 const RULES_DIR = path.join(SRC, "rules");
 const UI_DIR = path.join(SRC, "ui");
+const ART_DIR = path.join(SRC, "art");
 const OUT = path.join(__dirname, "prototype", "index.html");
 
 // Matches a whole-line local require, e.g.:  const { CHARMS } = require('./content/charms.cjs');
@@ -42,11 +43,15 @@ const EXPORTS_LINE_RE = /^\s*module\.exports\s*=\s*\{[^}]*\}\s*;\s*$/;
 // Resolves every local `require('./content/xxx.cjs')` line in a file by inlining the required module's
 // body (verbatim, minus its own require/module.exports lines) in place — recursively, so a required
 // module may itself require further content modules. Detects missing files and circular requires.
-function resolveRequires(filePath, stack = []) {
+function resolveRequires(filePath, stack = [], seen = new Set()) {
   if (stack.includes(filePath)) {
     const chain = [...stack, filePath].map((p) => path.relative(__dirname, p)).join(" -> ");
     throw new Error(`build.mjs: circular require detected: ${chain}`);
   }
+  if (seen.has(filePath)) {
+    throw new Error(`build.mjs: duplicate require detected (같은 모듈 두 곳 require 금지 — raw-concat 중복 인라인 방지): ${path.relative(__dirname, filePath)}`);
+  }
+  seen.add(filePath);
   const raw = readFileSync(filePath, "utf8");
   const dir = path.dirname(filePath);
   const lines = raw.replace(/\n$/, "").split("\n");
@@ -58,7 +63,7 @@ function resolveRequires(filePath, stack = []) {
       if (!existsSync(reqPath)) {
         throw new Error(`build.mjs: required module not found: '${m[2]}' (from ${path.relative(__dirname, filePath)})`);
       }
-      out.push(resolveRequires(reqPath, [...stack, filePath]));
+      out.push(resolveRequires(reqPath, [...stack, filePath], seen));
       continue;
     }
     if (EXPORTS_LINE_RE.test(line)) continue; // module.exports is Node-only, browser has no `module`
@@ -87,8 +92,9 @@ async function main() {
   const contentFiles = listCjsFilesRecursive(CONTENT_DIR);
   const rulesFiles = listCjsFilesRecursive(RULES_DIR);
   const uiFiles = listCjsFilesRecursive(UI_DIR);
+  const artFiles = listCjsFilesRecursive(ART_DIR);
   await Promise.all(
-    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles, ...uiFiles].map((entry) =>
+    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles, ...uiFiles, ...artFiles].map((entry) =>
       build({ entryPoints: [entry], bundle: false, write: false, logLevel: "silent" })
     )
   );
