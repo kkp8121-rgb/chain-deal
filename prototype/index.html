@@ -1306,6 +1306,45 @@ const ART_PAL=["","#f2ead8","#cfc5ac","#20222b","#4a4f5e","#d84b40","#8e2f28","#
 const ART_C={paper:1,shade:2,ink:3,soft:4,red:5,redDeep:6,gold:7,bronze:8,green:9,purple:10,cyan:11,orange:12,navy:13,slate:14,white:15,steel:16};
 // 클러스터 색 예약(spec §3): cyan=gem·gold=apex·orange=cartel 전용. 무클러스터 부적 재사용 금지.
 const ART_ACCENT={gem:ART_C.cyan,apex:ART_C.gold,cartel:ART_C.orange};
+// src/art/pixel.cjs — 픽셀 그리드 조립(팔레트 인덱스) + 캔버스 페인트 분리 (spec §2).
+// 분리 이유: CVD 시뮬(sheet.cjs)이 같은 그리드를 변환 팔레트로 재페인트. ART_PAL은 palette.cjs(concat 전역).
+function artGrid(w,h){ return {w:w,h:h,px:new Uint8Array(w*h)}; }
+function artSet(g,x,y,c){ if(x>=0&&y>=0&&x<g.w&&y<g.h) g.px[y*g.w+x]=c; }
+function artRect(g,x,y,w,h,c){ for(let j=0;j<h;j++) for(let i=0;i<w;i++) artSet(g,x+i,y+j,c); }
+function artFrame(g,x,y,w,h,c){ artRect(g,x,y,w,1,c); artRect(g,x,y+h-1,w,1,c); artRect(g,x,y,1,h,c); artRect(g,x+w-1,y,1,h,c); }
+function artStamp(g,x,y,rows,c){ for(let j=0;j<rows.length;j++){ const r=rows[j]; for(let i=0;i<r.length;i++) if(r[i]==="X") artSet(g,x+i,y+j,c); } }
+function artStamp180(g,x,y,rows,c){ const H=rows.length,W=rows[0].length; for(let j=0;j<H;j++){ const r=rows[H-1-j]; for(let i=0;i<W;i++) if(r[W-1-i]==="X") artSet(g,x+i,y+j,c); } }
+function artPaint(g,palHex){ const cv=document.createElement("canvas"); cv.width=g.w; cv.height=g.h; const cx=cv.getContext("2d"); for(let j=0;j<g.h;j++) for(let i=0;i<g.w;i++){ const p=g.px[j*g.w+i]; if(p){ cx.fillStyle=palHex[p]; cx.fillRect(i,j,1,1); } } return cv; }
+// src/art/sprites.cjs — 비트맵 어휘(rows 인코딩: "X"=칠함, "."=투명). 색은 스탬프 시 주입.
+const ART_GLYPH={
+  A:[".X.","X.X","XXX","X.X","X.X"],
+  2:["XX.","..X",".X.","X..","XXX"],
+  3:["XX.","..X",".X.","..X","XX."],
+  4:["X.X","X.X","XXX","..X","..X"],
+  5:["XXX","X..","XX.","..X","XX."],
+  6:[".XX","X..","XX.","X.X",".X."],
+  7:["XXX","..X",".X.",".X.",".X."],
+  8:[".X.","X.X",".X.","X.X",".X."],
+};
+const ART_PIP={
+  0:{ 9:["....X....","...XXX...","..XXXXX..",".XXXXXXX.","XXXXXXXXX","XXXXXXXXX",".XX.X.XX.","....X....","...XXX..."],
+      7:["...X...","..XXX..",".XXXXX.","XXXXXXX","XXXXXXX","...X...",".XXXXX."],
+      5:["..X..",".XXX.","XXXXX","..X..",".XXX."] },
+  1:{ 9:[".XX...XX.","XXXX.XXXX","XXXXXXXXX","XXXXXXXXX",".XXXXXXX.","..XXXXX..","...XXX...","....X....","........."],
+      7:[".XX.XX.","XXXXXXX","XXXXXXX",".XXXXX.","..XXX..","...X...","......."],
+      5:[".X.X.","XXXXX","XXXXX",".XXX.","..X.."] },
+  2:{ 9:["....X....","...XXX...","..XXXXX..",".XXXXXXX.","XXXXXXXXX",".XXXXXXX.","..XXXXX..","...XXX...","....X...."],
+      7:["...X...","..XXX..",".XXXXX.","XXXXXXX",".XXXXX.","..XXX..","...X..."],
+      5:["..X..",".XXX.","XXXXX",".XXX.","..X.."] },
+  3:{ 9:["...XXX...","..XXXXX..","...XXX...",".XX.X.XX.","XXXXXXXXX","XXXXXXXXX",".XX.X.XX.","....X....","...XXX..."],
+      7:["..XXX..",".XXXXX.","..XXX..","XXXXXXX","XXXXXXX","...X...",".XXXXX."],
+      5:[".XXX.","XXXXX","..X..","XXXXX",".XXX."] },
+};
+const ART_BADGE={
+  wild:["..X..",".XXX.","XXXXX",".XXX.","X.X.X"],
+  gold:[".XXX.","XXXXX","XXXXX","XXXXX",".XXX."],
+  mult:["..X..",".XXX.","XXXXX",".XXX.","..X.."],
+};
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
