@@ -113,8 +113,8 @@ function rStepCC(cc,dt,reduced){
   else { rSpringStep(cc.sx,dt); rSpringStep(cc.sy,dt); rSpringStep(cc.ss,dt); rSpringStep(cc.sr,dt); }
   cc.x=cc.sx.v; cc.y=cc.sy.v; cc.scale.set(cc.ss.v); cc.rotation=cc.sr.v;
 }
-function rTick(ticker){
-  const dt=Math.min((ticker.deltaMS||16)/1000, .05), reduced=rReduced();
+function rTick(){
+  const dt=Math.min(rStage().ticker.deltaMS/1000, 1/20), reduced=rReduced();   // ★초 단위 dt(deltaMS/1000) — R_TUNE k/d 전제. 1/20 상한=탭 백그라운드 복귀 폭주 방지
   for(const [card,cc] of rMap) rStepCC(cc,dt,reduced);
   for(let i=rDead.length-1;i>=0;i--){ const cc=rDead[i];
     rStepCC(cc,dt,reduced); cc.__fade-=dt*2.4; cc.alpha=Math.max(0,cc.__fade);
