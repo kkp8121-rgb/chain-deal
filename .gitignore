@@ -12,3 +12,5 @@ desktop.ini
 node_modules/
 funqa-judge-pack.md
 funqa-baseline.json
+.gstack/
+.claude/
