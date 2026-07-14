@@ -33,6 +33,7 @@ const CONTENT_DIR = path.join(SRC, "content");
 const RULES_DIR = path.join(SRC, "rules");
 const UI_DIR = path.join(SRC, "ui");
 const ART_DIR = path.join(SRC, "art");
+const RENDER_DIR = path.join(SRC, "render");
 const OUT = path.join(__dirname, "prototype", "index.html");
 
 // Matches a whole-line local require, e.g.:  const { CHARMS } = require('./content/charms.cjs');
@@ -93,8 +94,9 @@ async function main() {
   const rulesFiles = listCjsFilesRecursive(RULES_DIR);
   const uiFiles = listCjsFilesRecursive(UI_DIR);
   const artFiles = listCjsFilesRecursive(ART_DIR);
+  const renderFiles = listCjsFilesRecursive(RENDER_DIR);
   await Promise.all(
-    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles, ...uiFiles, ...artFiles].map((entry) =>
+    [path.join(SRC, "main.cjs"), ...contentFiles, ...rulesFiles, ...uiFiles, ...artFiles, ...renderFiles].map((entry) =>
       build({ entryPoints: [entry], bundle: false, write: false, logLevel: "silent" })
     )
   );

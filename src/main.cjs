@@ -201,6 +201,7 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
 // scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
 const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
 const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML, artContactSheet, artSheetLoad, artSheetReady } = require('./art/art.cjs');
+const { rStageInit, rActive, rStageResize } = require('./render/render.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -638,6 +639,7 @@ else {
   registerScreen('settings', { el: document.getElementById('scrSettings'), mount: mountSettings });
   registerScreen('summary',  { el: document.getElementById('scrSummary'), mount: mountSummary });
   registerScreens({ showScreen, currentScreen });
+  rStageInit(document.getElementById('stage'), ()=>{});   // M2 스캐폴드: Pixi 스테이지 마운트/폴백 배선(캔버스는 CSS로 항상 숨김 — 표시·rSync는 다음 태스크). 시트모드 분기에선 호출 안 함
   showScreen('title');
   selDeck=getMeta().deck||"standard"; renderDeckLbl();
 }
