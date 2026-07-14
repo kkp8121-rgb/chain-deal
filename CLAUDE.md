@@ -86,5 +86,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 배포 (선택)
 
 - **GitHub Pages**: `main` 에 push = 자동 배포(1~2분 반영). Pages는 **커밋된 `prototype/index.html`(빌드 산출물)을 그대로 서빙**(CI 빌드 없음) → ★`src/` 변경 후 반드시 `node build.mjs` 하고 **빌드된 `prototype/index.html`도 함께 커밋**. 루트 `index.html` 이 `prototype/index.html` 로 리다이렉트한다. 리포는 **public** — 시크릿·민감정보 커밋 금지.
-- **`git push` 가 hang하면**: credential 프롬프트 대기 문제. gh 토큰을 인라인 helper로 우회 — `git -c credential.helper= -c credential.helper='!f(){ echo username=x-access-token; echo "password=$(gh auth token)"; }; f' push origin main` (HANDOVER §2).
+- **`git push` 가 hang하면**: credential 프롬프트 대기 문제. gh 토큰을 인라인 helper로 우회 — `git -c credential.helper= -c credential.helper='!f(){ echo username=x-access-token; echo "password=$(gh auth token)"; }; f' push origin main` (HANDOVER §2). ★**403(권한 거부) 시**: gh에 다중 계정이 등록돼 활성 계정이 이 레포 소유자(`kkp8121-rgb`)가 아닌 경우 — `$(gh auth token)`을 `$(gh auth token --user kkp8121-rgb)`로 바꿔 계정을 명시(전역 활성 계정 전환 불필요, 2026-07-14 실측).
 - **백엔드(익명 플레이로그·리더보드, 선택)**: 게임 → Cloudflare Worker(Origin 검증으로 비밀 은닉) → Apps Script → Google Sheet. `src/main.cjs` 의 `LOG_URL`; 읽기는 CORS 우회 위해 JSONP. 스크립트는 `tools/cloudflare-worker.js` · `tools/playlog-appsscript.gs`. Apps Script 재배포는 **"배포 관리 → 편집"** 으로 해야 URL이 유지된다.
