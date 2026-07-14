@@ -200,7 +200,7 @@ function rerollHand(){   // 손패 전체를 새로 뽑음 (리롤 스킬로 획
 // ★Step 4a: connect/climbSealed 연결판정·chain rank합·boss base/mult/cap 효과·enh(gold/mult-enh)까지
 // scoreCard(rules/scoring.cjs)로 이전 — placeCard는 이제 push+draw 후 scoreCard 1회 호출로 축소.
 const { scoreCard, scoreHandBase, scoreSettle } = require('./rules/scoring.cjs');
-const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML, artContactSheet } = require('./art/art.cjs');
+const { ART_PAL, ART_C, ART_ACCENT, artDrawCardFace, artFaceHTML, artHydrate, artEmblemHTML, artContactSheet, artSheetLoad, artSheetReady } = require('./art/art.cjs');
 function scoreCtx(){ return { has, boss:id=>!!(S.boss&&S.boss.id===id), isRed, liveDeckCount:S.deck.length+S.discard.length+S.hand.length+S.row.length,
   connect:(a,b)=>connect(a,b,bossId()), climbSealed:(a,b)=>climbSealed(a,b,bossId()),
   ownedHooks: CHARMS.filter(c=>c.hooks && has(c.id)).map(c=>c.hooks) }; }
@@ -628,8 +628,10 @@ function openBoard(){
   jsonp("alltime","", d=>{ const el=document.getElementById("bdAll"); if(el) el.innerHTML=`<div class="seg">👑 ${t('ui.board.allTimeBest')}</div>${boardRows(d)}`; });
 }
 
-if(/[?&]art=sheet(&|$)/.test(location.search)){ document.addEventListener("DOMContentLoaded",()=>artContactSheet(document.body)); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0). ★DOMContentLoaded 이후 렌더: 이 <script>는 셸 마크업(드로어·탤리) 앞이라, 동기 실행하면 body를 비워도 파서가 그 마크업을 시트 뒤에 덧붙인다
+artSheetLoad();   // AI 카드 시트 비동기 로드(spec §4 v3) — 브라우저 전용. 성공 시 faceCache 무효화, 실패 시 절차 폴백. 양쪽 부트 분기 공통 선행.
+if(/[?&]art=sheet(&|$)/.test(location.search)){ document.addEventListener("DOMContentLoaded",()=>artSheetReady(()=>artContactSheet(document.body))); }   // 컨택트 시트 모드(spec §6.8) — jsonp·해금소급·화면등록 전부 스킵(네트워크 발화 0). 시트 로드 완료(성공/실패 무관) 후 렌더 — 실패 시 폴백 카드로. ★DOMContentLoaded 이후 렌더: 이 <script>는 셸 마크업(드로어·탤리) 앞이라, 동기 실행하면 body를 비워도 파서가 그 마크업을 시트 뒤에 덧붙인다
 else {
+  artSheetReady(()=>{ if(typeof S!=="undefined"&&S) render(); });   // 시트 로드 완료 시 화면 갱신(로드 전 렌더된 폴백 카드 → 시트 카드로 재페인트)
   checkUnlocks(getStats(), []);   // 기존 플레이어 소급: bestAnte/wins 기반 등급 부적(흑심·정련가) 자동 해금
   registerScreen('title',    { el: document.getElementById('scrTitle') });
   registerScreen('run',      { el: document.getElementById('scrRun') });
