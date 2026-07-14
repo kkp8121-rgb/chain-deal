@@ -92,10 +92,10 @@
   .table.shake{animation:shake .32s}
   @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
   .row{display:flex; gap:5px; justify-content:center; flex-wrap:nowrap}
-  /* 모바일 세로: 8칸을 한 줄로 scale-to-fit — 넓은 화면=50px 고정(데스크탑 무변), 좁은 폰=비율 유지하며 축소(wrap 방지=‘한 줄’ 정체성). board는 view-only라 탭 영향 없음 */
-  .row .pcard{flex:0 1 50px; min-width:0; width:auto; height:auto; aspect-ratio:50/72}
+  /* 모바일 세로: 8칸을 한 줄로 scale-to-fit — 넓은 화면=71px 고정(데스크탑 무변), 좁은 폰=비율 유지하며 축소(wrap 방지=‘한 줄’ 정체성). board는 view-only라 탭 영향 없음 */
+  .row .pcard{flex:0 1 71px; min-width:0; width:auto; height:auto; aspect-ratio:71/95}
 
-  .pcard{width:50px; height:72px; border-radius:7px; position:relative; background:var(--cardbg);
+  .pcard{width:71px; height:95px; border-radius:8px; position:relative; background:var(--cardbg);
     border:1px solid #b8ad93; box-shadow:0 2px 6px rgba(0,0,0,.45); overflow:hidden}
   .pcard.empty{background:transparent; border:2px dashed #2c3766; box-shadow:none}
   .pcard .corner{position:absolute; font-weight:800; line-height:1; font-size:13px; text-align:center}
@@ -112,7 +112,7 @@
 
   .hand{display:flex; gap:12px; justify-content:center; margin-top:8px}
   .hcard{position:relative; cursor:pointer; transition:transform .12s; border-radius:9px}
-  .hcard .pcard{width:62px; height:auto; aspect-ratio:25/36}
+  .hcard .pcard{width:88px; height:auto; aspect-ratio:71/95}
   .hcard:hover{transform:translateY(-8px)}
   /* 모바일 탭 피드백 — :hover는 터치서 안 떠서, tap-highlight 제거분을 :active로 보완(순수 CSS) */
   .hcard:active{transform:translateY(-8px)}
@@ -129,8 +129,8 @@
   .charms{display:flex; gap:7px; justify-content:center; margin-top:7px; flex-wrap:wrap; min-height:24px}
   .ctag{background:#241b40; border:1px solid var(--rune); border-radius:6px; padding:2px 9px; font-size:11px; color:#d9ccf5}
   canvas.cemblem{image-rendering:pixelated; vertical-align:-3px; margin-right:4px}
-  canvas.cface.mini{width:26px; height:37px; image-rendering:pixelated}
-  canvas.cface.suitpick{width:50px; height:72px; image-rendering:pixelated}
+  canvas.cface.mini{width:36px; height:auto; aspect-ratio:71/95; image-rendering:pixelated}
+  canvas.cface.suitpick{width:71px; height:95px; image-rendering:pixelated}
   .banner{margin-top:9px; min-height:22px; text-align:center; font-size:15px; font-weight:700}
   .controls{display:flex; gap:10px; justify-content:center; margin-top:8px; flex-wrap:wrap}
   button{font-family:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line);
@@ -152,7 +152,7 @@
   .ocard.sold{opacity:.38; pointer-events:none; border-style:dashed} .ocard.cantafford{opacity:.5; cursor:not-allowed}
   .shopGold{text-align:center; color:var(--gold); font-size:15px; margin-bottom:10px}
   .deckgrid{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:300px; overflow-y:auto; overscroll-behavior:contain; margin-top:12px; padding:4px}
-  .deckgrid .pcard{width:42px;height:auto;aspect-ratio:25/36;cursor:pointer}
+  .deckgrid .pcard{width:48px;height:auto;aspect-ratio:71/95;cursor:pointer}
   .deckgrid .pcard:hover{outline:2px solid var(--gold); transform:translateY(-3px)}
   /* ── 앱 셸: 화면 라우팅 ── */
   .screen{ display:none } .screen.active{ display:block }
@@ -1318,71 +1318,89 @@ function artRect(g,x,y,w,h,c){ for(let j=0;j<h;j++) for(let i=0;i<w;i++) artSet(
 function artFrame(g,x,y,w,h,c){ artRect(g,x,y,w,1,c); artRect(g,x,y+h-1,w,1,c); artRect(g,x,y,1,h,c); artRect(g,x+w-1,y,1,h,c); }
 function artStamp(g,x,y,rows,c){ for(let j=0;j<rows.length;j++){ const r=rows[j]; for(let i=0;i<r.length;i++) if(r[i]==="X") artSet(g,x+i,y+j,c); } }
 function artStamp180(g,x,y,rows,c){ const H=rows.length,W=rows[0].length; for(let j=0;j<H;j++){ const r=rows[H-1-j]; for(let i=0;i<W;i++) if(r[W-1-i]==="X") artSet(g,x+i,y+j,c); } }
+function artStampMap(g,x,y,rows,map){ for(let j=0;j<rows.length;j++){ const r=rows[j]; for(let i=0;i<r.length;i++){ const c=map[r[i]]; if(c) artSet(g,x+i,y+j,c); } } }
+function artStampMap180(g,x,y,rows,map){ const H=rows.length,W=rows[0].length; for(let j=0;j<H;j++){ const r=rows[H-1-j]; for(let i=0;i<W;i++){ const c=map[r[W-1-i]]; if(c) artSet(g,x+i,y+j,c); } } }
 function artPaint(g,palHex){ const cv=document.createElement("canvas"); cv.width=g.w; cv.height=g.h; const cx=cv.getContext("2d"); for(let j=0;j<g.h;j++) for(let i=0;i<g.w;i++){ const p=g.px[j*g.w+i]; if(p){ cx.fillStyle=palHex[p]; cx.fillRect(i,j,1,1); } } return cv; }
-// src/art/sprites.cjs — 비트맵 어휘(rows 인코딩: "X"=칠함, "."=투명). 색은 스탬프 시 주입.
+// src/art/sprites.cjs — 비트맵 어휘(rows 인코딩). 색은 스탬프 시 주입.
+// ★v2(71x95 재저작): 글리프 9x11(굵은 2px 획·세리프 발)·핍 25|15|13|9(25/15/13=3톤 X/s/h, 9=단색 X)·배지 11x11.
+// 3톤 인코딩: "X"=기본색 · "s"=음영(우하 rim) · "h"=하이라이트(좌상 rim) · "."=투명. 실색 매핑은 cards.cjs가 suit별 주입(단색은 artStamp, 3톤은 artStampMap).
 const ART_GLYPH={
-  A:[".X.","X.X","XXX","X.X","X.X"],
-  2:["XX.","..X",".X.","X..","XXX"],
-  3:["XX.","..X",".X.","..X","XX."],
-  4:["X.X","X.X","XXX","..X","..X"],
-  5:["XXX","X..","XX.","..X","XX."],
-  6:[".XX","X..","XX.","X.X",".X."],
-  7:["XXX","..X",".X.",".X.",".X."],
-  8:[".X.","X.X",".X.","X.X",".X."],
+  A:["...XXX...","..XXXXX..","..XX.XX..",".XX...XX.",".XX...XX.","XX.....XX","XXXXXXXXX","XXXXXXXXX","XX.....XX","XX.....XX","XX.....XX"],
+  2:[".XXXXXX..","XXXXXXXX.","XX....XX.","......XX.",".....XX..","...XXX...","..XXX....",".XXX.....","XXX......","XXXXXXXXX","XXXXXXXXX"],
+  3:["XXXXXXXX.","XXXXXXXX.",".....XXX.","...XXXX..","..XXXX...","...XXXX..",".....XXX.","......XX.","XX...XXX.","XXXXXXXX.",".XXXXXX.."],
+  4:["....XXX..","...XXXX..","..XX.XX..",".XX..XX..","XX...XX..","XX...XX..","XXXXXXXXX","XXXXXXXXX",".....XX..",".....XX..",".....XX.."],
+  5:["XXXXXXXX.","XXXXXXXX.","XX.......","XX.......","XXXXXXX..","XXXXXXXX.","......XXX","......XX.","XX...XXX.","XXXXXXXX.",".XXXXXX.."],
+  6:["..XXXXX..",".XXXXXX..","XXX......","XX.......","XXXXXXX..","XXXXXXXX.","XX....XX.","XX....XX.","XXX..XXX.",".XXXXXX..","..XXXX..."],
+  7:["XXXXXXXXX","XXXXXXXXX",".....XXX.","....XXX..","...XXX...","...XXX...","..XXX....","..XXX....",".XXX.....",".XXX.....",".XXX....."],
+  8:[".XXXXXX..","XXXXXXXX.","XX....XX.","XXX..XXX.",".XXXXXX..",".XXXXXX..","XXX..XXX.","XX....XX.","XX....XX.","XXXXXXXX.",".XXXXXX.."],
 };
 const ART_PIP={
-  0:{ 9:["....X....","...XXX...","..XXXXX..",".XXXXXXX.","XXXXXXXXX","XXXXXXXXX",".XX.X.XX.","....X....","...XXX..."],
-      7:["...X...","..XXX..",".XXXXX.","XXXXXXX","XXXXXXX","...X...",".XXXXX."],
-      5:["..X..",".XXX.","XXXXX","..X..",".XXX."] },
-  1:{ 9:[".XX...XX.","XXXX.XXXX","XXXXXXXXX","XXXXXXXXX",".XXXXXXX.","..XXXXX..","...XXX...","....X....","........."],
-      7:[".XX.XX.","XXXXXXX","XXXXXXX",".XXXXX.","..XXX..","...X...","......."],
-      5:[".X.X.","XXXXX","XXXXX",".XXX.","..X.."] },
-  2:{ 9:["....X....","...XXX...","..XXXXX..",".XXXXXXX.","XXXXXXXXX",".XXXXXXX.","..XXXXX..","...XXX...","....X...."],
-      7:["...X...","..XXX..",".XXXXX.","XXXXXXX",".XXXXX.","..XXX..","...X..."],
-      5:["..X..",".XXX.","XXXXX",".XXX.","..X.."] },
-  3:{ 9:["...XXX...","..XXXXX..","...XXX...",".XX.X.XX.","XXXXXXXXX","XXXXXXXXX",".XX.X.XX.","....X....","...XXX..."],
-      7:["..XXX..",".XXXXX.","..XXX..","XXXXXXX","XXXXXXX","...X...",".XXXXX."],
-      5:[".XXX.","XXXXX","..X..","XXXXX",".XXX."] },
+  0:{25:[".........................","............h............","............h............","...........hhh...........","..........hhhhh..........",".........hhhXXhh.........","........hhhXXXXhh........","........hhXXXXXXh........",".......hhhXXXXXXXs.......","......hhhXXXXXXXXss......","....hhhhXXXXXXXXXXsss....","...hhhhXXXXXXXXXXXXXss...","..hhhXXXXXXXXXXXXXXXXss..",".hhhXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXXss.","hhhXXXXXXXXXXXXXXXXXXXXss","hhXXXXXXXXXXXXXXXXXXXXXss","hhXXXXXXXXXXXXXXXXXXXXXss","hhXXXXXXXXXXXXXXXXXXXXsss",".hhXXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXsss.","..hXssXXXXXXXXXXXXsssss..","...sssssssssssssssssss...","......sssssssssssss......","........................."],
+     15:["...............",".......h.......","......hhh......",".....hhhhh.....","....hhhXXhX....","....hhXXXXs....","..hhhhXXXXsss..",".hhhhXXXXXXXss.","hhhXXXXXXXXXXss","hhXXXXXXXXXXXss","hhXXXXXXXXXXXss","hhXXXXXXXXXXsss",".hXssXXXXsssss.","..sssssssssss..",".....sssss....."],
+     13:["......h......","......h......",".....hhh.....","....hhhhh....","...hhhXXXs...","..hhhXXXXss..",".hhhXXXXXXss.","hhhXXXXXXXXss","hhXXXXXXXXXss","hhXXXXXXXXsss",".hXsXXXXssss.","..sssssssss..","....sssss...."],
+     9:["....X....","...XXX...","...XXX...",".XXXXXXX.","XXXXXXXXX","XXXXXXXXX","XXXXXXXXX",".XXXXXXX.","...XXX..."] },
+  1:{25:[".........................","......hh.........hh......","...hhhhhhhh...hhhhhhhh...","..hhhhhXhhhh.hhhhhXhhXs..",".hhhXXXXXXXhhhhXXXXXXXss.",".hhXXXXXXXXXhhXXXXXXXXss.","hhhXXXXXXXXXXXXXXXXXXXXss","hhXXXXXXXXXXXXXXXXXXXXXss","hhXXXXXXXXXXXXXXXXXXXXXss","hhXXXXXXXXXXXXXXXXXXXXsss",".hhXXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXsss.","..hhXXXXXXXXXXXXXXXXsss..","...hhXXXXXXXXXXXXXssss...","....hhhXXXXXXXXXXssss....","......hhXXXXXXXXsss......",".......hXXXXXXXsss.......","........sXXXXXXss........","........ssXXXXsss........",".........ssXXsss.........","..........sssss..........","...........sss...........","............s............","............s............","........................."],
+     15:["...............","..hhhh...hhhh..",".hhhhhh.hhhhXs.","hhhXXXhhhhXXXss","hhXXXXXhhXXXXss","hhXXXXXXXXXXXss","hhXXXXXXXXXXsss",".hhXXXXXXXssss.","..hhhXXXXssss..","....hXXXXss....","....XsXXsss....",".....sssss.....","......sss......",".......s.......","..............."],
+     13:[".............","..hhhh.hhhh..",".hhhhhhhhhXs.","hhhXXXhhXXXss","hhXXXXXXXXXss","hhXXXXXXXXsss",".hhXXXXXXsss.","..hhXXXXsss..","...hXXXsss...","....sssss....",".....sss.....","......s......","......s......"],
+     9:[".........",".XXX.XXX.","XXXXXXXXX","XXXXXXXXX","XXXXXXXXX",".XXXXXXX.","...XXX...","...XXX...","....X...."] },
+  2:{25:["............h............","...........hhh...........","..........hhhhh..........",".........hhhXXhh.........","........hhhXXXXhh........",".......hhhXXXXXXhh.......","......hhhXXXXXXXXhX......",".....hhhXXXXXXXXXXss.....","....hhhXXXXXXXXXXXXss....","...hhhXXXXXXXXXXXXXXss...","..hhhXXXXXXXXXXXXXXXXss..",".hhhXXXXXXXXXXXXXXXXXXss.","hhhXXXXXXXXXXXXXXXXXXXsss",".hhXXXXXXXXXXXXXXXXXXsss.","..hhXXXXXXXXXXXXXXXXsss..","...hhXXXXXXXXXXXXXXsss...","....hhXXXXXXXXXXXXsss....",".....hhXXXXXXXXXXsss.....","......XsXXXXXXXXsss......",".......ssXXXXXXsss.......","........ssXXXXsss........",".........ssXXsss.........","..........sssss..........","...........sss...........","............s............"],
+     15:[".......h.......","......hhh......",".....hhhhh.....","....hhhXXhh....","...hhhXXXXXs...","..hhhXXXXXXss..",".hhhXXXXXXXXss.","hhhXXXXXXXXXsss",".hhXXXXXXXXsss.","..hhXXXXXXsss..","...hXXXXXsss...","....ssXXsss....",".....sssss.....","......sss......",".......s......."],
+     13:["......h......",".....hhh.....","....hhhhh....","...hhhXXhX...","..hhhXXXXss..",".hhhXXXXXXss.","hhhXXXXXXXsss",".hhXXXXXXsss.","..hhXXXXsss..","...XsXXsss...","....sssss....",".....sss.....","......s......"],
+     9:["....X....","...XXX...","..XXXXX..",".XXXXXXX.","XXXXXXXXX",".XXXXXXX.","..XXXXX..","...XXX...","....X...."] },
+  3:{25:[".........................","..........hhhhh..........",".........hhhhhhh.........","........hhhXXXXhh........",".......hhhXXXXXXhh.......",".......hhXXXXXXXXh.......","......hhhXXXXXXXXXX......","...hhhhhXXXXXXXXXXXXss...","..hhhhhXXXXXXXXXXXXXXss..","..hhXXXXXXXXXXXXXXXXXss..",".hhhXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXXss.",".hhXXXXXXXXXXXXXXXXXXsss.","..hhXXXXXXXXXXXXXXXXsss..","...hhXXXXsXXXXssssssss...","....hhXXsssXXssssssss....","..........XXXss..........",".........XXXXXss.........",".........XXXXXss.........",".........XXXXXss.........","........sssssssss........","........sssssssss........","........................."],
+     15:["...............",".....hhhhh.....",".....hhhhh.....","....hhhXXhh....","..hhhhXXXXXss..",".hhhhXXXXXXXss.",".hhXXXXXXXXXss.",".hhXXXXXXXXXss.",".hhXXXXXXXXXss.",".hhXXXXXssssss.","..hhXssssssss..","......Xss......",".....XXXss.....",".....sssss.....",".....sssss....."],
+     13:[".............",".....hhh.....","....hhhhh....","...hhhXXhX...",".hhhhXXXXXss.",".hhhXXXXXXss.",".hhXXXXXXXss.",".hhXXXXXXsss.",".hhXXXXsssss.","...Xssssss...",".....Xss.....",".....sss.....","....sssss...."],
+     9:[".........","...XXX...","..XXXXX..",".XXXXXXX.","XXXXXXXXX",".XXXXXXX.",".XXXXXXX.","...XXX...","...XXX..."] },
 };
 const ART_BADGE={
-  wild:["..X..",".XXX.","XXXXX",".XXX.","X.X.X"],
-  gold:[".XXX.","XXXXX","XXXXX","XXXXX",".XXX."],
-  mult:["..X..",".XXX.","XXXXX",".XXX.","..X.."],
+  wild:[".....X.....","....XXX....","....XXX....","XXXXXXXXXXX",".XXXXXXXXX.","..XXXXXXX..","..XXXXXXX..","..XXX.XXX..",".XXX...XXX.",".XX.....XX.","XX.......XX"],
+  gold:["...XXXXX...",".XXXXXXXXX.",".XXXXXXXXX.","XXXXXXXXXXX","XXXXXXXXXXX","XXXXXXXXXXX","XXXXXXXXXXX","XXXXXXXXXXX",".XXXXXXXXX.",".XXXXXXXXX.","...XXXXX..."],
+  mult:[".....X.....","....XXX....","...XXXXX...","..XXXXXXX..",".XXXXXXXXX.","XXXXXXXXXXX",".XXXXXXXXX.","..XXXXXXX..","...XXXXX...","....XXX....",".....X....."],
 };
-// src/art/cards.cjs — 카드 페이스 25×36 (spec §4). 코너=랭크 글리프만(무늬는 중앙 핍+색이 전달).
-// 핍 레이아웃: 중앙 존 x∈[6,18]·y∈[6,28] 내, 같은 색이라 모서리 픽셀 접촉 무해.
+// src/art/cards.cjs — 카드 페이스 71x95 (spec §4 v2). 코너=랭크 글리프 9x11 + 미니 무늬핍 9x9(복원).
+// 중앙 핍 = 3톤 셰이딩(artStampMap, suit별 실색 주입): 적=red/redDeep/white · 흑=ink/soft(하이라이트만).
+// 핍 배치(x,y=top-left, size): 대형25(A)/중형15(2~3)/소형13(4~8). 경계 검산 완료(spec §4 v2 좌표 SSoT).
 const ART_PIPLAY={
-  1:[[8,13,9]],
-  2:[[9,8,7],[9,21,7]],
-  3:[[9,6,7],[9,14,7],[9,22,7]],
-  4:[[6,9,5],[14,9,5],[6,21,5],[14,21,5]],
-  5:[[6,9,5],[14,9,5],[10,15,5],[6,21,5],[14,21,5]],
-  6:[[6,6,5],[14,6,5],[6,15,5],[14,15,5],[6,24,5],[14,24,5]],
-  7:[[6,6,5],[14,6,5],[10,10,5],[6,15,5],[14,15,5],[6,24,5],[14,24,5]],
-  8:[[6,6,5],[14,6,5],[6,12,5],[14,12,5],[6,18,5],[14,18,5],[6,24,5],[14,24,5]],
+  1:[[23,35,25]],
+  2:[[28,22,15],[28,58,15]],
+  3:[[28,14,15],[28,40,15],[28,66,15]],
+  4:[[20,24,13],[38,24,13],[20,58,13],[38,58,13]],
+  5:[[20,24,13],[38,24,13],[20,58,13],[38,58,13],[29,41,13]],
+  6:[[20,16,13],[38,16,13],[20,41,13],[38,41,13],[20,66,13],[38,66,13]],
+  7:[[20,16,13],[38,16,13],[20,41,13],[38,41,13],[20,66,13],[38,66,13],[29,28,13]],
+  8:[[20,12,13],[38,12,13],[20,32,13],[38,32,13],[20,52,13],[38,52,13],[20,72,13],[38,72,13]],
 };
 const ART_ENH_COL={wild:"green",gold:"gold",mult:"purple"};
 const artFaceCache=new Map();
 function artFaceGrid(suit,rank,enh){
-  const g=artGrid(25,36);
-  artRect(g,0,0,25,36,ART_C.paper); artFrame(g,0,0,25,36,ART_C.soft); artFrame(g,1,1,23,34,ART_C.shade);
-  const ink=(suit===1||suit===2)?ART_C.red:ART_C.ink;
+  const g=artGrid(71,95);
+  artFrame(g,0,0,71,95,ART_C.soft); artFrame(g,1,1,69,93,ART_C.shade); artRect(g,2,2,67,91,ART_C.paper);
+  const red=(suit===1||suit===2);
+  const ink=red?ART_C.red:ART_C.ink;
+  const pipMap=red?{X:ART_C.red,s:ART_C.redDeep,h:ART_C.white}:{X:ART_C.ink,s:ART_C.ink,h:ART_C.soft};
   const gl=ART_GLYPH[rank===1?"A":String(rank)];
-  artStamp(g,2,2,gl,ink); artStamp180(g,20,29,gl,ink);
-  for(const p of ART_PIPLAY[rank]) artStamp(g,p[0],p[1],ART_PIP[suit][p[2]],ink);
-  if(enh){ const ec=ART_C[ART_ENH_COL[enh]];
-    artRect(g,2,0,21,1,ec); artRect(g,2,35,21,1,ec); artRect(g,0,2,1,32,ec); artRect(g,24,2,1,32,ec);
-    artRect(g,17,1,7,7,ART_C.navy); artStamp(g,18,2,ART_BADGE[enh],ec); }
+  const mini=ART_PIP[suit][9];
+  artStamp(g,5,5,gl,ink); artStamp(g,5,18,mini,ink);
+  artStamp180(g,57,79,gl,ink); artStamp180(g,57,68,mini,ink);
+  for(const p of ART_PIPLAY[rank]) artStampMap(g,p[0],p[1],ART_PIP[suit][p[2]],pipMap);
+  if(enh){ const ec=ART_C[ART_ENH_COL[enh]]; const M=3,L=12,T=2;
+    artRect(g,M,M,L,T,ec); artRect(g,M,M,T,L,ec);
+    artRect(g,71-M-L,M,L,T,ec); artRect(g,71-M-T,M,T,L,ec);
+    artRect(g,M,95-M-T,L,T,ec); artRect(g,M,95-M-L,T,L,ec);
+    artRect(g,71-M-L,95-M-T,L,T,ec); artRect(g,71-M-T,95-M-L,T,L,ec);
+    artRect(g,29,M,L,T,ec); artRect(g,29,95-M-T,L,T,ec);
+    artRect(g,M,41,T,L,ec); artRect(g,71-M-T,41,T,L,ec);
+    artRect(g,54,4,13,13,ART_C.navy); artStamp(g,55,5,ART_BADGE[enh],ec); }
   return g;
 }
 function artDrawCardFace(card){
   const k=card.suit+":"+card.rank+":"+(card.enh||"");
   let src=artFaceCache.get(k);
   if(!src){ src=artPaint(artFaceGrid(card.suit,card.rank,card.enh||null),ART_PAL); artFaceCache.set(k,src); }
-  const cv=document.createElement("canvas"); cv.width=25; cv.height=36;
+  const cv=document.createElement("canvas"); cv.width=71; cv.height=95;
   cv.getContext("2d").drawImage(src,0,0); return cv;
 }
-function artFaceHTML(card,cls){ return `<canvas class="cface${cls?" "+cls:""}" width="25" height="36" data-cf="${card.suit},${card.rank},${card.enh||""}"></canvas>`; }
+function artFaceHTML(card,cls){ return `<canvas class="cface${cls?" "+cls:""}" width="71" height="95" data-cf="${card.suit},${card.rank},${card.enh||""}"></canvas>`; }
 function artHydrate(root){
   root.querySelectorAll("canvas[data-cf]").forEach(cv=>{ const a=cv.getAttribute("data-cf").split(","); const card={suit:+a[0],rank:+a[1],enh:a[2]||null}; const k=card.suit+":"+card.rank+":"+(card.enh||"");
     let src=artFaceCache.get(k); if(!src){ src=artPaint(artFaceGrid(card.suit,card.rank,card.enh),ART_PAL); artFaceCache.set(k,src); }
